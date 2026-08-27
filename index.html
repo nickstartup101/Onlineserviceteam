@@ -5,7 +5,7 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</title>
     
-    <!-- ⭐ Favicon ຫູຟັງ Call Center ແບບໃໝ່ (Modern Headset with Mic) -->
+    <!-- Favicon ຫູຟັງ Call Center ສີແດງ -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2a9 9 0 0 0-9 9v4a4 4 0 0 0 4 4h1v-7H5v-1a7 7 0 0 1 14 0v1h-3v7h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5v2h5a3 3 0 0 0 3-3v-1.17A3.99 3.99 0 0 0 21 15v-4a9 9 0 0 0-9-9z'/%3E%3C/svg%3E"/>
 
     <!-- Tailwind CSS -->
@@ -323,20 +323,18 @@
             <!-- Workspace -->
             <div class="flex flex-1 overflow-hidden">
                 
-                <!-- ⭐ REDESIGNED BEAUTIFUL EMPLOYEE SIDEBAR -->
+                <!-- REDESIGNED EMPLOYEE SIDEBAR -->
                 <div class="admin-only w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-3 shrink-0 font-lao hidden md:flex flex-col shadow-sm">
                     <div>
                         <p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ</p>
                         <p class="text-[10px] text-slate-400">ກົດໃສ່ຊ່ອງໃນຕາຕະລາງເພື່ອເລືອກໃສ່ກະ</p>
                     </div>
 
-                    <!-- Search Box -->
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-2.5 top-2 text-slate-400 text-sm">search</span>
                         <input type="text" id="rosterSearchInput" oninput="filterRosterSidebar()" placeholder="ຄົ້ນຫາຊື່..." class="w-full pl-8 pr-2.5 py-1.5 border border-slate-200 rounded-xl text-xs outline-none focus:ring-1 focus:ring-brand-red bg-slate-50"/>
                     </div>
 
-                    <!-- Clean Staff Cards Container -->
                     <div id="scheduleStaffRoster" class="space-y-1.5 flex-1 overflow-y-auto pr-1"></div>
                 </div>
 
@@ -445,9 +443,8 @@
                     </div>
                 </div>
 
-                <!-- ⭐ ADMIN CENTRALIZED REPORTS SECTION (ADMIN ONLY) -->
+                <!-- ADMIN CENTRALIZED REPORTS SECTION (ADMIN ONLY) -->
                 <div id="adminReportsSection" class="hidden space-y-6">
-                    <!-- Report Header -->
                     <div class="bg-red-gradient p-6 rounded-3xl text-white shadow-lg shadow-red-900/15 flex justify-between items-center">
                         <div>
                             <h3 class="text-lg font-bold">ສູນລວມລາຍງານການລາພັກ ແລະ ປ່ຽນກະ (Centralized HR Reports)</h3>
@@ -458,7 +455,6 @@
                         </button>
                     </div>
 
-                    <!-- 1. All Staff 15-Day Annual Leave Report Table -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
@@ -537,7 +533,6 @@
 
                 <!-- Forms & Profile Management -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <!-- Profile Card -->
                     <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
                         <div class="relative mb-3">
                             <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-4 border-red-50 shadow-md bg-slate-50" src="" alt="Profile"/>
@@ -639,7 +634,7 @@
                     </div>
                 </div>
 
-                <!-- Annual Calendar (Everyone can view) -->
+                <!-- Annual Calendar -->
                 <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                     <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                         <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານພາຍໃນປີ (Team Annual Leave Calendar)
@@ -714,13 +709,15 @@
                     <select id="randomSelectedGroupId" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-indigo-600 bg-slate-50 font-bold">
                     </select>
                 </div>
-                <p class="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    💡 ລະບົບຈະນຳເອົາສະເພາະພະນັກງານໃນກຸ່ມທີ່ເລືອກ ມາແຈກຢາຍກະ ແລະ ມື້ພັກຜ່ອນຕາມກົດເກນທີ່ຕັ້ງໄວ້ ຢ່າງເທົ່າທຽມກັນທີ່ສຸດ.
-                </p>
+                <div class="text-[11px] text-slate-600 bg-indigo-50/70 p-3.5 rounded-2xl border border-indigo-100 space-y-1 leading-relaxed">
+                    <p class="font-bold text-indigo-900">💡 ກົດເກນການຈັດກະແບບລາຍອາທິດ (Weekly Block Shift):</p>
+                    <p>1. <strong>ວັນຈັນ-ວັນສຸກ:</strong> ພະນັກງານຈະປະຈຳການກະດຽວກັນຕະຫຼອດທັງອາທິດ ແລ້ວໝູນວຽນປ່ຽນກະໃນອາທິດຖັດໄປ (ກະ 1 $\rightarrow$ ກະ 2 $\rightarrow$ ກະ 3).</p>
+                    <p>2. <strong>ວັນເສົາ-ວັນອາທິດ:</strong> ລະບົບຈະແຍກສຸ່ມລົງກະທ້າຍອາທິດ 1 ມື້ ຢ່າງສະເໝີພາບ ແລະ ເທົ່າທຽມກັນ.</p>
+                </div>
                 <div class="flex justify-end gap-2 pt-2 border-t">
                     <button type="button" onclick="document.getElementById('randomGroupSelectModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
                     <button type="button" onclick="executeGroupRandomSchedule()" class="px-5 py-2 bg-indigo-800 hover:bg-indigo-900 text-white rounded-xl font-bold shadow">
-                        ເລີ່ມສຸ່ມຈັດຕາຕະລາງ
+                        ເລີ່ມສຸ່ມຈັດຕາຕະລາງ (Weekly Rotation)
                     </button>
                 </div>
             </div>
@@ -888,7 +885,7 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT STATE & LOGIC ================= -->
+    <!-- ================= JAVASCRIPT STATE & ROTATION LOGIC ================= -->
     <script>
         const MASTER_USERS = [
             { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
@@ -920,7 +917,7 @@
 
         const defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
-        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v7')) || [
+        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v8')) || [
             {
                 id: 'sheet-1',
                 monthKey: '2026-09',
@@ -931,7 +928,7 @@
             }
         ];
 
-        let employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v7')) || [
+        let employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v8')) || [
             {
                 id: 'grp-1',
                 name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກ 1 ມື້ເສົາ/ອາທິດ + 1 ທິດພັກ 2 ມື້)',
@@ -946,8 +943,8 @@
             }
         ];
 
-        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v7') || 'sheet-1';
-        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v7')) || [];
+        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v8') || 'sheet-1';
+        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v8')) || [];
         let users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: Math.floor(Math.random() * 5), otherLeaves: Math.floor(Math.random() * 2) }));
         let currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         let annualBookings = [
@@ -970,10 +967,10 @@
         }
 
         function saveAll() {
-            localStorage.setItem('ot_schedule_sheets_v7', JSON.stringify(scheduleSheets));
-            localStorage.setItem('ot_active_sheet_id_v7', activeSheetId);
-            localStorage.setItem('ot_holidays_v7', JSON.stringify(specialHolidayRanges));
-            localStorage.setItem('ot_emp_groups_v7', JSON.stringify(employeeGroups));
+            localStorage.setItem('ot_schedule_sheets_v8', JSON.stringify(scheduleSheets));
+            localStorage.setItem('ot_active_sheet_id_v8', activeSheetId);
+            localStorage.setItem('ot_holidays_v8', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_emp_groups_v8', JSON.stringify(employeeGroups));
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -1054,7 +1051,6 @@
                         el.style.display = isAdmin ? 'flex' : 'none';
                     });
 
-                    // Adapt titles based on role
                     const topNavTitle = document.getElementById('topProfileNavTitle');
                     const sideNavTitle = document.getElementById('sideProfileNavTitle');
                     const profileHeaderTitle = document.getElementById('profilePageHeaderTitle');
@@ -1149,41 +1145,6 @@
                 if (currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
                 else renderUserCurrentWeekWorkspace();
             }
-        }
-
-        function generateDefaultMonthData(year, month) {
-            const data = {};
-            const daysCount = new Date(year, month, 0).getDate();
-            for (let i = 1; i <= daysCount; i++) {
-                const dayNum = i < 10 ? '0' + i : '' + i;
-                const mNum = month < 10 ? '0' + month : '' + month;
-                const dStr = `${year}-${mNum}-${dayNum}`;
-                const dayOfWeek = new Date(year, month - 1, i).getDay();
-
-                if (dayOfWeek === 6) { // Sat
-                    data[dStr] = {
-                        isWeekend: true,
-                        shift1: ['ສາຍທອງ', 'ບຸນຮັກ', ''],
-                        shift2: ['ສົມຊາຍ', 'ບຸນຮັກ', ''],
-                        shift3: ['ສຸລິຍະສັກ', 'ໄກສະຫວາດ', '']
-                    };
-                } else if (dayOfWeek === 0) { // Sun
-                    data[dStr] = {
-                        isWeekend: true,
-                        shift1: ['ເເພັກເກີ້', '', ''],
-                        shift2: ['ໂທນິກ', 'ໄຊຍະສິດ', ''],
-                        shift3: ['ພັນນິກອນ', '', '']
-                    };
-                } else { // Weekdays
-                    data[dStr] = {
-                        isWeekend: false,
-                        shift1: ['ບຸນປະເສີດ', 'ບຸນຮັກ', 'ທະວີສັກ', 'ສົມຊາຍ', 'ປະສົງສິນ', 'ເອກສະຫວ່າງ'],
-                        shift2: ['ພອນສະຫວັນ', 'ພັນນິກອນ', 'ສີຊົມພູ', 'ໄກສະຫວາດ', 'ສຸລິຍະສັກ', 'ສາຍທອງ'],
-                        shift3: ['ແສງດາວ', 'ເເພັກເກີ້', 'ໂທນິກ', 'ໄຊຍະສິດ']
-                    };
-                }
-            }
-            return data;
         }
 
         function isDateInHolidayRange(dStr) {
@@ -1554,7 +1515,6 @@
             }
         }
 
-        // ⭐ BEAUTIFUL REDESIGNED EMPLOYEE SIDEBAR
         function renderScheduleStaffRoster() {
             const container = document.getElementById('scheduleStaffRoster');
             if (!container) return;
@@ -1680,12 +1640,10 @@
             alert('ຣີເຊັດຕາຕະລາງວ່າງເປົ່າຮຽບຮ້ອຍແລ້ວ!');
         }
 
-        // ================= ⭐ SELECT GROUP FOR RANDOM MODAL & ALGORITHM =================
         function openRandomGroupSelectModal() {
             const select = document.getElementById('randomSelectedGroupId');
             select.innerHTML = '';
             
-            // All Groups option
             const allOpt = document.createElement('option');
             allOpt.value = 'ALL';
             allOpt.innerText = '⭐ ທຸກກຸ່ມຮ່ວມກັນ (ໝູນວຽນທົ່ວເຖິງ)';
@@ -1701,6 +1659,7 @@
             document.getElementById('randomGroupSelectModal').classList.remove('hidden');
         }
 
+        // ================= ⭐ SMART WEEKLY BLOCK ROTATION ALGORITHM =================
         function executeGroupRandomSchedule() {
             const selectedGrpId = document.getElementById('randomSelectedGroupId').value;
             const sheet = getActiveSheet();
@@ -1710,16 +1669,11 @@
             function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
             let targetMembers = [];
-            let restRule = '1_DAY_WEEKEND_ONE_2DAY_WEEK';
-
             if (selectedGrpId === 'ALL') {
                 targetMembers = users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
             } else {
                 const foundGrp = employeeGroups.find(g => g.id === selectedGrpId);
-                if (foundGrp) {
-                    targetMembers = foundGrp.members;
-                    restRule = foundGrp.restRule;
-                }
+                if (foundGrp) targetMembers = foundGrp.members;
             }
 
             if (targetMembers.length === 0) {
@@ -1730,29 +1684,56 @@
             const leadersInGroup = targetMembers.filter(name => users.find(u => u.nameLao === name && u.isLeader));
             const normalStaffInGroup = targetMembers.filter(name => !users.find(u => u.nameLao === name && u.isLeader));
 
+            const shufLeaders = shuffle(leadersInGroup.length > 0 ? leadersInGroup : ['ບຸນປະເສີດ', 'ພອນສະຫວັນ', 'ແສງດາວ', 'ພັນນິກອນ']);
+            const shufStaff = shuffle(normalStaffInGroup.length > 0 ? normalStaffInGroup : targetMembers);
+
+            // 1. Create 3 Balanced Cohorts for Weekly Shifts (Shift 1, Shift 2, Shift 3)
+            // Cohort 1: Shift 1 Leader + 5 staff
+            const cohort1 = [shufLeaders[0] || 'ບຸນປະເສີດ', shufStaff[0] || '', shufStaff[1] || '', shufStaff[2] || '', shufStaff[3] || '', shufStaff[4] || ''];
+            // Cohort 2: Shift 2 Leader + 5 staff
+            const cohort2 = [shufLeaders[1] || 'ພອນສະຫວັນ', shufStaff[5] || '', shufStaff[6] || '', shufStaff[7] || '', shufStaff[8] || '', shufStaff[9] || ''];
+            // Cohort 3: Shift 3 Leader + 3 staff
+            const cohort3 = [shufLeaders[2] || 'ແສງດາວ', shufStaff[10] || '', shufStaff[11] || '', shufStaff[12] || ''];
+            // Cohort 4 (if any extra staff): Assigned as additional/weekend support
+            const cohortPool = [cohort1, cohort2, cohort3];
+
+            // Map each calendar day
             for (let i = 1; i <= daysCount; i++) {
                 const dayNum = i < 10 ? '0' + i : '' + i;
                 const mNum = month < 10 ? '0' + month : '' + month;
                 const dStr = `${year}-${mNum}-${dayNum}`;
-                const dayOfWeek = new Date(year, month - 1, i).getDay();
+                const dateObj = new Date(year, month - 1, i);
+                const dayOfWeek = dateObj.getDay();
                 const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
-                const shufLeaders = shuffle(leadersInGroup.length > 0 ? leadersInGroup : ['ບຸນປະເສີດ', 'ພອນສະຫວັນ', 'ແສງດາວ', 'ພັນນິກອນ']);
-                const shufStaff = shuffle(normalStaffInGroup.length > 0 ? normalStaffInGroup : targetMembers);
+                // Determine week index (0, 1, 2, 3, 4) to rotate weekly
+                // Week index shifts every Monday
+                const firstDayOfMonth = new Date(year, month - 1, 1).getDay();
+                const weekIndex = Math.floor((i + (firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1) - 1) / 7);
 
                 if (isWeekend) {
+                    // ⭐ Weekend rotation: Independent from Monday-Friday, balanced 1 day duty
+                    const weekendStaff = shuffle(targetMembers);
+                    const weekendLeader = shuffle(leadersInGroup);
+
                     sheet.data[dStr] = {
                         isWeekend: true,
-                        shift1: [shufStaff[0] || '', shufStaff[1] || '', ''],
-                        shift2: [shufStaff[2] || '', shufStaff[3] || '', ''],
-                        shift3: [shufLeaders[0] || '', shufStaff[4] || '', '']
+                        shift1: [weekendStaff[0] || '', weekendStaff[1] || '', ''],
+                        shift2: [weekendStaff[2] || '', weekendStaff[3] || '', ''],
+                        shift3: [weekendLeader[0] || 'ບຸນປະເສີດ', weekendStaff[4] || '', '']
                     };
                 } else {
+                    // ⭐ Weekday Rotation: FIXED ACROSS MON-FRI FOR THE ENTIRE WEEK!
+                    // Rotate cohorts by week index (Cohort 1 -> Shift 1, Shift 2, Shift 3...)
+                    const cS1 = cohortPool[(0 + weekIndex) % 3];
+                    const cS2 = cohortPool[(1 + weekIndex) % 3];
+                    const cS3 = cohortPool[(2 + weekIndex) % 3];
+
                     sheet.data[dStr] = {
                         isWeekend: false,
-                        shift1: [shufLeaders[0] || 'ບຸນປະເສີດ', shufStaff[0] || '', shufStaff[1] || '', shufStaff[2] || '', shufStaff[3] || '', shufStaff[4] || ''],
-                        shift2: [shufLeaders[1] || 'ພອນສະຫວັນ', shufStaff[5] || '', shufStaff[6] || '', shufStaff[7] || '', shufStaff[8] || '', shufStaff[9] || ''],
-                        shift3: [shufLeaders[2] || 'ແສງດາວ', shufStaff[10] || '', shufStaff[11] || '', shufStaff[12] || '']
+                        shift1: [...cS1],
+                        shift2: [...cS2],
+                        shift3: [...cS3]
                     };
                 }
             }
@@ -1761,7 +1742,7 @@
             document.getElementById('randomGroupSelectModal').classList.add('hidden');
             renderScheduleTable();
             renderUserCurrentWeekWorkspace();
-            alert(`ຈັດຕາຕະລາງອັດຕະໂນມັດສຳລັບ "${sheet.title}" ສຳເລັດແລ້ວ!`);
+            alert(`ຈັດຕາຕະລາງອັດຕະໂນມັດແບບໝູນວຽນລາຍອາທິດ (Weekly Block Rotation) ສຳລັບ "${sheet.title}" ສຳເລັດແລ້ວ!`);
         }
 
         // ================= GROUPS MANAGEMENT TAB =================
@@ -1866,7 +1847,7 @@
             renderGroupsTab();
         }
 
-        // ================= ⭐ ADMIN CENTRALIZED REPORT GENERATOR =================
+        // ================= ADMIN CENTRALIZED REPORT GENERATOR =================
         function renderAdminAllStaffReport() {
             const tbody = document.getElementById('adminAllStaffLeaveReportBody');
             if (!tbody) return;
@@ -2304,6 +2285,15 @@
                 checkAuth();
                 alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
             });
+        }
+
+        function initViews() {
+            renderDashboard();
+            renderScheduleTable();
+            renderGroupsTab();
+            renderEmployeesTable();
+            renderProfileTab();
+            renderUserCurrentWeekWorkspace();
         }
     </script>
 </body>
