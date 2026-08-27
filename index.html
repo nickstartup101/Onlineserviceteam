@@ -5,8 +5,8 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</title>
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E"/>
+    <!-- ⭐ Favicon ຮູບຫູຟັງ Call Center / Online Service (ສີແດງ #c01e2e) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2a7 7 0 0 1 14 0v2h-4v8h4c1.1 0 2-.9 2-2v-7a9 9 0 0 0-9-9z'/%3E%3C/svg%3E"/>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
@@ -51,8 +51,9 @@
         .excel-table { border-collapse: collapse; width: 100%; border: 1.5px solid #000; }
         .excel-table th, .excel-table td { border: 1px solid #000; padding: 2px 3px; font-size: 11px; text-align: center; }
         .excel-subgrid { display: grid; width: 100%; height: 100%; }
-        .excel-cell { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 2px; min-height: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-size: 11px; }
-        .excel-cell:hover { background-color: #fee2e2; }
+        .excel-cell { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 3px 2px; min-height: 24px; display: flex; align-items: center; justify-content: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+        .excel-cell.editable { cursor: pointer; }
+        .excel-cell.editable:hover { background-color: #fee2e2; }
         
         @keyframes pulse-ring {
             0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0.7); }
@@ -75,7 +76,7 @@
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <div class="bg-red-gradient p-6 text-white text-center relative">
                 <div class="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner border border-white/20">
-                    <span class="material-symbols-outlined text-3xl">public</span>
+                    <span class="material-symbols-outlined text-3xl">headset_mic</span>
                 </div>
                 <h2 class="text-xl font-bold font-lao tracking-tight">Online Team</h2>
                 <p class="text-xs text-red-100 font-lao mt-0.5">ເຂົ້າສູ່ລະບົບຈັດການຕາຕະລາງປະຈຳການ</p>
@@ -105,7 +106,7 @@
         <div class="flex items-center gap-3 md:gap-6">
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-red-gradient flex items-center justify-center text-white font-bold shadow-md shadow-red-900/20">
-                    <span class="material-symbols-outlined text-xl">public</span>
+                    <span class="material-symbols-outlined text-xl">headset_mic</span>
                 </div>
                 <div>
                     <span class="text-base font-bold text-brand-red tracking-tight">Online Team</span>
@@ -114,7 +115,8 @@
             </div>
             <nav class="hidden md:flex gap-1 pl-4">
                 <button onclick="switchTab('dashboard')" id="top-btn-dashboard" class="top-nav-link text-brand-red font-bold border-b-2 border-brand-red pb-1 text-xs font-lao px-3 py-1.5">Dashboard</button>
-                <button onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Monthly Schedule</button>
+                <!-- ⭐ ທຸກ User ເຂົ້າເບິ່ງຕາຕະລາງລາຍເດືອນໄດ້ -->
+                <button onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">Monthly Schedule</button>
                 <button onclick="switchTab('groups')" id="top-btn-groups" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">ໝວດພະນັກງານ (Groups)</button>
                 <button onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Employees</button>
                 <button onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">My Workspace & Hub</button>
@@ -123,7 +125,7 @@
         
         <div class="flex items-center gap-2 md:gap-3">
             <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-brand-red border border-red-200 rounded-full text-[10px] font-bold">
-                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> Online System
+                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> Online Service
             </div>
             <div class="flex items-center gap-2 pl-2">
                 <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border-2 border-brand-red/30 bg-red-50" src="" alt="Profile"/>
@@ -150,11 +152,12 @@
                 <button onclick="switchTab('dashboard')" id="side-dashboard" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 bg-red-50 text-brand-red rounded-xl font-bold transition text-left">
                     <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard ຕິດຕາມ
                 </button>
-                <button onclick="switchTab('schedule')" id="side-schedule" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
+                <!-- ⭐ ທຸກຄົນເບິ່ງຕາຕະລາງໄດ້ -->
+                <button onclick="switchTab('schedule')" id="side-schedule" class="side-nav-btn flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
                     <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-[18px]">table_view</span> ສ້າງຕາຕະລາງ
+                        <span class="material-symbols-outlined text-[18px]">table_view</span> ຕາຕະລາງປະຈຳການ
                     </div>
-                    <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+                    <span id="scheduleNavBadge" class="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold">All</span>
                 </button>
                 <button onclick="switchTab('groups')" id="side-groups" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
                     <div class="flex items-center gap-3">
@@ -178,7 +181,6 @@
         <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full flex flex-col gap-6">
                 
-                <!-- Dashboard Top Bar -->
                 <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                     <div>
                         <div class="flex items-center gap-2 text-xs font-semibold mb-1 font-lao text-slate-500">
@@ -193,7 +195,6 @@
                     </div>
                 </header>
 
-                <!-- IMBALANCE ALERT BANNER -->
                 <div id="imbalanceAlertBanner" class="hidden bg-red-50 border-2 border-brand-red/30 rounded-3xl p-5 shadow-sm">
                     <div class="flex items-start gap-4">
                         <div class="w-11 h-11 rounded-2xl bg-brand-red text-white flex items-center justify-center shrink-0 shadow-md">
@@ -270,41 +271,45 @@
             </div>
         </main>
 
-        <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
+        <!-- ================= 3. MONTHLY SCHEDULE VIEWER / BUILDER (ALL USERS CAN VIEW) ================= -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
             <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
-                <!-- Sheet & Month Switcher -->
+                <!-- Sheet & Month Switcher (Everyone can switch and view) -->
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="material-symbols-outlined text-brand-red text-xl">table_view</span>
                     
                     <select id="scheduleSheetSelect" onchange="changeActiveSheet()" class="border border-slate-300 rounded-xl text-xs font-bold p-2 outline-none focus:ring-1 focus:ring-brand-red bg-slate-50">
                     </select>
 
-                    <button onclick="openNewSheetModal()" class="px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+                    <button onclick="openNewSheetModal()" class="admin-only px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
                         <span class="material-symbols-outlined text-sm">add_box</span> + ສ້າງຕາຕະລາງໃໝ່
                     </button>
 
-                    <button onclick="openEditSheetInfoModal()" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1">
+                    <button onclick="openEditSheetInfoModal()" class="admin-only px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">edit_note</span> ແກ້ໄຂຫົວຂໍ້ & ໝາຍເຫດ
                     </button>
+
+                    <span id="userReadOnlyBadge" class="hidden px-2.5 py-1 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold">
+                        👁️ ໂໝດເບິ່ງ (Viewer)
+                    </span>
                 </div>
 
                 <!-- Action Tools -->
                 <div class="flex flex-wrap gap-1.5">
-                    <button onclick="runSmartFairAutoSchedule()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+                    <button onclick="runSmartFairAutoSchedule()" class="admin-only px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
                         <span class="material-symbols-outlined text-sm text-indigo-700">psychology</span> Random ຕາມໝວດກຸ່ມ (Fair)
                     </button>
-                    <button onclick="resetSchedule()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1">
+                    <button onclick="resetSchedule()" class="admin-only px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">delete_sweep</span> Reset
                     </button>
-                    <button onclick="openHolidayModal()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1">
+                    <button onclick="openHolidayModal()" class="admin-only px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">event</span> ວັນພັກພິເສດ & Undo
                     </button>
-                    <button onclick="saveDraft()" class="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-1">
+                    <button onclick="saveDraft()" class="admin-only px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ Draft
                     </button>
-                    <button onclick="publishSchedule()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-900/10">
+                    <button onclick="publishSchedule()" class="admin-only px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-900/10">
                         <span class="material-symbols-outlined text-sm">publish</span> Publish (ເຜີຍແຜ່)
                     </button>
                     <button onclick="exportToA4PDF()" class="px-4 py-2 bg-red-gradient bg-red-gradient-hover text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-red-900/20">
@@ -315,21 +320,26 @@
 
             <!-- Workspace -->
             <div class="flex flex-1 overflow-hidden">
-                <div class="w-56 bg-white border-r border-slate-200 p-3.5 overflow-y-auto space-y-1.5 shrink-0 font-lao hidden md:block">
+                <!-- Staff List Sidebar (Admin only) -->
+                <div class="admin-only w-56 bg-white border-r border-slate-200 p-3.5 overflow-y-auto space-y-1.5 shrink-0 font-lao hidden md:block">
                     <p class="text-[11px] font-bold text-slate-400 uppercase mb-2">ລາຍຊື່ພະນັກງານ (ກົດຊ່ອງຕາຕະລາງເພື່ອເລືອກ)</p>
                     <div id="scheduleStaffRoster" class="space-y-1"></div>
                 </div>
 
+                <!-- Printable Table Container -->
                 <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col" id="scheduleTableWrapper">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
+                        <!-- Customizable Sheet Title -->
                         <div class="text-center font-bold text-sm py-1.5 font-lao border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
                             ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026
                         </div>
 
+                        <!-- Schedule Excel Grid -->
                         <table class="excel-table font-lao" id="mainScheduleTable">
                             <tbody id="scheduleTableBody"></tbody>
                         </table>
 
+                        <!-- Customizable Notes & Signature Block -->
                         <div class="mt-4 border-t-2 border-black pt-3 text-[11px] font-lao grid grid-cols-12 gap-4">
                             <div class="col-span-8 space-y-0.5 leading-tight">
                                 <p class="font-bold">ໝາຍເຫດ:</p>
@@ -346,13 +356,13 @@
             </div>
         </main>
 
-        <!-- ================= 4. GROUP & TEAM SCHEDULING MANAGEMENT (NEW) ================= -->
+        <!-- ================= 4. GROUP & TEAM SCHEDULING MANAGEMENT ================= -->
         <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div>
                         <h2 class="text-xl font-bold text-slate-800">ຕັ້ງຄ່າໝວດ/ກຸ່ມພະນັກງານສຳລັບ Auto-Schedule</h2>
-                        <p class="text-xs text-slate-500">ກຳນົດກຸ່ມ, ເງື່ອນໄຂການພັກ (1 ມື້ / 2 ມື້ຕໍ່ອາທິດ, ແບບມອບເໝົາ ຫຼື ເສົາ-ອາທິດ) ເພື່ອໃຫ້ລະບົບ Random ແບບເທົ່າທຽມ</p>
+                        <p class="text-xs text-slate-500">ກຳນົດກຸ່ມ, ເງື່ອນໄຂການພັກຜ່ອນ (ພັກເສົາ-ອາທິດ / ພັກ 1 ມື້ + ມີ 1 ທິດພັກ 2 ມື້) ເພື່ອໃຫ້ລະບົບ Random ແບບເທົ່າທຽມ</p>
                     </div>
                     <button onclick="openAddGroupModal()" class="px-4 py-2.5 bg-red-gradient bg-red-gradient-hover text-white text-xs font-bold rounded-xl shadow-md shadow-red-900/20 flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">add_circle</span> + ສ້າງກຸ່ມໃໝ່
@@ -404,7 +414,7 @@
                     <p class="text-xs text-slate-500">ຕາຕະລາງປະຈຳການສ່ວນຕົວຂອງທ່ານ, ສະຫຼຸບມື້ພັກປະຈຳປີ ແລະ ປະຕິທິນຈອງວັນພັກ</p>
                 </div>
 
-                <!-- 🌟 USER WORKSPACE BANNER: CURRENT WEEK SHIFT ASSIGNMENT -->
+                <!-- 🌟 USER WORKSPACE BANNER: CURRENT WEEK SHIFT ASSIGNMENT (DYNAMICS UPON SWAP) -->
                 <div id="userCurrentWeekCard" class="bg-white border-2 border-brand-red/30 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div class="space-y-1">
@@ -756,8 +766,10 @@
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">ເງື່ອນໄຂການພັກຜ່ອນ (Rest Rule per Week)</label>
+                    <!-- ⭐ ເພີ່ມຕົວເລືອກ ພັກ 1 ມື້ ເສົາ ຫຼື ອາທິດ + ມີ 1 ທິດພັກ 2 ມື້ -->
                     <select id="groupRestRuleSelect" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red">
                         <option value="2_DAYS_WEEKEND">ພັກ 2 ມື້ຕໍ່ອາທິດ (ສະເພາະ ວັນເສົາ - ວັນອາທິດ)</option>
+                        <option value="1_DAY_WEEKEND_ONE_2DAY_WEEK">ພັກ 1 ມື້ (ເສົາ ຫຼື ອາທິດ) + ມີ 1 ທິດທີ່ພັກໄດ້ 2 ມື້ຕໍ່ເດືອນ ⭐</option>
                         <option value="2_DAYS_FLEX">ພັກ 2 ມື້ຕໍ່ອາທິດ (ແບບມອບເໝົາ/ໝູນວຽນມື້ໃດກໍໄດ້)</option>
                         <option value="1_DAY_FLEX">ພັກ 1 ມື້ຕໍ່ອາທິດ (ແບບມອບເໝົາ/ໝູນວຽນ)</option>
                     </select>
@@ -814,7 +826,6 @@
 
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        // Master Users List
         const MASTER_USERS = [
             { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
             { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true },
@@ -846,7 +857,7 @@
         const defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
         // Multi-Sheet Master State
-        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v5')) || [
+        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v6')) || [
             {
                 id: 'sheet-1',
                 monthKey: '2026-09',
@@ -857,12 +868,12 @@
             }
         ];
 
-        // Employee Groups State (New Feature)
-        let employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v5')) || [
+        // Employee Groups State (With New Rest Rule)
+        let employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v6')) || [
             {
                 id: 'grp-1',
-                name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກເສົາ-ອາທິດ 2 ມື້)',
-                restRule: '2_DAYS_WEEKEND',
+                name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກ 1 ມື້ເສົາ/ອາທິດ + ມີ 1 ທິດພັກ 2 ມື້)',
+                restRule: '1_DAY_WEEKEND_ONE_2DAY_WEEK',
                 members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົນທະຍາ', 'ນິກກີ້', 'ໜູຮັກ', 'ເເພັກເກີ້', 'ເອກສະຫວ່າງ', 'ບຸນຮັກ', 'ປະສົງສິນ', 'ສາຍທອງ']
             },
             {
@@ -873,8 +884,8 @@
             }
         ];
 
-        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v5') || 'sheet-1';
-        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v5')) || [];
+        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v6') || 'sheet-1';
+        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v6')) || [];
         let users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 }));
         let currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         let annualBookings = [
@@ -899,10 +910,10 @@
         }
 
         function saveAll() {
-            localStorage.setItem('ot_schedule_sheets_v5', JSON.stringify(scheduleSheets));
-            localStorage.setItem('ot_active_sheet_id_v5', activeSheetId);
-            localStorage.setItem('ot_holidays_v5', JSON.stringify(specialHolidayRanges));
-            localStorage.setItem('ot_emp_groups_v5', JSON.stringify(employeeGroups));
+            localStorage.setItem('ot_schedule_sheets_v6', JSON.stringify(scheduleSheets));
+            localStorage.setItem('ot_active_sheet_id_v6', activeSheetId);
+            localStorage.setItem('ot_holidays_v6', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_emp_groups_v6', JSON.stringify(employeeGroups));
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -984,6 +995,10 @@
                         el.style.display = isAdmin ? 'flex' : 'none';
                     });
 
+                    // Update UI for Read-Only Staff view
+                    const readOnlyBadge = document.getElementById('userReadOnlyBadge');
+                    if (readOnlyBadge) readOnlyBadge.style.display = isAdmin ? 'none' : 'inline-block';
+
                     renderDashboard();
                     renderUserCurrentWeekWorkspace();
                 }
@@ -1009,7 +1024,8 @@
         }
 
         function switchTab(tabId) {
-            if ((tabId === 'schedule' || tabId === 'employees' || tabId === 'groups') && currentUser.role !== 'SUPER_ADMIN') {
+            // ⭐ Allow all staff to access 'schedule' in read-only mode
+            if ((tabId === 'employees' || tabId === 'groups') && currentUser.role !== 'SUPER_ADMIN') {
                 alert('ສຳລັບ Super Admin ເທົ່ານັ້ນ');
                 return;
             }
@@ -1199,7 +1215,7 @@
             });
         }
 
-        // ================= MONTHLY SCHEDULE ENGINE =================
+        // ================= MONTHLY SCHEDULE ENGINE (READ-ONLY FOR STAFF / FULL FOR ADMIN) =================
         function renderSheetDropdown() {
             const select = document.getElementById('scheduleSheetSelect');
             if (!select) return;
@@ -1284,6 +1300,7 @@
             tbody.innerHTML = '';
 
             const dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            const isAdmin = currentUser && currentUser.role === 'SUPER_ADMIN';
 
             for (let i = 1; i <= daysCount; i++) {
                 const dayNum = i < 10 ? '0' + i : '' + i;
@@ -1335,17 +1352,17 @@
                         <td class="font-bold ${isWeekendOrHol ? 'text-brand-red' : ''}">${dayOfWeek}</td>
                         <td class="p-0">
                             <div class="excel-subgrid grid-cols-3">
-                                ${renderExcelCells(dStr, 'shift1', s1Slots)}
+                                ${renderExcelCells(dStr, 'shift1', s1Slots, isAdmin)}
                             </div>
                         </td>
                         <td class="p-0">
                             <div class="excel-subgrid grid-cols-3">
-                                ${renderExcelCells(dStr, 'shift2', s2Slots)}
+                                ${renderExcelCells(dStr, 'shift2', s2Slots, isAdmin)}
                             </div>
                         </td>
                         <td class="p-0">
                             <div class="excel-subgrid ${isWeekendOrHol ? 'grid-cols-3' : 'grid-cols-4'}">
-                                ${renderExcelCells(dStr, 'shift3', s3Slots)}
+                                ${renderExcelCells(dStr, 'shift3', s3Slots, isAdmin)}
                             </div>
                         </td>
                     </tr>
@@ -1353,13 +1370,16 @@
             }
         }
 
-        function renderExcelCells(date, shift, list) {
+        function renderExcelCells(date, shift, list, isAdmin) {
             let html = '';
             for (let idx = 0; idx < list.length; idx++) {
                 const name = list[idx] || '';
                 const isLeader = users.find(u => u.nameLao === name && u.isLeader);
+                const clickHandler = isAdmin ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
+                const editableClass = isAdmin ? 'editable' : '';
+
                 html += `
-                    <div class="excel-cell ${isLeader ? 'text-brand-red font-bold' : ''}" onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')">
+                    <div class="excel-cell ${editableClass} ${isLeader ? 'text-brand-red font-bold' : ''}" ${clickHandler}>
                         ${name}
                     </div>
                 `;
@@ -1368,7 +1388,7 @@
         }
 
         function openCellModal(date, shift, index, currentName) {
-            if (currentUser.role !== 'SUPER_ADMIN') return;
+            if (!currentUser || currentUser.role !== 'SUPER_ADMIN') return;
             activeEditCell = { date, shift, index, currentName };
 
             document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift} - ຊ່ອງທີ ${index + 1}]`;
@@ -1415,6 +1435,7 @@
             saveAll();
             closeCellModal();
             renderScheduleTable();
+            renderUserCurrentWeekWorkspace();
         }
 
         function addExtraSlotToCurrentShift() {
@@ -1442,6 +1463,7 @@
                 saveAll();
                 closeCellModal();
                 renderScheduleTable();
+                renderUserCurrentWeekWorkspace();
             }
         }
 
@@ -1554,7 +1576,7 @@
             alert('ຣີເຊັດຕາຕະລາງວ່າງເປົ່າຮຽບຮ້ອຍແລ້ວ!');
         }
 
-        // ================= 🌟 SMART FAIR AUTO-SCHEDULE BY GROUPS =================
+        // ================= ⭐ SMART FAIR AUTO-SCHEDULE BY GROUPS (WITH NEW REST RULE) =================
         function runSmartFairAutoSchedule() {
             const sheet = getActiveSheet();
             if (!confirm(`ຈັດຕາຕະລາງອັດຕະໂນມັດແບບເທົ່າທຽມ (Fair Algorithm) ຕາມໝວດກຸ່ມ ສຳລັບ "${sheet.title}"?`)) return;
@@ -1563,7 +1585,6 @@
             const daysCount = new Date(year, month, 0).getDate();
             const leaders = users.filter(u => u.isLeader).map(u => u.nameLao);
 
-            // Pool of staff per group rule
             let poolGroup1 = employeeGroups[0]?.members || [];
             let poolGroup2 = employeeGroups[1]?.members || [];
 
@@ -1581,12 +1602,12 @@
                 const shufG2 = shuffle(poolGroup2);
 
                 if (isWeekend) {
-                    // Weekend rotation
+                    // Weekend rotation (Fairly allocating staff with 1 day or 2 day off rules)
                     sheet.data[dStr] = {
                         isWeekend: true,
-                        shift1: [shufG2[0] || '', shufG2[1] || '', ''],
-                        shift2: [shufG2[2] || '', shufG2[3] || '', ''],
-                        shift3: [shufLeaders[0] || '', shufG2[4] || '', '']
+                        shift1: [shufG1[0] || '', shufG2[0] || '', ''],
+                        shift2: [shufG1[1] || '', shufG2[1] || '', ''],
+                        shift3: [shufLeaders[0] || '', shufG2[2] || '', '']
                     };
                 } else {
                     // Weekday fair distribution
@@ -1612,7 +1633,10 @@
             grid.innerHTML = '';
 
             employeeGroups.forEach((grp, idx) => {
-                const ruleText = grp.restRule === '2_DAYS_WEEKEND' ? 'ພັກ 2 ມື້ (ເສົາ-ອາທິດ)' : (grp.restRule === '2_DAYS_FLEX' ? 'ພັກ 2 ມື້ (ໝູນວຽນ/ມອບເໝົາ)' : 'ພັກ 1 ມື້ (ໝູນວຽນ/ມອບເໝົາ)');
+                let ruleText = 'ພັກ 2 ມື້ (ເສົາ-ອາທິດ)';
+                if (grp.restRule === '1_DAY_WEEKEND_ONE_2DAY_WEEK') ruleText = 'ພັກ 1 ມື້ເສົາ/ອາທິດ + 1 ທິດພັກ 2 ມື້ ⭐';
+                else if (grp.restRule === '2_DAYS_FLEX') ruleText = 'ພັກ 2 ມື້ (ໝູນວຽນ/ມອບເໝົາ)';
+                else if (grp.restRule === '1_DAY_FLEX') ruleText = 'ພັກ 1 ມື້ (ໝູນວຽນ/ມອບເໝົາ)';
                 
                 grid.innerHTML += `
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4">
@@ -1639,7 +1663,7 @@
             document.getElementById('groupModalTitle').innerText = 'ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່';
             document.getElementById('editGroupId').value = '';
             document.getElementById('groupNameInput').value = '';
-            document.getElementById('groupRestRuleSelect').value = '2_DAYS_WEEKEND';
+            document.getElementById('groupRestRuleSelect').value = '1_DAY_WEEKEND_ONE_2DAY_WEEK';
             renderGroupMemberCheckboxes([]);
             document.getElementById('groupModal').classList.remove('hidden');
         }
@@ -1704,7 +1728,7 @@
             renderGroupsTab();
         }
 
-        // ================= 🌟 USER WORKSPACE: CURRENT WEEK ASSIGNMENT =================
+        // ================= 🌟 USER WORKSPACE: CURRENT WEEK ASSIGNMENT (AUTOMATIC UPON SWAP) =================
         function renderUserCurrentWeekWorkspace() {
             if (!currentUser) return;
             
@@ -1714,7 +1738,6 @@
 
             if (!titleEl || !pillsContainer) return;
 
-            // Find Published Sheet
             const publishedSheet = scheduleSheets.find(s => s.status === 'PUBLISHED') || scheduleSheets[0];
             const isLive = publishedSheet.status === 'PUBLISHED';
 
@@ -1723,7 +1746,6 @@
             const myName = currentUser.nameLao;
             const schedData = publishedSheet.data || {};
 
-            // Determine shifts for first week of the month (Days 1 to 7)
             const daysCount = 7;
             const [y, m] = publishedSheet.monthKey.split('-').map(Number);
             pillsContainer.innerHTML = '';
@@ -1922,7 +1944,7 @@
                         <div class="flex items-center gap-2">
                             ${isForMe ? `
                                 <button onclick="acceptSwap(${req.id})" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer">Accept (Swap ທັນທີ)</button>
-                                <button onclick="declineSwap(${req.id})" class="px-3 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100 cursor-pointer">Decline</button>
+                                <button onclick="declineSwap(${req.id})" class="px-3.5 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100 cursor-pointer">Decline</button>
                             ` : `
                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${req.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${req.status}</span>
                             `}
@@ -1932,6 +1954,7 @@
             });
         }
 
+        // ⭐ DYNAMIC RECALCULATION OF WORKSPACE UPON SWAP
         function acceptSwap(id) {
             const req = swapHistory.find(r => r.id === id);
             if (!req) return;
@@ -1962,6 +1985,7 @@
             renderProfileTab();
             renderDashboard();
             renderScheduleTable();
+            // Recalculate personal workspace immediately
             renderUserCurrentWeekWorkspace();
         }
 
@@ -2153,15 +2177,6 @@
                 checkAuth();
                 alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
             });
-        }
-
-        function initViews() {
-            renderDashboard();
-            renderScheduleTable();
-            renderGroupsTab();
-            renderEmployeesTable();
-            renderProfileTab();
-            renderUserCurrentWeekWorkspace();
         }
     </script>
 </body>
