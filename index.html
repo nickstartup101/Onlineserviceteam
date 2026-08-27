@@ -18,7 +18,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
     <!-- Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
@@ -116,8 +115,9 @@
             <nav class="hidden md:flex gap-1 pl-4">
                 <button onclick="switchTab('dashboard')" id="top-btn-dashboard" class="top-nav-link text-brand-red font-bold border-b-2 border-brand-red pb-1 text-xs font-lao px-3 py-1.5">Dashboard</button>
                 <button onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Monthly Schedule</button>
+                <button onclick="switchTab('groups')" id="top-btn-groups" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">ໝວດພະນັກງານ (Groups)</button>
                 <button onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Employees</button>
-                <button onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">My Profile & Leave Hub</button>
+                <button onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">My Workspace & Hub</button>
             </nav>
         </div>
         
@@ -156,6 +156,12 @@
                     </div>
                     <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
                 </button>
+                <button onclick="switchTab('groups')" id="side-groups" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random
+                    </div>
+                    <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+                </button>
                 <button onclick="switchTab('employees')" id="side-employees" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
                     <div class="flex items-center gap-3">
                         <span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ
@@ -163,7 +169,7 @@
                     <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
                 </button>
                 <button onclick="switchTab('profile')" id="side-profile" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left">
-                    <span class="material-symbols-outlined text-[18px]">account_circle</span> ໂປຣໄຟລ໌ & ຈອງມື້ພັກ
+                    <span class="material-symbols-outlined text-[18px]">account_circle</span> Workspace & ໂປຣໄຟລ໌
                 </button>
             </nav>
         </aside>
@@ -264,7 +270,7 @@
             </div>
         </main>
 
-        <!-- ================= 3. MONTHLY SCHEDULE BUILDER (MULTI-SHEET & CUSTOM NOTES) ================= -->
+        <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
             <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
@@ -272,9 +278,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="material-symbols-outlined text-brand-red text-xl">table_view</span>
                     
-                    <!-- Sheet Switcher -->
                     <select id="scheduleSheetSelect" onchange="changeActiveSheet()" class="border border-slate-300 rounded-xl text-xs font-bold p-2 outline-none focus:ring-1 focus:ring-brand-red bg-slate-50">
-                        <!-- Populated dynamically -->
                     </select>
 
                     <button onclick="openNewSheetModal()" class="px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
@@ -288,14 +292,12 @@
 
                 <!-- Action Tools -->
                 <div class="flex flex-wrap gap-1.5">
-                    <button onclick="autoGenerateSchedule()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm text-brand-red">casino</span> Auto
+                    <button onclick="runSmartFairAutoSchedule()" class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-sm text-indigo-700">psychology</span> Random ຕາມໝວດກຸ່ມ (Fair)
                     </button>
-                    <!-- ⭐ Reset Button (Wipes 100% clean) -->
                     <button onclick="resetSchedule()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm">delete_sweep</span> Reset (ລຶບໝົດ)
+                        <span class="material-symbols-outlined text-sm">delete_sweep</span> Reset
                     </button>
-                    <!-- ⭐ Holiday Modal Button (With Undo) -->
                     <button onclick="openHolidayModal()" class="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">event</span> ວັນພັກພິເສດ & Undo
                     </button>
@@ -303,7 +305,7 @@
                         <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ Draft
                     </button>
                     <button onclick="publishSchedule()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-900/10">
-                        <span class="material-symbols-outlined text-sm">publish</span> Publish
+                        <span class="material-symbols-outlined text-sm">publish</span> Publish (ເຜີຍແຜ່)
                     </button>
                     <button onclick="exportToA4PDF()" class="px-4 py-2 bg-red-gradient bg-red-gradient-hover text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-red-900/20">
                         <span class="material-symbols-outlined text-sm">print</span> A4 PDF
@@ -313,26 +315,21 @@
 
             <!-- Workspace -->
             <div class="flex flex-1 overflow-hidden">
-                <!-- Staff List Sidebar -->
                 <div class="w-56 bg-white border-r border-slate-200 p-3.5 overflow-y-auto space-y-1.5 shrink-0 font-lao hidden md:block">
                     <p class="text-[11px] font-bold text-slate-400 uppercase mb-2">ລາຍຊື່ພະນັກງານ (ກົດຊ່ອງຕາຕະລາງເພື່ອເລືອກ)</p>
                     <div id="scheduleStaffRoster" class="space-y-1"></div>
                 </div>
 
-                <!-- Printable Table Container -->
                 <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col" id="scheduleTableWrapper">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
-                        <!-- Customizable Sheet Title -->
                         <div class="text-center font-bold text-sm py-1.5 font-lao border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
                             ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026
                         </div>
 
-                        <!-- Schedule Excel Grid -->
                         <table class="excel-table font-lao" id="mainScheduleTable">
                             <tbody id="scheduleTableBody"></tbody>
                         </table>
 
-                        <!-- Customizable Notes & Signature Block -->
                         <div class="mt-4 border-t-2 border-black pt-3 text-[11px] font-lao grid grid-cols-12 gap-4">
                             <div class="col-span-8 space-y-0.5 leading-tight">
                                 <p class="font-bold">ໝາຍເຫດ:</p>
@@ -349,7 +346,26 @@
             </div>
         </main>
 
-        <!-- ================= 4. EMPLOYEES MANAGEMENT ================= -->
+        <!-- ================= 4. GROUP & TEAM SCHEDULING MANAGEMENT (NEW) ================= -->
+        <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50 font-lao">
+            <div class="max-w-7xl mx-auto w-full space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">ຕັ້ງຄ່າໝວດ/ກຸ່ມພະນັກງານສຳລັບ Auto-Schedule</h2>
+                        <p class="text-xs text-slate-500">ກຳນົດກຸ່ມ, ເງື່ອນໄຂການພັກ (1 ມື້ / 2 ມື້ຕໍ່ອາທິດ, ແບບມອບເໝົາ ຫຼື ເສົາ-ອາທິດ) ເພື່ອໃຫ້ລະບົບ Random ແບບເທົ່າທຽມ</p>
+                    </div>
+                    <button onclick="openAddGroupModal()" class="px-4 py-2.5 bg-red-gradient bg-red-gradient-hover text-white text-xs font-bold rounded-xl shadow-md shadow-red-900/20 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">add_circle</span> + ສ້າງກຸ່ມໃໝ່
+                    </button>
+                </div>
+
+                <!-- Groups List Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="groupsListGrid">
+                </div>
+            </div>
+        </main>
+
+        <!-- ================= 5. EMPLOYEES MANAGEMENT ================= -->
         <main id="view-employees" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -379,12 +395,32 @@
             </div>
         </main>
 
-        <!-- ================= 5. MY PROFILE & ANNUAL LEAVE HUB ================= -->
+        <!-- ================= 6. MY PROFILE & USER WORKSPACE ================= -->
         <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
+                
                 <div class="border-b border-slate-200 pb-3">
-                    <h2 class="text-xl font-bold text-slate-800">My Profile, Leave Hub & Statistics</h2>
-                    <p class="text-xs text-slate-500">ສະຫຼຸບມື້ພັກປະຈຳປີ (15 ມື້/ປີ), ປະຕິທິນຈອງວັນພັກ ແລະ ສະຖິຕິປະຈຳການ</p>
+                    <h2 class="text-xl font-bold text-slate-800">My Workspace, Profile & Leave Hub</h2>
+                    <p class="text-xs text-slate-500">ຕາຕະລາງປະຈຳການສ່ວນຕົວຂອງທ່ານ, ສະຫຼຸບມື້ພັກປະຈຳປີ ແລະ ປະຕິທິນຈອງວັນພັກ</p>
+                </div>
+
+                <!-- 🌟 USER WORKSPACE BANNER: CURRENT WEEK SHIFT ASSIGNMENT -->
+                <div id="userCurrentWeekCard" class="bg-white border-2 border-brand-red/30 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="space-y-1">
+                            <span class="px-3 py-1 bg-red-50 text-brand-red border border-red-200 rounded-full text-xs font-bold uppercase inline-flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> ປະຈຳການອາທິດນີ້ (This Week Schedule)
+                            </span>
+                            <h3 class="text-lg md:text-xl font-bold text-slate-800 pt-1" id="userCurrentShiftTitle">
+                                ກຳລັງກວດສອບຕາຕະລາງ...
+                            </h3>
+                            <p class="text-xs text-slate-500" id="userCurrentShiftSub">ຕາຕະລາງຫຼ້າສຸດທີ່ໄດ້ຮັບການ Publish ແລ້ວ</p>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl text-xs space-y-1 w-full md:w-auto">
+                            <p class="font-bold text-slate-700">ຕາຕະລາງອາທິດນີ້ຂອງທ່ານ:</p>
+                            <div class="flex flex-wrap gap-1.5" id="userWeekDaysPills"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 📊 STATS -->
@@ -588,7 +624,7 @@
 
     </div>
 
-    <!-- ================= CELL SELECTOR MODAL (WITH ADD EXTRA SLOT BUTTON) ================= -->
+    <!-- ================= CELL SELECTOR MODAL ================= -->
     <div id="cellSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden font-lao">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
@@ -599,10 +635,9 @@
                 <button onclick="closeCellModal()" class="text-white/80 hover:text-white">✕</button>
             </div>
             <div class="p-5 space-y-3">
-                <!-- Action to add extra slot -->
                 <div class="flex justify-between items-center pb-2 border-b">
                     <span class="text-xs text-slate-500 font-semibold">ເລືອກລາຍຊື່:</span>
-                    <button onclick="addExtraSlotToCurrentShift()" class="px-2 py-1 bg-red-50 text-brand-red border border-red-200 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-red-100 transition">
+                    <button onclick="addExtraSlotToCurrentShift()" class="px-2.5 py-1 bg-red-50 text-brand-red border border-red-200 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-red-100 transition">
                         <span class="material-symbols-outlined text-xs">add</span> + ເພີ່ມຊ່ອງຄົນໃໝ່ໃນກະນີ້
                     </button>
                 </div>
@@ -617,7 +652,7 @@
         </div>
     </div>
 
-    <!-- ================= SPECIAL HOLIDAY RANGE MODAL (WITH UNDO/DELETE LIST) ================= -->
+    <!-- ================= SPECIAL HOLIDAY RANGE MODAL ================= -->
     <div id="holidayModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden font-lao max-h-[90vh] flex flex-col">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center shrink-0">
@@ -625,7 +660,6 @@
                 <button onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
             </div>
             <div class="p-6 space-y-4 text-xs overflow-y-auto flex-1">
-                <!-- Add form -->
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                     <p class="font-bold text-slate-800 text-xs">+ ເພີ່ມຊ່ວງວັນພັກພິເສດໃໝ່:</p>
                     <div>
@@ -647,7 +681,6 @@
                     </div>
                 </div>
 
-                <!-- Active Holiday List with Undo Button -->
                 <div>
                     <p class="font-bold text-slate-800 mb-2">ລາຍການວັນພັກພິເສດທີ່ກຳລັງໃຊ້ງານ (ກົດ Undo ເພື່ອຍົກເລີກ):</p>
                     <div id="activeHolidaysListContainer" class="space-y-2"></div>
@@ -656,7 +689,7 @@
         </div>
     </div>
 
-    <!-- ================= CREATE NEW SHEET / SCHEDULE MODAL ================= -->
+    <!-- ================= CREATE NEW SHEET MODAL ================= -->
     <div id="newSheetModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
@@ -708,6 +741,40 @@
         </div>
     </div>
 
+    <!-- ================= GROUP MODAL ================= -->
+    <div id="groupModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden font-lao">
+            <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm" id="groupModalTitle">ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່</h3>
+                <button onclick="closeGroupModal()" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="editGroupId"/>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ໝວດ / ກຸ່ມ</label>
+                    <input type="text" id="groupNameInput" placeholder="ເຊັ່ນ: ກຸ່ມ A: ທີມບໍລິການຫຼັກ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ເງື່ອນໄຂການພັກຜ່ອນ (Rest Rule per Week)</label>
+                    <select id="groupRestRuleSelect" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red">
+                        <option value="2_DAYS_WEEKEND">ພັກ 2 ມື້ຕໍ່ອາທິດ (ສະເພາະ ວັນເສົາ - ວັນອາທິດ)</option>
+                        <option value="2_DAYS_FLEX">ພັກ 2 ມື້ຕໍ່ອາທິດ (ແບບມອບເໝົາ/ໝູນວຽນມື້ໃດກໍໄດ້)</option>
+                        <option value="1_DAY_FLEX">ພັກ 1 ມື້ຕໍ່ອາທິດ (ແບບມອບເໝົາ/ໝູນວຽນ)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ເລືອກສະມາຊິກພະນັກງານໃນກຸ່ມນີ້:</label>
+                    <div class="border border-slate-200 rounded-2xl p-3 max-h-48 overflow-y-auto space-y-1.5" id="groupMemberCheckboxList">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeGroupModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
+                    <button type="button" onclick="handleSaveGroup()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກກຸ່ມ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= EDIT / ADD EMPLOYEE MODAL ================= -->
     <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
@@ -745,7 +812,7 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT STATE & APPLICATION ENGINE ================= -->
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
         // Master Users List
         const MASTER_USERS = [
@@ -779,7 +846,7 @@
         const defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
         // Multi-Sheet Master State
-        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v4')) || [
+        let scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v5')) || [
             {
                 id: 'sheet-1',
                 monthKey: '2026-09',
@@ -790,8 +857,24 @@
             }
         ];
 
-        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v4') || 'sheet-1';
-        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v4')) || [];
+        // Employee Groups State (New Feature)
+        let employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v5')) || [
+            {
+                id: 'grp-1',
+                name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກເສົາ-ອາທິດ 2 ມື້)',
+                restRule: '2_DAYS_WEEKEND',
+                members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົນທະຍາ', 'ນິກກີ້', 'ໜູຮັກ', 'ເເພັກເກີ້', 'ເອກສະຫວ່າງ', 'ບຸນຮັກ', 'ປະສົງສິນ', 'ສາຍທອງ']
+            },
+            {
+                id: 'grp-2',
+                name: 'ກຸ່ມທີມໝູນວຽນ 24/7 (ພັກມອບເໝົາ 2 ມື້)',
+                restRule: '2_DAYS_FLEX',
+                members: ['ສົມຊາຍ', 'ໂທນິກ', 'ໄຊຍະສິດ', 'ລິດຕະສອນ', 'ສີຊົມພູ', 'ທອງສະຫວັນ', 'ສຸລິຍະສັກ', 'ໄກສະຫວາດ', 'ໄຊຍະພອນ', 'ແກ້ວວິໄລ', 'ຈິດສະດາ', 'ນະລົງສັກ']
+            }
+        ];
+
+        let activeSheetId = localStorage.getItem('ot_active_sheet_id_v5') || 'sheet-1';
+        let specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v5')) || [];
         let users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 }));
         let currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         let annualBookings = [
@@ -816,12 +899,12 @@
         }
 
         function saveAll() {
-            localStorage.setItem('ot_schedule_sheets_v4', JSON.stringify(scheduleSheets));
-            localStorage.setItem('ot_active_sheet_id_v4', activeSheetId);
-            localStorage.setItem('ot_holidays_v4', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_schedule_sheets_v5', JSON.stringify(scheduleSheets));
+            localStorage.setItem('ot_active_sheet_id_v5', activeSheetId);
+            localStorage.setItem('ot_holidays_v5', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_emp_groups_v5', JSON.stringify(employeeGroups));
         }
 
-        // Auto Clear inputs & Auth Check on load
         window.addEventListener('DOMContentLoaded', () => {
             const uInput = document.getElementById('loginUsername');
             const pInput = document.getElementById('loginPassword');
@@ -902,6 +985,7 @@
                     });
 
                     renderDashboard();
+                    renderUserCurrentWeekWorkspace();
                 }
             } catch (err) {
                 console.error("Auth check error:", err);
@@ -925,7 +1009,7 @@
         }
 
         function switchTab(tabId) {
-            if ((tabId === 'schedule' || tabId === 'employees') && currentUser.role !== 'SUPER_ADMIN') {
+            if ((tabId === 'schedule' || tabId === 'employees' || tabId === 'groups') && currentUser.role !== 'SUPER_ADMIN') {
                 alert('ສຳລັບ Super Admin ເທົ່ານັ້ນ');
                 return;
             }
@@ -956,8 +1040,12 @@
 
             if (tabId === 'dashboard') renderDashboard();
             if (tabId === 'schedule') renderScheduleTable();
+            if (tabId === 'groups') renderGroupsTab();
             if (tabId === 'employees') renderEmployeesTable();
-            if (tabId === 'profile') renderProfileTab();
+            if (tabId === 'profile') {
+                renderProfileTab();
+                renderUserCurrentWeekWorkspace();
+            }
         }
 
         function generateDefaultMonthData(year, month) {
@@ -1111,7 +1199,7 @@
             });
         }
 
-        // ================= MONTHLY SCHEDULE ENGINE (MULTI-SHEET SUPPORT) =================
+        // ================= MONTHLY SCHEDULE ENGINE =================
         function renderSheetDropdown() {
             const select = document.getElementById('scheduleSheetSelect');
             if (!select) return;
@@ -1130,6 +1218,7 @@
             saveAll();
             renderScheduleTable();
             renderDashboard();
+            renderUserCurrentWeekWorkspace();
         }
 
         function openNewSheetModal() {
@@ -1328,7 +1417,6 @@
             renderScheduleTable();
         }
 
-        // ⭐ DYNAMICALLY ADD EXTRA SLOT TO CURRENT SHIFT
         function addExtraSlotToCurrentShift() {
             if (!activeEditCell) return;
             const { date, shift } = activeEditCell;
@@ -1337,12 +1425,12 @@
             if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
             if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
 
-            sheet.data[date][shift].push(''); // Append new slot
+            sheet.data[date][shift].push('');
             activeEditCell.index = sheet.data[date][shift].length - 1;
 
             saveAll();
             renderScheduleTable();
-            alert(`ເພີ່ມຊ່ອງພະນັກງານໃໝ່ໃນ ${shift} ສຳເລັດ! (ກົດເລືອກລາຍຊື່ໃສ່ໄດ້ເລີຍ)`);
+            alert(`ເພີ່ມຊ່ອງພະນັກງານໃໝ່ໃນ ${shift} ສຳເລັດ!`);
         }
 
         function clearCurrentCell() {
@@ -1433,10 +1521,10 @@
             renderActiveHolidaysList();
             renderScheduleTable();
             renderDashboard();
-            alert('ຍົກເລີກວັນພັກພິເສດຮຽບຮ້ອຍແລ້ວ! ຕາຕະລາງຕັດກັບມາເປັນເວລາປົກກະຕິ.');
+            alert('ຍົກເລີກວັນພັກພິເສດຮຽບຮ້ອຍແລ້ວ!');
         }
 
-        // ================= ⭐ 100% WORKING RESET =================
+        // ================= RESET SCHEDULE =================
         function resetSchedule() {
             if (!confirm("ທ່ານຕ້ອງການລຶບລາຍຊື່ພະນັກງານໃນຕາຕະລາງນີ້ທັງໝົດໃຫ້ເປັນຊ່ອງວ່າງແທ້ບໍ່?")) return;
 
@@ -1462,20 +1550,24 @@
 
             saveAll();
             renderScheduleTable();
+            renderUserCurrentWeekWorkspace();
             alert('ຣີເຊັດຕາຕະລາງວ່າງເປົ່າຮຽບຮ້ອຍແລ້ວ!');
         }
 
-        function autoGenerateSchedule() {
+        // ================= 🌟 SMART FAIR AUTO-SCHEDULE BY GROUPS =================
+        function runSmartFairAutoSchedule() {
             const sheet = getActiveSheet();
-            if (!confirm(`ຈັດຕາຕະລາງອັດຕະໂນມັດສຳລັບ "${sheet.title}"?`)) return;
-
-            const leaders = users.filter(u => u.isLeader).map(u => u.nameLao);
-            const normalStaff = users.filter(u => !u.isLeader && u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
-
-            function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+            if (!confirm(`ຈັດຕາຕະລາງອັດຕະໂນມັດແບບເທົ່າທຽມ (Fair Algorithm) ຕາມໝວດກຸ່ມ ສຳລັບ "${sheet.title}"?`)) return;
 
             const [year, month] = sheet.monthKey.split('-').map(Number);
             const daysCount = new Date(year, month, 0).getDate();
+            const leaders = users.filter(u => u.isLeader).map(u => u.nameLao);
+
+            // Pool of staff per group rule
+            let poolGroup1 = employeeGroups[0]?.members || [];
+            let poolGroup2 = employeeGroups[1]?.members || [];
+
+            function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
             for (let i = 1; i <= daysCount; i++) {
                 const dayNum = i < 10 ? '0' + i : '' + i;
@@ -1485,34 +1577,205 @@
                 const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
                 const shufLeaders = shuffle(leaders);
-                const shufStaff = shuffle(normalStaff);
+                const shufG1 = shuffle(poolGroup1);
+                const shufG2 = shuffle(poolGroup2);
 
                 if (isWeekend) {
+                    // Weekend rotation
                     sheet.data[dStr] = {
                         isWeekend: true,
-                        shift1: [shufStaff[0] || '', shufStaff[1] || '', ''],
-                        shift2: [shufStaff[2] || '', shufStaff[3] || '', ''],
-                        shift3: [shufLeaders[0] || '', shufStaff[4] || '', '']
+                        shift1: [shufG2[0] || '', shufG2[1] || '', ''],
+                        shift2: [shufG2[2] || '', shufG2[3] || '', ''],
+                        shift3: [shufLeaders[0] || '', shufG2[4] || '', '']
                     };
                 } else {
+                    // Weekday fair distribution
                     sheet.data[dStr] = {
                         isWeekend: false,
-                        shift1: [shufLeaders[0] || 'ບຸນປະເສີດ', shufStaff[0], shufStaff[1], shufStaff[2], shufStaff[3], shufStaff[4]],
-                        shift2: [shufLeaders[1] || 'ພອນສະຫວັນ', shufStaff[5], shufStaff[6], shufStaff[7], shufStaff[8], shufStaff[9]],
-                        shift3: [shufLeaders[2] || 'ແສງດາວ', shufStaff[10], shufStaff[11], shufStaff[12]]
+                        shift1: [shufLeaders[0] || 'ບຸນປະເສີດ', shufG1[0] || '', shufG1[1] || '', shufG1[2] || '', shufG2[0] || '', shufG2[1] || ''],
+                        shift2: [shufLeaders[1] || 'ພອນສະຫວັນ', shufG1[3] || '', shufG1[4] || '', shufG1[5] || '', shufG2[2] || '', shufG2[3] || ''],
+                        shift3: [shufLeaders[2] || 'ແສງດາວ', shufG1[6] || '', shufG2[4] || '', shufG2[5] || '']
                     };
                 }
             }
 
             saveAll();
             renderScheduleTable();
-            alert('ຈັດຕາຕະລາງອັດຕະໂນມັດສຳເລັດ!');
+            renderUserCurrentWeekWorkspace();
+            alert('ຈັດຕາຕະລາງອັດຕະໂນມັດຕາມເງື່ອນໄຂໝວດກຸ່ມແບບເທົ່າທຽມສຳເລັດ!');
+        }
+
+        // ================= GROUPS MANAGEMENT TAB =================
+        function renderGroupsTab() {
+            const grid = document.getElementById('groupsListGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            employeeGroups.forEach((grp, idx) => {
+                const ruleText = grp.restRule === '2_DAYS_WEEKEND' ? 'ພັກ 2 ມື້ (ເສົາ-ອາທິດ)' : (grp.restRule === '2_DAYS_FLEX' ? 'ພັກ 2 ມື້ (ໝູນວຽນ/ມອບເໝົາ)' : 'ພັກ 1 ມື້ (ໝູນວຽນ/ມອບເໝົາ)');
+                
+                grid.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-base text-slate-800">${grp.name}</h3>
+                                <span class="px-2.5 py-1 bg-red-50 text-brand-red rounded-xl font-bold text-[10px] border border-red-200">${ruleText}</span>
+                            </div>
+                            <p class="text-xs text-slate-500 font-semibold mb-3">ສະມາຊິກໃນກຸ່ມ (${grp.members.length} ຄົນ):</p>
+                            <div class="flex flex-wrap gap-1 max-h-36 overflow-y-auto">
+                                ${grp.members.map(m => `<span class="bg-slate-100 px-2 py-0.5 rounded-lg text-xs font-lao">${m}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-3 border-t">
+                            <button onclick="openEditGroupModal(${idx})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700">ແກ້ໄຂ</button>
+                            <button onclick="deleteGroup(${idx})" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl text-xs font-bold">ລຶບ</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openAddGroupModal() {
+            document.getElementById('groupModalTitle').innerText = 'ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່';
+            document.getElementById('editGroupId').value = '';
+            document.getElementById('groupNameInput').value = '';
+            document.getElementById('groupRestRuleSelect').value = '2_DAYS_WEEKEND';
+            renderGroupMemberCheckboxes([]);
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function openEditGroupModal(index) {
+            const grp = employeeGroups[index];
+            document.getElementById('groupModalTitle').innerText = 'ແກ້ໄຂໝວດ/ກຸ່ມພະນັກງານ';
+            document.getElementById('editGroupId').value = index;
+            document.getElementById('groupNameInput').value = grp.name;
+            document.getElementById('groupRestRuleSelect').value = grp.restRule;
+            renderGroupMemberCheckboxes(grp.members || []);
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+
+        function renderGroupMemberCheckboxes(selectedMembers) {
+            const container = document.getElementById('groupMemberCheckboxList');
+            container.innerHTML = '';
+            users.filter(u => u.role !== 'SUPER_ADMIN').forEach(u => {
+                const isChecked = selectedMembers.includes(u.nameLao) ? 'checked' : '';
+                container.innerHTML += `
+                    <label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${u.nameLao}" class="group-member-checkbox rounded text-brand-red focus:ring-brand-red h-4 w-4" ${isChecked}/>
+                        <span class="${u.isLeader ? 'text-brand-red font-bold' : ''}">${u.nameLao} (${u.fullName})</span>
+                    </label>
+                `;
+            });
+        }
+
+        function handleSaveGroup() {
+            const editId = document.getElementById('editGroupId').value;
+            const name = document.getElementById('groupNameInput').value.trim();
+            const restRule = document.getElementById('groupRestRuleSelect').value;
+
+            if (!name) {
+                alert('ກະລຸນາໃສ່ຊື່ກຸ່ມ');
+                return;
+            }
+
+            const selected = [];
+            document.querySelectorAll('.group-member-checkbox:checked').forEach(cb => {
+                selected.push(cb.value);
+            });
+
+            if (editId !== '') {
+                employeeGroups[editId] = { ...employeeGroups[editId], name, restRule, members: selected };
+            } else {
+                employeeGroups.push({ id: 'grp-' + Date.now(), name, restRule, members: selected });
+            }
+
+            saveAll();
+            closeGroupModal();
+            renderGroupsTab();
+            alert('ບັນທຶກຂໍ້ມູນໝວດກຸ່ມສຳເລັດ!');
+        }
+
+        function deleteGroup(idx) {
+            if (!confirm(`ທ່ານຕ້ອງການລຶບກຸ່ມ "${employeeGroups[idx].name}" ແທ້ບໍ່?`)) return;
+            employeeGroups.splice(idx, 1);
+            saveAll();
+            renderGroupsTab();
+        }
+
+        // ================= 🌟 USER WORKSPACE: CURRENT WEEK ASSIGNMENT =================
+        function renderUserCurrentWeekWorkspace() {
+            if (!currentUser) return;
+            
+            const titleEl = document.getElementById('userCurrentShiftTitle');
+            const subEl = document.getElementById('userCurrentShiftSub');
+            const pillsContainer = document.getElementById('userWeekDaysPills');
+
+            if (!titleEl || !pillsContainer) return;
+
+            // Find Published Sheet
+            const publishedSheet = scheduleSheets.find(s => s.status === 'PUBLISHED') || scheduleSheets[0];
+            const isLive = publishedSheet.status === 'PUBLISHED';
+
+            subEl.innerText = isLive ? `ຕາຕະລາງ: ${publishedSheet.title} (ສະບັບເຜີຍແຜ່ແລ້ວ)` : `ຕາຕະລາງ: ${publishedSheet.title} (ສະບັບຮ່າງ - ຍັງບໍ່ທັນ Publish)`;
+
+            const myName = currentUser.nameLao;
+            const schedData = publishedSheet.data || {};
+
+            // Determine shifts for first week of the month (Days 1 to 7)
+            const daysCount = 7;
+            const [y, m] = publishedSheet.monthKey.split('-').map(Number);
+            pillsContainer.innerHTML = '';
+
+            let foundShiftsThisWeek = [];
+
+            for (let i = 1; i <= daysCount; i++) {
+                const dayNum = i < 10 ? '0' + i : '' + i;
+                const mNum = m < 10 ? '0' + m : '' + m;
+                const dStr = `${y}-${mNum}-${dayNum}`;
+                const dayOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][new Date(y, m - 1, i).getDay()];
+                
+                const dInfo = schedData[dStr] || { shift1: [], shift2: [], shift3: [] };
+
+                let myShiftToday = 'ພັກ (OFF)';
+                let pillClass = 'bg-slate-100 text-slate-500 border-slate-200';
+
+                if (dInfo.shift1 && dInfo.shift1.includes(myName)) {
+                    myShiftToday = 'ກະ 1 (08:00)';
+                    pillClass = 'bg-red-50 text-brand-red border-red-200 font-bold';
+                    foundShiftsThisWeek.push('ກະ 1 (08:00 - 16:00)');
+                } else if (dInfo.shift2 && dInfo.shift2.includes(myName)) {
+                    myShiftToday = 'ກະ 2 (12:00)';
+                    pillClass = 'bg-purple-50 text-purple-800 border-purple-200 font-bold';
+                    foundShiftsThisWeek.push('ກະ 2 (12:00 - 20:00)');
+                } else if (dInfo.shift3 && dInfo.shift3.includes(myName)) {
+                    myShiftToday = 'ກະ 3 (20:00)';
+                    pillClass = 'bg-slate-800 text-white border-slate-800 font-bold';
+                    foundShiftsThisWeek.push('ກະ 3 (20:00 - 08:00)');
+                }
+
+                pillsContainer.innerHTML += `
+                    <div class="px-2 py-1 border rounded-lg text-center text-[10px] ${pillClass}">
+                        <div class="font-bold">${dayOfWeek} (${i}/${mNum})</div>
+                        <div>${myShiftToday}</div>
+                    </div>
+                `;
+            }
+
+            if (foundShiftsThisWeek.length > 0) {
+                const primaryShift = foundShiftsThisWeek[0];
+                titleEl.innerText = `ປະຈຳການ: ${primaryShift}`;
+            } else {
+                titleEl.innerText = `ອາທິດນີ້: ບໍ່ມີກະປະຈຳການ / ພັກຜ່ອນ`;
+            }
         }
 
         function saveDraft() {
             const sheet = getActiveSheet();
             sheet.status = 'DRAFT';
             saveAll();
+            renderUserCurrentWeekWorkspace();
             alert('ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ!');
         }
 
@@ -1521,7 +1784,8 @@
             sheet.status = 'PUBLISHED';
             saveAll();
             renderScheduleTable();
-            alert('ເຜີຍແຜ່ຕາຕະລາງ (Published) ສຳເລັດ!');
+            renderUserCurrentWeekWorkspace();
+            alert('ເຜີຍແຜ່ຕາຕະລາງ (Published) ສຳເລັດ! ທຸກ User ສາມາດເບິ່ງກະປະຈຳການໃນ Workspace ໄດ້ແລ້ວ.');
         }
 
         function exportToA4PDF() {
@@ -1537,7 +1801,7 @@
             html2pdf().set(opt).from(element).save();
         }
 
-        // ================= ANNUAL LEAVE HUB & PROFILE =================
+        // ================= PROFILE & LEAVE HUB =================
         function renderProfileTab() {
             const quota = currentUser.annualQuota || 15;
             const used = currentUser.usedAnnual || 0;
@@ -1698,12 +1962,12 @@
             renderProfileTab();
             renderDashboard();
             renderScheduleTable();
+            renderUserCurrentWeekWorkspace();
         }
 
         function declineSwap(id) {
             const req = swapHistory.find(r => r.id === id);
             if (req) req.status = 'DECLINED';
-            saveAll();
             alert('ປະຕິເສດຄຳຮ້ອງແລ້ວ.');
             renderProfileTab();
         }
@@ -1889,6 +2153,15 @@
                 checkAuth();
                 alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
             });
+        }
+
+        function initViews() {
+            renderDashboard();
+            renderScheduleTable();
+            renderGroupsTab();
+            renderEmployeesTable();
+            renderProfileTab();
+            renderUserCurrentWeekWorkspace();
         }
     </script>
 </body>
