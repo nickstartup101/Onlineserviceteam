@@ -1,9 +1,25 @@
+ນີ້ແມ່ນ **ໄຟລ໌ `index.html` ສະບັບທົດລອງໃຊ້ (Trial / Demo Version)** ທີ່ **ເຮັດວຽກຜ່ານ LocalStorage 100% ໂດຍບໍ່ທັນເຊື່ອມຕໍ່ Database** ເໝາະສຳລັບການນຳໄປຝຶກອົບຮົມ ແລະ ທົດລອງໃຊ້ກັບທີມງານກ່ອນ ພ້ອມເພີ່ມ **ຟັງຊັນຄັດລອກ Template ຕາຕະລາງຈາກເດືອນກ່ອນ (Copy Schedule Template)**:
+
+---
+
+###  ຟີເຈີໃໝ່ທີ່ໄດ້ເພີ່ມ:
+1. **ລະບົບຄັດລອກ Template ຕາຕະລາງ (Copy Schedule Template):**
+   - ເມື່ອກົດ **`+ ສ້າງຕາຕະລາງໃໝ່`** ຈະມີຊ່ອງໃຫ້ເລືອກວ່າ **"ຄັດລອກ Template ຈາກຕາຕະລາງເກົ່າ"** (ເຊັ່ນ: ດຶງຮູບແບບ, ການຈັດວາງກະ, ຫົວຂໍ້ ແລະ ໝາຍເຫດ ຈາກເດືອນກ່ອນມາໃສ່ເດືອນໃໝ່ໄດ້ໃນ 1 ວິນາທີ ໂດຍບໍ່ຕ້ອງຈັດໃໝ່ແຕ່ຕົ້ນ).
+   - ມີປຸ່ມ **`📋 ຄັດລອກ Template ດ່ວນ`** ຢູ່ແຖບເຄື່ອງມືດ້ານເທິງ.
+2. **Offline / Trial Version 100%:** ບັນທຶກ ແລະ ເຮັດວຽກຜ່ານໜ່ວຍຄວາມຈຳຂອງເຄື່ອງ ບໍ່ຕິດ Network ບໍ່ຕ້ອງກັງວົນເລື່ອງ Database ຂັດຂ້ອງ.
+3. **ລະບົບ Toast Notification & Mark as Read ສົມບູນແບບ.**
+
+---
+
+### ໄຟລ໌ `index.html` (ສະບັບທົດລອງໃຊ້ 100%)
+
+```html
 <!DOCTYPE html>
 <html class="light" lang="lo">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</title>
+    <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ (Trial Version)</title>
     
     <!-- Favicon ຫູຟັງ Call Center -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2a9 9 0 0 0-9 9v4a4 4 0 0 0 4 4h1v-7H5v-1a7 7 0 0 1 14 0v1h-3v7h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5v2h5a3 3 0 0 0 3-3v-1.17A3.99 3.99 0 0 0 21 15v-4a9 9 0 0 0-9-9z'/%3E%3C/svg%3E"/>
@@ -49,7 +65,6 @@
         
         .password-mask { -webkit-text-security: disc !important; }
         
-        /* ⭐ PERFECT EXCEL-STYLE CRISP BORDERS (NO THICK/THIN GLITCHES) */
         .excel-table { 
             border-collapse: collapse !important; 
             width: 100%; 
@@ -98,6 +113,20 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
 
+    <!-- ================= IN-APP CUSTOM TOAST POPUP ================= -->
+    <div id="appToast" class="fixed top-6 right-6 z-[100] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
+        <div class="bg-white border-2 border-slate-100 shadow-2xl rounded-2xl p-4 flex items-center gap-3 min-w-[320px] max-w-md font-lao">
+            <div id="toastIconBox" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
+                <span class="material-symbols-outlined text-2xl" id="toastIcon">check_circle</span>
+            </div>
+            <div class="flex-1">
+                <h4 class="font-bold text-xs text-slate-800" id="toastTitle">ສຳເລັດ (Successful)</h4>
+                <p class="text-[11px] text-slate-500 mt-0.5 leading-snug" id="toastMessage">ບັນທຶກຂໍ້ມູນຮຽບຮ້ອຍແລ້ວ</p>
+            </div>
+            <button onclick="hideToast()" class="text-slate-400 hover:text-slate-600 p-1">✕</button>
+        </div>
+    </div>
+
     <!-- ================= 1. LOGIN MODAL ================= -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
@@ -106,7 +135,7 @@
                     <span class="material-symbols-outlined text-3xl">headset_mic</span>
                 </div>
                 <h2 class="text-xl font-bold font-lao tracking-tight">Online Team</h2>
-                <p class="text-xs text-red-100 font-lao mt-0.5">ເຂົ້າສູ່ລະບົບຈັດການຕາຕະລາງປະຈຳການ</p>
+                <p class="text-xs text-red-100 font-lao mt-0.5">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ (Trial Mode)</p>
             </div>
             
             <div class="p-6 space-y-4 font-lao">
@@ -152,27 +181,34 @@
         </div>
         
         <div class="flex items-center gap-3">
-            <!-- NOTIFICATION BELL WITH POPUP -->
+            <!-- NOTIFICATION BELL -->
             <div class="relative flex items-center">
                 <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 transition relative cursor-pointer flex items-center justify-center shadow-sm" title="ການແຈ້ງເຕືອນ">
                     <span class="material-symbols-outlined text-[22px]">notifications</span>
                     <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
                 </button>
                 
+                <!-- Notification Dropdown -->
                 <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border-2 border-red-100 z-50 p-4 font-lao animate-in fade-in zoom-in-95 duration-150">
                     <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
                         <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                             <span class="material-symbols-outlined text-brand-red text-base">notifications_active</span>
                             ການແຈ້ງເຕືອນ (Notifications)
                         </span>
-                        <span id="notifCountText" class="text-[10px] bg-red-100 text-brand-red font-bold px-2 py-0.5 rounded-full">0 ລາຍການ</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold">
+                                ໝາຍວ່າອ່ານແລ້ວທັງໝົດ
+                            </button>
+                            <span id="notifCountText" class="text-[10px] bg-red-100 text-brand-red font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
                     </div>
                     <div id="notifDropdownList" class="space-y-2 max-h-80 overflow-y-auto"></div>
                 </div>
             </div>
 
-            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-red-50 text-brand-red border border-red-200 rounded-full text-[10px] font-bold">
-                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> Online Service
+            <!-- Trial Mode Status Indicator -->
+            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-bold">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span> 💾 Trial Mode (ບັນທຶກພາຍໃນເຄື່ອງ)
             </div>
             
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
@@ -225,7 +261,7 @@
             </nav>
         </aside>
 
-        <!-- ================= 2. DASHBOARD VIEW (MULTI-TEAM AGGREGATION & PREMIUM CARDS) ================= -->
+        <!-- ================= 2. DASHBOARD VIEW ================= -->
         <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full flex flex-col gap-6">
                 
@@ -257,9 +293,8 @@
                     </div>
                 </div>
 
-                <!-- ⭐ PREMIUM 3 SHIFTS CARDS (AGGREGATING ALL TEAMS 1, 2, 3) -->
+                <!-- 3 SHIFTS CARDS (AGGREGATING ALL TEAMS) -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                    
                     <!-- Shift 1 Card -->
                     <div id="dashCard1" class="bg-white border-2 border-slate-200/80 rounded-3xl p-5 shadow-sm relative overflow-hidden flex flex-col justify-between hover:shadow-md transition">
                         <div>
@@ -355,6 +390,7 @@
 
         <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
+            <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
                 <div class="flex flex-wrap items-center gap-2">
                     <span class="material-symbols-outlined text-brand-red text-xl">table_view</span>
@@ -364,6 +400,11 @@
 
                     <button type="button" onclick="openNewSheetModal()" class="admin-only px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
                         <span class="material-symbols-outlined text-sm">add_box</span> + ສ້າງຕາຕະລາງໃໝ່
+                    </button>
+
+                    <!-- ⭐ ປຸ່ມຄັດລອກ Template ດ່ວນ -->
+                    <button type="button" onclick="openDuplicateSheetModal()" class="admin-only px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm" title="ຄັດລອກຮູບແບບຕາຕະລາງນີ້ໄປເດືອນອື່ນ">
+                        <span class="material-symbols-outlined text-sm">content_copy</span> 📋 ຄັດລອກ Template
                     </button>
 
                     <button type="button" onclick="openEditSheetInfoModal()" class="admin-only px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1">
@@ -789,7 +830,7 @@
         </div>
     </div>
 
-    <!-- ================= CREATE NEW SHEET MODAL ================= -->
+    <!-- ================= ⭐ CREATE NEW SHEET MODAL (WITH COPY TEMPLATE OPTION) ================= -->
     <div id="newSheetModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
@@ -799,15 +840,24 @@
             <div class="p-6 space-y-3.5 text-xs">
                 <div>
                     <label class="block font-semibold mb-1">ເລືອກເດືອນ & ປີ</label>
-                    <input type="month" id="newSheetMonthInput" value="2026-09" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="month" id="newSheetMonthInput" value="2026-10" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">ຊື່ຕາຕະລາງ / ຫົວຂໍ້</label>
-                    <input type="text" id="newSheetTitleInput" placeholder="ເຊັ່ນ: ຕາຕະລາງປະຈຳການ ທີມ A ປະຈຳເດືອນ 09/2026" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="text" id="newSheetTitleInput" placeholder="ເຊັ່ນ: ຕາຕະລາງປະຈຳການ ທີມ 1 ປະຈຳເດືອນ 10/2026" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
+                
+                <!-- ⭐ Option to Copy Template from Previous Month/Sheet -->
+                <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 space-y-1.5">
+                    <label class="block font-bold text-amber-900">📋 ຄັດລອກຮູບແບບ/Template ຈາກຕາຕະລາງເກົ່າ:</label>
+                    <select id="copyTemplateSourceSelect" onchange="previewTemplateSelection()" class="w-full border border-amber-300 rounded-xl p-2 outline-none bg-white text-slate-800 text-xs">
+                        <option value="">-- ສ້າງໃໝ່ເລີ່ມຕົ້ນ (Default Blank/Roster) --</option>
+                    </select>
+                </div>
+
                 <div>
-                    <label class="block font-semibold mb-1">ໝາຍເຫດເລີ່ມຕົ້ນ</label>
-                    <textarea id="newSheetNotesInput" rows="4" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"></textarea>
+                    <label class="block font-semibold mb-1">ໝາຍເຫດ</label>
+                    <textarea id="newSheetNotesInput" rows="3" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"></textarea>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">
                     <button type="button" onclick="document.getElementById('newSheetModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
@@ -913,8 +963,46 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT ENGINE ================= -->
+    <!-- ================= JAVASCRIPT ENGINE (TRIAL/LOCAL OFFLINE VERSION) ================= -->
     <script>
+        // 1. ALL HELPER FUNCTIONS DECLARED AT THE VERY TOP
+        function showToast(title, message, type = 'success') {
+            const toast = document.getElementById('appToast');
+            const iconBox = document.getElementById('toastIconBox');
+            const icon = document.getElementById('toastIcon');
+            const titleEl = document.getElementById('toastTitle');
+            const msgEl = document.getElementById('toastMessage');
+
+            if (!toast) return;
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+
+            if (type === 'success') {
+                iconBox.className = "w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm";
+                icon.innerText = "check_circle";
+            } else if (type === 'error') {
+                iconBox.className = "w-10 h-10 rounded-xl bg-red-50 text-brand-red flex items-center justify-center shrink-0 shadow-sm";
+                icon.innerText = "error";
+            } else {
+                iconBox.className = "w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-sm";
+                icon.innerText = "info";
+            }
+
+            toast.classList.remove('translate-y-[-150%]', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => { hideToast(); }, 3500);
+        }
+
+        function hideToast() {
+            const toast = document.getElementById('appToast');
+            if (toast) {
+                toast.classList.add('translate-y-[-150%]', 'opacity-0', 'pointer-events-none');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }
+        }
+
         function detectDevice() {
             var w = window.innerWidth;
             var badge = document.getElementById('deviceBadge');
@@ -960,6 +1048,7 @@
             return data;
         }
 
+        // 2. CONSTANTS & SEED DATA
         var MASTER_USERS = [
             { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
             { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true },
@@ -990,11 +1079,12 @@
 
         var defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
+        // 3. TRIAL/LOCAL STORAGE MASTER DATA
         var currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         var users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
-        var activeSheetId = localStorage.getItem('ot_active_sheet_id_v11') || 'sheet-1';
-        var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v11')) || [];
-        var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v11')) || [
+        var activeSheetId = localStorage.getItem('ot_active_sheet_id_trial') || 'sheet-1';
+        var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial')) || [];
+        var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_trial')) || [
             {
                 id: 'sheet-1',
                 monthKey: '2026-09',
@@ -1005,7 +1095,7 @@
             }
         ];
 
-        var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v11')) || [
+        var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial')) || [
             {
                 id: 'grp-1',
                 name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກ 1 ມື້ເສົາ/ອາທິດ + 1 ທິດພັກ 2 ມື້)',
@@ -1023,8 +1113,8 @@
         var annualBookings = [
             { id: 1, user: 'BCEL0765', nameLao: 'ແສງດາວ', startDate: '2026-10-12', endDate: '2026-10-15', days: 3, reason: 'ພັກຜ່ອນປະຈຳປີ', status: 'CONFIRMED' }
         ];
-        var swapHistory = JSON.parse(localStorage.getItem('ot_swaps_v11')) || [];
-        var systemNotifications = JSON.parse(localStorage.getItem('ot_sys_notifs_v11')) || [];
+        var swapHistory = JSON.parse(localStorage.getItem('ot_swaps_trial')) || [];
+        var systemNotifications = JSON.parse(localStorage.getItem('ot_sys_notifs_trial')) || [];
         var leavesList = [
             { id: 1, date: '2026-09-01', shift: 'shift1', empName: 'ບຸນຮັກ', reason: 'ລາປ່ວຍ' },
             { id: 2, date: '2026-09-01', shift: 'shift1', empName: 'ປະສົງສິນ', reason: 'ຕິດທຸລະກິດຄອບຄົວ' }
@@ -1041,21 +1131,22 @@
         }
 
         function saveAll() {
-            localStorage.setItem('ot_schedule_sheets_v11', JSON.stringify(scheduleSheets));
-            localStorage.setItem('ot_active_sheet_id_v11', activeSheetId);
-            localStorage.setItem('ot_holidays_v11', JSON.stringify(specialHolidayRanges));
-            localStorage.setItem('ot_emp_groups_v11', JSON.stringify(employeeGroups));
-            localStorage.setItem('ot_swaps_v11', JSON.stringify(swapHistory));
-            localStorage.setItem('ot_sys_notifs_v11', JSON.stringify(systemNotifications));
+            localStorage.setItem('ot_schedule_sheets_trial', JSON.stringify(scheduleSheets));
+            localStorage.setItem('ot_active_sheet_id_trial', activeSheetId);
+            localStorage.setItem('ot_holidays_trial', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_emp_groups_trial', JSON.stringify(employeeGroups));
+            localStorage.setItem('ot_swaps_trial', JSON.stringify(swapHistory));
+            localStorage.setItem('ot_sys_notifs_trial', JSON.stringify(systemNotifications));
         }
 
         function isDateInHolidayRange(dStr) {
             return specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
         }
 
+        // ================= 4. ALL NAVIGATION & CONTROLLER METHODS =================
         function switchTab(tabId) {
             if ((tabId === 'employees' || tabId === 'groups') && (!currentUser || currentUser.role !== 'SUPER_ADMIN')) {
-                alert('ສຳລັບ Super Admin ເທົ່ານັ້ນ');
+                showToast('ຂໍອະໄພ', 'ສຳລັບ Super Admin ເທົ່ານັ້ນ', 'error');
                 return;
             }
 
@@ -1100,6 +1191,19 @@
             if (dropdown) dropdown.classList.toggle('hidden');
         }
 
+        function markAllNotificationsAsRead() {
+            if (!currentUser) return;
+            
+            systemNotifications.forEach(n => {
+                if (!n.readBy) n.readBy = [];
+                if (!n.readBy.includes(currentUser.user)) n.readBy.push(currentUser.user);
+            });
+
+            saveAll();
+            updateNotificationBadge();
+            showToast('ສຳເລັດ', 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດຮຽບຮ້ອຍ', 'success');
+        }
+
         function updateNotificationBadge() {
             if (!currentUser) return;
             var badge = document.getElementById('notifBadge');
@@ -1109,8 +1213,8 @@
             if (!badge || !listContainer) return;
 
             var pendingRequests = swapHistory.filter(s => s.toName === currentUser.nameLao && s.status === 'PENDING');
-            var broadcastNotifs = systemNotifications.slice(0, 5);
-            var totalCount = pendingRequests.length + broadcastNotifs.length;
+            var unreadAnnouncements = systemNotifications.filter(n => !n.readBy || !n.readBy.includes(currentUser.user));
+            var totalCount = pendingRequests.length + unreadAnnouncements.length;
 
             if (totalCount > 0) {
                 badge.innerText = totalCount;
@@ -1120,7 +1224,7 @@
             } else {
                 badge.classList.add('hidden');
                 badge.classList.remove('flex');
-                if (countText) countText.innerText = `0 ລາຍການ`;
+                if (countText) countText.innerText = `0`;
             }
 
             listContainer.innerHTML = '';
@@ -1129,7 +1233,7 @@
                 return;
             }
 
-            broadcastNotifs.forEach(notif => {
+            unreadAnnouncements.forEach(notif => {
                 listContainer.innerHTML += `
                     <div class="p-3 bg-indigo-50/80 border border-indigo-200 rounded-2xl space-y-1">
                         <div class="flex justify-between items-start">
@@ -1192,6 +1296,7 @@
                     
                     errMsg.classList.add('hidden');
                     checkAuth();
+                    showToast('ເຂົ້າສູ່ລະບົບສຳເລັດ', `ຍິນດີຕ້ອນຮັບທ່ານ ${currentUser.nameLao}`, 'success');
                 } else {
                     errMsg.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!";
                     errMsg.classList.remove('hidden');
@@ -1277,11 +1382,10 @@
             location.reload();
         }
 
-        // ================= ⭐ DASHBOARD ENGINE (AGGREGATING ALL TEAMS/SHEETS) =================
+        // ================= DASHBOARD =================
         function renderDashboard() {
             var date = document.getElementById('dashDateInput').value;
             
-            // Check holiday or weekend status from any active holiday rule
             var isHoliday = isDateInHolidayRange(date);
             var dateObj = new Date(date);
             var isWeekend = dateObj.getDay() === 6 || dateObj.getDay() === 0;
@@ -1300,7 +1404,7 @@
             document.getElementById('shift2TimeText').innerText = isWeekendOrHol ? '13:30 - 19:00' : '12:00 - 20:00';
             document.getElementById('shift3TimeText').innerText = isWeekendOrHol ? '19:00 - 08:00' : '20:00 - 08:00';
 
-            // ⭐ AGGREGATE STAFF FROM ALL SCHEDULE SHEETS (TEAMS 1, 2, 3...)
+            // AGGREGATE ALL TEAMS
             var allS1ByTeam = [];
             var allS2ByTeam = [];
             var allS3ByTeam = [];
@@ -1341,7 +1445,7 @@
 
             updateLiveShiftIndicators(isWeekendOrHol);
 
-            // ⭐ Combined Activity: Leaves + Completed Swaps for selected date
+            // Combined Activity
             document.getElementById('dashActivityDateLabel').innerText = `ວັນທີ ${date}`;
 
             var dayLeaves = leavesList.filter(l => l.date === date);
@@ -1384,7 +1488,7 @@
                 });
             }
 
-            // Staffing Imbalance Check
+            // Imbalance Check
             var s1Leaves = dayLeaves.filter(l => l.shift === 'shift1').length;
             var s2Leaves = dayLeaves.filter(l => l.shift === 'shift2').length;
             var s3Leaves = dayLeaves.filter(l => l.shift === 'shift3').length;
@@ -1455,7 +1559,7 @@
             }
         }
 
-        // ================= MONTHLY SCHEDULE ENGINE (PERFECT EXCEL SUB-GRID) =================
+        // ================= MONTHLY SCHEDULE ENGINE (CLONE TEMPLATE SUPPORT) =================
         function renderSheetDropdown() {
             var select = document.getElementById('scheduleSheetSelect');
             if (!select) return;
@@ -1477,19 +1581,80 @@
             renderUserCurrentWeekWorkspace();
         }
 
+        // ⭐ OPEN MODAL TO CREATE OR CLONE TEMPLATE
         function openNewSheetModal() {
             document.getElementById('newSheetTitleInput').value = '';
             document.getElementById('newSheetNotesInput').value = defaultNotesTemplate;
+            
+            // Populate source templates
+            var tplSelect = document.getElementById('copyTemplateSourceSelect');
+            tplSelect.innerHTML = `<option value="">-- ສ້າງໃໝ່ເລີ່ມຕົ້ນ (Default Blank/Roster) --</option>`;
+            scheduleSheets.forEach(sheet => {
+                tplSelect.innerHTML += `<option value="${sheet.id}">📋 ຄັດລອກຈາກ: ${sheet.title}</option>`;
+            });
+
             document.getElementById('newSheetModal').classList.remove('hidden');
+        }
+
+        function openDuplicateSheetModal() {
+            openNewSheetModal();
+            // Pre-select current active sheet to duplicate
+            var tplSelect = document.getElementById('copyTemplateSourceSelect');
+            if (tplSelect) tplSelect.value = activeSheetId;
+            previewTemplateSelection();
+        }
+
+        function previewTemplateSelection() {
+            var srcId = document.getElementById('copyTemplateSourceSelect').value;
+            if (srcId) {
+                var srcSheet = scheduleSheets.find(s => s.id === srcId);
+                if (srcSheet) {
+                    document.getElementById('newSheetTitleInput').value = srcSheet.title + ' (Copy)';
+                    document.getElementById('newSheetNotesInput').value = srcSheet.notes || defaultNotesTemplate;
+                }
+            }
         }
 
         function handleCreateNewSheet() {
             var month = document.getElementById('newSheetMonthInput').value;
             var title = document.getElementById('newSheetTitleInput').value.trim() || `ຕາຕະລາງປະຈຳການ ${month}`;
             var notes = document.getElementById('newSheetNotesInput').value.trim() || defaultNotesTemplate;
+            var sourceSheetId = document.getElementById('copyTemplateSourceSelect').value;
 
             var [y, m] = month.split('-').map(Number);
             var newId = 'sheet-' + Date.now();
+            var newMonthData = {};
+
+            // ⭐ CLONE LOGIC: If a source sheet is selected, clone its structure & shift assignments!
+            if (sourceSheetId) {
+                var srcSheet = scheduleSheets.find(s => s.id === sourceSheetId);
+                if (srcSheet && srcSheet.data) {
+                    var daysCount = new Date(y, m, 0).getDate();
+                    // Copy structure to new month days
+                    for (var i = 1; i <= daysCount; i++) {
+                        var dayNum = i < 10 ? '0' + i : '' + i;
+                        var mNum = m < 10 ? '0' + m : '' + m;
+                        var targetDStr = `${y}-${mNum}-${dayNum}`;
+                        var dayOfWeek = new Date(y, m - 1, i).getDay();
+                        var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+
+                        // Find matching weekday/weekend day from source
+                        var srcSampleKey = Object.keys(srcSheet.data)[(i - 1) % Object.keys(srcSheet.data).length];
+                        var srcDay = srcSheet.data[srcSampleKey] || { shift1: [], shift2: [], shift3: [] };
+
+                        newMonthData[targetDStr] = {
+                            isWeekend: isWeekend,
+                            shift1: [...(srcDay.shift1 || [])],
+                            shift2: [...(srcDay.shift2 || [])],
+                            shift3: [...(srcDay.shift3 || [])]
+                        };
+                    }
+                } else {
+                    newMonthData = generateDefaultMonthData(y, m);
+                }
+            } else {
+                newMonthData = generateDefaultMonthData(y, m);
+            }
 
             scheduleSheets.push({
                 id: newId,
@@ -1497,14 +1662,14 @@
                 title: title,
                 notes: notes,
                 status: 'DRAFT',
-                data: generateDefaultMonthData(y, m)
+                data: newMonthData
             });
 
             activeSheetId = newId;
             saveAll();
             document.getElementById('newSheetModal').classList.add('hidden');
             renderScheduleTable();
-            alert('ສ້າງຕາຕະລາງໃໝ່ສຳເລັດ!');
+            showToast('ສ້າງຕາຕະລາງສຳເລັດ', `ສ້າງ "${title}" ພ້ອມນຳໃຊ້ແລ້ວ`, 'success');
         }
 
         function openEditSheetInfoModal() {
@@ -1521,7 +1686,7 @@
             saveAll();
             document.getElementById('editSheetInfoModal').classList.add('hidden');
             renderScheduleTable();
-            alert('ບັນທຶກການແກ້ໄຂຫົວຂໍ້ & ໝາຍເຫດສຳເລັດ!');
+            showToast('ສຳເລັດ', 'ບັນທຶກການແກ້ໄຂຫົວຂໍ້ & ໝາຍເຫດແລ້ວ', 'success');
         }
 
         function renderScheduleTable() {
@@ -1604,7 +1769,6 @@
             }
         }
 
-        // ⭐ MATHEMATICALLY PERFECT EXCEL SUB-GRID (ZERO BORDER DEFECTS)
         function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin) {
             var html = `<div class="grid w-full h-full" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr)); height: 48px;">`;
             var total = rows * cols;
@@ -1619,7 +1783,7 @@
                 var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
                 html += `
-                    <div class="grid-cell-box ${borderR} ${borderB} ${editableClass} ${isLeader ? 'text-brand-red' : 'text-slate-800'}" ${clickHandler}>
+                    <div class="grid-cell-box ${borderR} ${borderB} ${editableClass} ${isLeader ? 'text-brand-red font-semibold' : 'text-slate-800'}" ${clickHandler}>
                         ${name}
                     </div>
                 `;
@@ -1692,7 +1856,7 @@
 
             saveAll();
             renderScheduleTable();
-            alert(`ເພີ່ມຊ່ອງພະນັກງານໃໝ່ໃນ ${shift} ສຳເລັດ!`);
+            showToast('ສຳເລັດ', `ເພີ່ມຊ່ອງພະນັກງານໃໝ່ໃນ ${shift} ແລ້ວ`, 'success');
         }
 
         function clearCurrentCell() {
@@ -1714,7 +1878,7 @@
             container.innerHTML = '';
             
             var q = (document.getElementById('rosterSearchInput')?.value || '').toLowerCase().trim();
-            var filtered = users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.toLowerCase().includes(q) || u.fullName.toLowerCase().includes(querySafe(q))));
+            var filtered = users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.toLowerCase().includes(q) || u.fullName.toLowerCase().includes(q)));
 
             filtered.forEach(u => {
                 var isLeader = u.isLeader;
@@ -1735,10 +1899,8 @@
             });
         }
 
-        function querySafe(q) { return q || ''; }
         function filterRosterSidebar() { renderScheduleStaffRoster(); }
 
-        // ================= HOLIDAY MANAGER WITH UNDO =================
         function openHolidayModal() {
             renderActiveHolidaysList();
             document.getElementById('holidayModal').classList.remove('hidden');
@@ -1774,12 +1936,12 @@
             var end = document.getElementById('holidayEndDateInput').value;
 
             if (!title || !start || !end) {
-                alert('ກະລຸນາປ້ອນຂໍ້ມູນວັນພັກໃຫ້ຄົບຖ້ວນ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນວັນພັກໃຫ້ຄົບຖ້ວນ', 'error');
                 return;
             }
 
             if (start > end) {
-                alert('ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!');
+                showToast('ແຈ້ງເຕືອນ', 'ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!', 'error');
                 return;
             }
 
@@ -1788,7 +1950,7 @@
             renderActiveHolidaysList();
             renderScheduleTable();
             renderDashboard();
-            alert(`ເພີ່ມວັນພັກພິເສດ "${title}" ແລ້ວ!`);
+            showToast('ສຳເລັດ', `ເພີ່ມວັນພັກພິເສດ "${title}" ແລ້ວ!`, 'success');
         }
 
         function undoHoliday(idx) {
@@ -1800,7 +1962,7 @@
             renderActiveHolidaysList();
             renderScheduleTable();
             renderDashboard();
-            alert('ຍົກເລີກວັນພັກພິເສດຮຽບຮ້ອຍແລ້ວ!');
+            showToast('ສຳເລັດ', 'ຍົກເລີກວັນພັກພິເສດຮຽບຮ້ອຍແລ້ວ!', 'success');
         }
 
         function resetSchedule() {
@@ -1820,16 +1982,16 @@
 
                 sheet.data[dStr] = {
                     isWeekend: isWeekend,
-                    shift1: isWeekend ? ['', '', ''] : ['', '', '', '', '', ''],
-                    shift2: isWeekend ? ['', '', ''] : ['', '', '', '', '', ''],
-                    shift3: isWeekend ? ['', '', ''] : ['', '', '', '']
+                    shift1: isWeekend ? ['', ''] : ['', '', '', '', '', ''],
+                    shift2: isWeekend ? ['', ''] : ['', '', '', '', '', ''],
+                    shift3: isWeekend ? ['', ''] : ['', '', '', '']
                 };
             }
 
             saveAll();
             renderScheduleTable();
             renderUserCurrentWeekWorkspace();
-            alert('ຣີເຊັດຕາຕະລາງວ່າງເປົ່າຮຽບຮ້ອຍແລ້ວ!');
+            showToast('ຣີເຊັດສຳເລັດ', 'ຕາຕະລາງວ່າງເປົ່າຮຽບຮ້ອຍແລ້ວ', 'success');
         }
 
         function openRandomGroupSelectModal() {
@@ -1851,7 +2013,7 @@
             document.getElementById('randomGroupSelectModal').classList.remove('hidden');
         }
 
-        // ================= ⭐ DYNAMIC FAIR PROPORTIONAL AUTO-SCHEDULE =================
+        // ================= DYNAMIC FAIR PROPORTIONAL AUTO-SCHEDULE =================
         function executeGroupRandomSchedule() {
             var selectedGrpId = document.getElementById('randomSelectedGroupId').value;
             var sheet = getActiveSheet();
@@ -1869,13 +2031,13 @@
             }
 
             if (targetMembers.length === 0) {
-                alert('ກຸ່ມນີ້ຍັງບໍ່ມີສະມາຊິກ! ກະລຸນາເພີ່ມສະມາຊິກກ່ອນ');
+                showToast('ແຈ້ງເຕືອນ', 'ກຸ່ມນີ້ຍັງບໍ່ມີສະມາຊິກ!', 'error');
                 return;
             }
 
             var total = targetMembers.length;
 
-            // ⭐ Dynamic Proportions for Shifts (e.g. 7 people -> 3 in Shift 1, 2 in Shift 2, 2 in Shift 3)
+            // Dynamic Proportions for Shifts (e.g. 7 people -> 3 in Shift 1, 2 in Shift 2, 2 in Shift 3)
             var countS3 = Math.max(1, Math.floor(total / 3));
             var countS2 = Math.max(1, Math.floor((total - countS3) / 2));
             var countS1 = total - countS3 - countS2;
@@ -1931,7 +2093,7 @@
             document.getElementById('randomGroupSelectModal').classList.add('hidden');
             renderScheduleTable();
             renderUserCurrentWeekWorkspace();
-            alert(`ຈັດຕາຕະລາງອັດຕະໂນມັດແບບສົມດຸນ (${countS1} / ${countS2} / ${countS3} ຄົນ) ສຳເລັດແລ້ວ!`);
+            showToast('Random ສຳເລັດ', `ຈັດຕາຕະລາງອັດຕະໂນມັດແບບສົມດຸນ (${countS1}/${countS2}/${countS3} ຄົນ) ສຳເລັດ!`, 'success');
         }
 
         // ================= GROUPS MANAGEMENT TAB =================
@@ -2008,7 +2170,7 @@
             var restRule = document.getElementById('groupRestRuleSelect').value;
 
             if (!name) {
-                alert('ກະລຸນາໃສ່ຊື່ກຸ່ມ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ກຸ່ມ', 'error');
                 return;
             }
 
@@ -2026,7 +2188,7 @@
             saveAll();
             closeGroupModal();
             renderGroupsTab();
-            alert('ບັນທຶກຂໍ້ມູນໝວດກຸ່ມສຳເລັດ!');
+            showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນໝວດກຸ່ມຮຽບຮ້ອຍ', 'success');
         }
 
         function deleteGroup(idx) {
@@ -2034,6 +2196,7 @@
             employeeGroups.splice(idx, 1);
             saveAll();
             renderGroupsTab();
+            showToast('ສຳເລັດ', 'ລຶບກຸ່ມຮຽບຮ້ອຍ', 'success');
         }
 
         // ================= ADMIN CENTRALIZED REPORT =================
@@ -2131,10 +2294,9 @@
             sheet.status = 'DRAFT';
             saveAll();
             renderUserCurrentWeekWorkspace();
-            alert('ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ!');
+            showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ!', 'success');
         }
 
-        // ⭐ PUBLISH SCHEDULE & BROADCAST NOTIFICATION TO ALL STAFF
         function publishSchedule() {
             var sheet = getActiveSheet();
             sheet.status = 'PUBLISHED';
@@ -2143,14 +2305,15 @@
                 id: Date.now(),
                 title: `ຕາຕະລາງປະຈຳການໃໝ່ອອກແລ້ວ!`,
                 message: `ຕາຕະລາງ "${sheet.title}" ໄດ້ຖືກເຜີຍແຜ່ແລ້ວ. ກະລຸນາກວດສອບກະປະຈຳການຂອງທ່ານ.`,
-                date: new Date().toLocaleDateString('lo-LA')
+                date: new Date().toLocaleDateString('lo-LA'),
+                readBy: []
             });
 
             saveAll();
             renderScheduleTable();
             renderUserCurrentWeekWorkspace();
             updateNotificationBadge();
-            alert('ເຜີຍແຜ່ຕາຕະລາງ (Published) ສຳເລັດ! ລະບົບໄດ້ສົ່ງແຈ້ງເຕືອນຫາພະນັກງານທຸກຄົນແລ້ວ.');
+            showToast('ເຜີຍແຜ່ສຳເລັດ (Published)', 'ລະບົບໄດ້ສົ່ງແຈ້ງເຕືອນຫາພະນັກງານທຸກຄົນແລ້ວ', 'success');
         }
 
         function exportToA4PDF() {
@@ -2205,12 +2368,12 @@
             var reason = document.getElementById('bookLeaveReason').value.trim();
 
             if (!start || !end || !reason) {
-                alert('ກະລຸນາປ້ອນຂໍ້ມູນການຈອງມື້ພັກໃຫ້ຄົບ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນການຈອງມື້ພັກໃຫ້ຄົບ', 'error');
                 return;
             }
 
             if (start > end) {
-                alert('ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!');
+                showToast('ແຈ້ງເຕືອນ', 'ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!', 'error');
                 return;
             }
 
@@ -2231,7 +2394,7 @@
             });
 
             saveAll();
-            alert('ຈອງມື້ພັກປະຈຳປີສຳເລັດ!');
+            showToast('ຈອງມື້ພັກສຳເລັດ', `ທ່ານໄດ້ຈອງມື້ພັກປະຈຳປີ ${diffDays} ມື້`, 'success');
             renderProfileTab();
         }
 
@@ -2244,7 +2407,7 @@
             var reason = document.getElementById('swapReason').value;
 
             if (!start || !end || !toName) {
-                alert('ກະລຸນາເລືອກວັນທີ ແລະ ເພື່ອນຮ່ວມງານ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກວັນທີ ແລະ ເພື່ອນຮ່ວມງານ', 'error');
                 return;
             }
 
@@ -2253,15 +2416,15 @@
                 startDate: start,
                 endDate: end,
                 fromName: currentUser.nameLao,
-                toName: toName,
-                fromShift: fromShift,
-                toShift: toShift,
-                reason: reason,
+                toName,
+                fromShift,
+                toShift,
+                reason,
                 status: 'PENDING'
             });
 
             saveAll();
-            alert(`ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ສຳເລັດແລ້ວ!\n(ເມື່ອ ${toName} Log In ຈະເຫັນການແຈ້ງເຕືອນສີແດງຢູ່ກະດິ່ງດ້ານເທິງ)`);
+            showToast('ສົ່ງຄຳຮ້ອງສຳເລັດ', `ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ແລ້ວ!`, 'success');
             renderProfileTab();
             updateNotificationBadge();
         }
@@ -2323,7 +2486,7 @@
             }
 
             saveAll();
-            alert('ຍອມຮັບຄຳຮ້ອງແລ້ວ! ຕາຕະລາງຖືກປ່ຽນໃຫ້ທັນທີ.');
+            showToast('ປ່ຽນກະສຳເລັດ (Swapped)', 'ຕາຕະລາງຖືກປ່ຽນແລ້ວທັນທີ', 'success');
             renderProfileTab();
             renderDashboard();
             renderScheduleTable();
@@ -2335,7 +2498,7 @@
             var req = swapHistory.find(r => r.id === id);
             if (req) req.status = 'DECLINED';
             saveAll();
-            alert('ປະຕິເສດຄຳຮ້ອງແລ້ວ.');
+            showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
             renderProfileTab();
             updateNotificationBadge();
         }
@@ -2374,26 +2537,27 @@
             var leader = document.getElementById('modalEmpIsLeader').checked;
 
             if (!u || !full || !lao || !p) {
-                alert('ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ', 'error');
                 return;
             }
 
             if (editId !== '') {
                 users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
-                alert('ແກ້ໄຂຂໍ້ມູນພະນັກງານສຳເລັດ!');
+                showToast('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນພະນັກງານສຳເລັດ!', 'success');
             } else {
                 if (users.find(usr => usr.user.toLowerCase() === u.toLowerCase())) {
-                    alert('Username ນີ້ມີໃນລະບົບແລ້ວ!');
+                    showToast('ແຈ້ງເຕືອນ', 'Username ນີ້ມີໃນລະບົບແລ້ວ!', 'error');
                     return;
                 }
                 var newEmp = { user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 };
                 users.push(newEmp);
-                alert('ເພີ່ມພະນັກງານໃໝ່ສຳເລັດ!');
+                showToast('ສຳເລັດ', 'ເພີ່ມພະນັກງານໃໝ່ສຳເລັດ!', 'success');
             }
 
             closeEmpModal();
             renderEmployeesTable();
             renderScheduleTable();
+            saveAll();
         }
 
         function renderEmployeesTable() {
@@ -2424,7 +2588,7 @@
             var newPass = document.getElementById('profPassInput').value.trim();
 
             if (!newName) {
-                alert('ກະລຸນາໃສ່ຊື່ເຕັມ');
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ເຕັມ', 'error');
                 return;
             }
 
@@ -2432,7 +2596,7 @@
             if (newPass) currentUser.pass = newPass;
 
             localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-            alert('ອັບເດດຂໍ້ມູນໂປຣໄຟລ໌ສຳເລັດ!');
+            showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນໂປຣໄຟລ໌ສຳເລັດ!', 'success');
             checkAuth();
         }
 
@@ -2478,7 +2642,7 @@
                 currentUser.photo = base64Data;
                 localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
                 checkAuth();
-                alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
+                showToast('ສຳເລັດ', 'ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ແລ້ວ!', 'success');
             });
         }
 
@@ -2487,6 +2651,46 @@
         window.doLogin = doLogin;
         window.logout = logout;
         window.toggleNotificationDropdown = toggleNotificationDropdown;
+        window.markAllNotificationsAsRead = markAllNotificationsAsRead;
+        window.hideToast = hideToast;
+        window.openNewSheetModal = openNewSheetModal;
+        window.openDuplicateSheetModal = openDuplicateSheetModal;
+        window.previewTemplateSelection = previewTemplateSelection;
+        window.handleCreateNewSheet = handleCreateNewSheet;
+        window.openEditSheetInfoModal = openEditSheetInfoModal;
+        window.handleSaveSheetInfo = handleSaveSheetInfo;
+        window.changeActiveSheet = changeActiveSheet;
+        window.openRandomGroupSelectModal = openRandomGroupSelectModal;
+        window.executeGroupRandomSchedule = executeGroupRandomSchedule;
+        window.resetSchedule = resetSchedule;
+        window.openHolidayModal = openHolidayModal;
+        window.handleSaveHolidayRange = handleSaveHolidayRange;
+        window.undoHoliday = undoHoliday;
+        window.saveDraft = saveDraft;
+        window.publishSchedule = publishSchedule;
+        window.exportToA4PDF = exportToA4PDF;
+        window.openCellModal = openCellModal;
+        window.closeCellModal = closeCellModal;
+        window.selectStaffForCell = selectStaffForCell;
+        window.clearCurrentCell = clearCurrentCell;
+        window.addExtraSlotToCurrentShift = addExtraSlotToCurrentShift;
+        window.filterCellStaffList = filterCellStaffList;
+        window.filterRosterSidebar = filterRosterSidebar;
+        window.openAddGroupModal = openAddGroupModal;
+        window.openEditGroupModal = openEditGroupModal;
+        window.closeGroupModal = closeGroupModal;
+        window.handleSaveGroup = handleSaveGroup;
+        window.deleteGroup = deleteGroup;
+        window.openAddEmpModal = openAddEmpModal;
+        window.openEditEmpModal = openEditEmpModal;
+        window.closeEmpModal = closeEmpModal;
+        window.handleSaveEmployee = handleSaveEmployee;
+        window.handleUpdateProfile = handleUpdateProfile;
+        window.handlePhotoUploadAndCompress = handlePhotoUploadAndCompress;
+        window.handleBookAnnualLeave = handleBookAnnualLeave;
+        window.handleCreateSwap = handleCreateSwap;
+        window.acceptSwap = acceptSwap;
+        window.declineSwap = declineSwap;
     </script>
 </body>
 </html>
