@@ -1,4 +1,4 @@
-\<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="lo">
 <head>
     <meta charset="utf-8"/>
@@ -48,7 +48,7 @@
         .bg-red-gradient { background: linear-gradient(135deg, #c01e2e 0%, #800f1a 100%); }
         .bg-red-gradient-hover:hover { background: linear-gradient(135deg, #d32738 0%, #941320 100%); }
         
-        /* ⭐ Password Mask ປ້ອງກັນ Chrome Breach Alert */
+        /* Password Mask ປ້ອງກັນ Chrome Breach Alert */
         .password-mask {
             -webkit-text-security: disc !important;
         }
@@ -75,48 +75,34 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
 
-    <!-- ================= 1. LOGIN MODAL (NO CHROME POPUP) ================= -->
+    <!-- ================= 1. LOGIN MODAL (NO RELOAD / PURE JS) ================= -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
             <!-- Header -->
             <div class="bg-red-gradient p-6 text-white text-center relative">
                 <div class="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner border border-white/20">
                     <span class="material-symbols-outlined text-3xl">public</span>
                 </div>
                 <h2 class="text-xl font-bold font-lao tracking-tight">Online Team</h2>
-                <p class="text-xs text-red-100 font-lao mt-0.5">ເຂົ້າສູ່ລະບົບຈັດການຕາຕະລາງປະຈຳການ</p>
+                <p class="text-xs text-red-100 font-lao mt-0.5">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</p>
             </div>
             
-            <!-- Form -->
+            <!-- Pure Container (No Form Tag to prevent GitHub Pages reload) -->
             <div class="p-6 space-y-4 font-lao">
                 <div id="loginErrMsg" class="hidden p-3 bg-red-50 border border-red-200 text-brand-red text-xs rounded-xl font-medium"></div>
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">ຊື່ຜູ້ໃຊ້ (Username / ລະຫັດພະນັກງານ)</label>
-                    <input type="text" id="loginUsername" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="ເຊັ່ນ: BCEL0765 ຫຼື admin"/>
+                    <input type="text" id="loginUsername" onkeyup="if(event.key==='Enter') doLogin()" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="ເຊັ່ນ: BCEL0765 ຫຼື admin"/>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານ (Password)</label>
-                    <!-- ໃຊ້ type="text" + class="password-mask" ເພື່ອບໍ່ໃຫ້ Chrome ຂຶ້ນ Popup -->
-                    <input type="text" id="loginPassword" class="password-mask w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
+                    <input type="text" id="loginPassword" onkeyup="if(event.key==='Enter') doLogin()" class="password-mask w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
                 </div>
 
-                <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 active:scale-[0.99]">
+                <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-3.5 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 active:scale-[0.99] cursor-pointer">
                     ເຂົ້າສູ່ລະບົບ (Log In)
                 </button>
-
-                <!-- Quick Test Login Buttons -->
-                <div class="pt-3 border-t border-slate-100">
-                    <p class="text-[11px] text-slate-400 font-semibold mb-2 text-center">ຫຼື ກົດເລືອກບັນຊີທົດສອບດ່ວນ (1-Click):</p>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button type="button" onclick="quickLogin('admin', 'admin123')" class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition">
-                            🔑 Admin
-                        </button>
-                        <button type="button" onclick="quickLogin('BCEL0765', 'bcel2026')" class="px-2.5 py-2 bg-red-50 hover:bg-red-100 rounded-xl text-xs font-bold text-brand-red transition">
-                            👤 ແສງດາວ (Leader)
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -479,19 +465,19 @@
                         <h3 class="text-sm font-bold text-slate-800" id="profNameDisplay">Name</h3>
                         <p class="text-xs text-brand-red font-semibold" id="profCodeDisplay">BCEL0000</p>
                         
-                        <form onsubmit="handleUpdateProfile(event)" class="w-full space-y-3 text-left border-t border-slate-100 pt-4 mt-4 text-xs">
+                        <div class="w-full space-y-3 text-left border-t border-slate-100 pt-4 mt-4 text-xs">
                             <div>
                                 <label class="block font-semibold text-slate-600 mb-1">ຊື່ເຕັມ (Full Name)</label>
-                                <input type="text" id="profNameInput" required class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red"/>
+                                <input type="text" id="profNameInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red"/>
                             </div>
                             <div>
                                 <label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label>
                                 <input type="text" id="profPassInput" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ໃສ່ລະຫັດໃໝ່..."/>
                             </div>
-                            <button type="submit" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-2.5 rounded-xl font-bold transition shadow-md shadow-red-900/10">
+                            <button type="button" onclick="handleUpdateProfile()" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-2.5 rounded-xl font-bold transition shadow-md shadow-red-900/10 cursor-pointer">
                                 ບັນທຶກໂປຣໄຟລ໌
                             </button>
-                        </form>
+                        </div>
                     </div>
 
                     <div class="lg:col-span-8 space-y-6">
@@ -500,25 +486,25 @@
                             <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2">
                                 <span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (Book Annual Leave - 15 ມື້/ປີ)
                             </h3>
-                            <form onsubmit="handleBookAnnualLeave(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ເລີ່ມພັກແຕ່ວັນທີ (Start Date)</label>
-                                    <input type="date" id="bookLeaveStart" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                                    <input type="date" id="bookLeaveStart" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ (End Date)</label>
-                                    <input type="date" id="bookLeaveEnd" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                                    <input type="date" id="bookLeaveEnd" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div class="sm:col-span-2">
                                     <label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ / ໝາຍເຫດ</label>
-                                    <input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີກັບຄອບຄົວ..." required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                                    <input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີກັບຄອບຄົວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div class="sm:col-span-2 flex justify-end">
-                                    <button type="submit" class="px-5 py-2.5 bg-red-gradient bg-red-gradient-hover text-white rounded-xl font-bold shadow-md shadow-red-900/15 transition">
+                                    <button type="button" onclick="handleBookAnnualLeave()" class="px-5 py-2.5 bg-red-gradient bg-red-gradient-hover text-white rounded-xl font-bold shadow-md shadow-red-900/15 transition cursor-pointer">
                                         ຢືນຢັນການຈອງມື້ພັກ
                                     </button>
                                 </div>
-                            </form>
+                            </div>
                         </div>
 
                         <!-- Shift Swap -->
@@ -526,18 +512,18 @@
                             <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b pb-2">
                                 <span class="material-symbols-outlined text-[18px] text-brand-red">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (ເລືອກຊ່ວງຫຼາຍມື້ ຫຼື 1 ອາທິດໄດ້)
                             </h3>
-                            <form onsubmit="handleCreateSwap(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ແຕ່ວັນທີ (From Date)</label>
-                                    <input type="date" id="swapDateStart" value="2026-09-01" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                                    <input type="date" id="swapDateStart" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ (To Date)</label>
-                                    <input type="date" id="swapDateEnd" value="2026-09-01" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                                    <input type="date" id="swapDateEnd" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ເລືອກເພື່ອນຮ່ວມງານທີ່ຈະປ່ຽນນຳ</label>
-                                    <select id="swapTargetPeer" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"></select>
+                                    <select id="swapTargetPeer" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"></select>
                                 </div>
                                 <div>
                                     <label class="block font-semibold text-slate-600 mb-1">ກະຂອງຕົນເອງ ↔ ກະທີ່ຕ້ອງການແລກ</label>
@@ -559,11 +545,11 @@
                                     <input type="text" id="swapReason" placeholder="ເຫດຜົນການຂໍປ່ຽນກະ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                                 </div>
                                 <div class="sm:col-span-2 flex justify-end">
-                                    <button type="submit" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow transition">
+                                    <button type="button" onclick="handleCreateSwap()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow transition cursor-pointer">
                                         ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ
                                     </button>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -630,26 +616,26 @@
                 <h3 class="font-bold text-sm">ກຳນົດວັນພັກພິເສດ (Special Holiday Range)</h3>
                 <button onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
             </div>
-            <form onsubmit="handleSaveHolidayRange(event)" class="p-6 space-y-3.5 text-xs">
+            <div class="p-6 space-y-3.5 text-xs">
                 <div>
                     <label class="block font-semibold mb-1">ຊື່ວັນພັກ (Holiday Title)</label>
-                    <input type="text" id="holidayTitleInput" placeholder="ເຊັ່ນ: ບຸນປີໃໝ່ລາວ..." required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="text" id="holidayTitleInput" placeholder="ເຊັ່ນ: ບຸນປີໃໝ່ລາວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold mb-1">ເລີ່ມວັນທີ</label>
-                        <input type="date" id="holidayStartDateInput" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                        <input type="date" id="holidayStartDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                     </div>
                     <div>
                         <label class="block font-semibold mb-1">ຮອດວັນທີ</label>
-                        <input type="date" id="holidayEndDateInput" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                        <input type="date" id="holidayEndDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">
                     <button type="button" onclick="document.getElementById('holidayModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
-                    <button type="submit" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກວັນພັກ</button>
+                    <button type="button" onclick="handleSaveHolidayRange()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold cursor-pointer">ບັນທຶກວັນພັກ</button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -660,23 +646,23 @@
                 <h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3>
                 <button onclick="closeEmpModal()" class="text-white/80 hover:text-white">✕</button>
             </div>
-            <form onsubmit="handleSaveEmployee(event)" class="p-6 space-y-3.5 text-xs">
+            <div class="p-6 space-y-3.5 text-xs">
                 <input type="hidden" id="editEmpId"/>
                 <div>
                     <label class="block font-semibold mb-1">Username / ລະຫັດພະນັກງານ</label>
-                    <input type="text" id="modalEmpUser" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="text" id="modalEmpUser" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">ຊື່ເຕັມ (Full Name)</label>
-                    <input type="text" id="modalEmpFullName" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="text" id="modalEmpFullName" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label>
-                    <input type="text" id="modalEmpNameLao" required class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                    <input type="text" id="modalEmpNameLao" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label>
-                    <input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red" required/>
+                    <input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 <div class="flex items-center gap-2 pt-1">
                     <input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/>
@@ -684,13 +670,13 @@
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">
                     <button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
-                    <button type="submit" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກ</button>
+                    <button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold cursor-pointer">ບັນທຶກ</button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT STATE & APPLICATION ENGINE ================= -->
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
         // In-memory Master Users (100% Guaranteed Login)
         const MASTER_USERS = [
@@ -753,7 +739,7 @@
         let attendanceChartInstance = null;
         let pieChartInstance = null;
 
-        // Auto Clear Form Inputs
+        // Auto Clear Form Inputs & check login
         window.addEventListener('DOMContentLoaded', () => {
             const uInput = document.getElementById('loginUsername');
             const pInput = document.getElementById('loginPassword');
@@ -763,7 +749,7 @@
             backgroundSyncSupabase();
         });
 
-        // ⭐ 100% BULLETPROOF LOGIN
+        // ⭐ 100% RELIABLE LOGIN (NO RELOAD / PURE JS)
         function doLogin() {
             const uInput = document.getElementById('loginUsername');
             const pInput = document.getElementById('loginPassword');
@@ -778,24 +764,23 @@
                 return;
             }
 
+            // Direct check against master users
             const found = MASTER_USERS.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
             if (found) {
                 currentUser = { ...found, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 };
                 localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-                document.getElementById('loginModal').classList.add('hidden');
+                
+                const modal = document.getElementById('loginModal');
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                
                 errMsg.classList.add('hidden');
                 checkAuth();
             } else {
                 errMsg.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ! (ກະລຸນາກວດສອບຕົວພິມໃຫຍ່/ນ້ອຍ)";
                 errMsg.classList.remove('hidden');
             }
-        }
-
-        function quickLogin(username, password) {
-            document.getElementById('loginUsername').value = username;
-            document.getElementById('loginPassword').value = password;
-            doLogin();
         }
 
         async function backgroundSyncSupabase() {
@@ -913,10 +898,14 @@
 
         function checkAuth() {
             detectDevice();
+            const modal = document.getElementById('loginModal');
             if (!currentUser) {
-                document.getElementById('loginModal').classList.remove('hidden');
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
             } else {
-                document.getElementById('loginModal').classList.add('hidden');
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+                
                 document.getElementById('topUserName').innerText = currentUser.nameLao;
                 document.getElementById('topUserRole').innerText = currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff';
                 
@@ -953,10 +942,14 @@
             location.reload();
         }
 
-        async function handleUpdateProfile(e) {
-            e.preventDefault();
-            const newName = document.getElementById('profNameInput').value;
-            const newPass = document.getElementById('profPassInput').value;
+        async function handleUpdateProfile() {
+            const newName = document.getElementById('profNameInput').value.trim();
+            const newPass = document.getElementById('profPassInput').value.trim();
+
+            if (!newName) {
+                alert('ກະລຸນາໃສ່ຊື່ເຕັມ');
+                return;
+            }
 
             currentUser.fullName = newName;
             if (newPass) currentUser.pass = newPass;
@@ -1320,11 +1313,15 @@
             });
         }
 
-        async function handleSaveHolidayRange(e) {
-            e.preventDefault();
+        async function handleSaveHolidayRange() {
             const title = document.getElementById('holidayTitleInput').value.trim();
             const start = document.getElementById('holidayStartDateInput').value;
             const end = document.getElementById('holidayEndDateInput').value;
+
+            if (!title || !start || !end) {
+                alert('ກະລຸນາປ້ອນຂໍ້ມູນວັນພັກໃຫ້ຄົບຖ້ວນ');
+                return;
+            }
 
             if (start > end) {
                 alert('ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!');
@@ -1489,11 +1486,15 @@
             renderAnalyticsCharts(used, remaining, currentUser.otherLeaves || 0, mySwaps.length);
         }
 
-        async function handleBookAnnualLeave(e) {
-            e.preventDefault();
+        async function handleBookAnnualLeave() {
             const start = document.getElementById('bookLeaveStart').value;
             const end = document.getElementById('bookLeaveEnd').value;
             const reason = document.getElementById('bookLeaveReason').value.trim();
+
+            if (!start || !end || !reason) {
+                alert('ກະລຸນາປ້ອນຂໍ້ມູນການຈອງມື້ພັກໃຫ້ຄົບ');
+                return;
+            }
 
             if (start > end) {
                 alert('ວັນທີເລີ່ມຕົ້ນຕ້ອງບໍ່ກາຍວັນທີສິ້ນສຸດ!');
@@ -1533,14 +1534,18 @@
             renderProfileTab();
         }
 
-        async function handleCreateSwap(e) {
-            e.preventDefault();
+        async function handleCreateSwap() {
             const start = document.getElementById('swapDateStart').value;
             const end = document.getElementById('swapDateEnd').value;
             const toName = document.getElementById('swapTargetPeer').value;
             const fromShift = document.getElementById('swapMyShift').value;
             const toShift = document.getElementById('swapTargetShift').value;
             const reason = document.getElementById('swapReason').value;
+
+            if (!start || !end || !toName) {
+                alert('ກະລຸນາເລືອກວັນທີ ແລະ ເພື່ອນຮ່ວມງານ');
+                return;
+            }
 
             let swapId = Date.now();
             if (supabase) {
@@ -1592,8 +1597,8 @@
                         </div>
                         <div class="flex items-center gap-2">
                             ${isForMe ? `
-                                <button onclick="acceptSwap(${req.id})" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm">Accept (Swap ທັນທີ)</button>
-                                <button onclick="declineSwap(${req.id})" class="px-3.5 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100">Decline</button>
+                                <button onclick="acceptSwap(${req.id})" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer">Accept (Swap ທັນທີ)</button>
+                                <button onclick="declineSwap(${req.id})" class="px-3 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100 cursor-pointer">Decline</button>
                             ` : `
                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${req.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${req.status}</span>
                             `}
@@ -1708,7 +1713,7 @@
                         </td>
                         <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'SUPER_ADMIN' ? 'bg-red-gradient text-white' : 'bg-slate-100 text-slate-700'}">${u.role}</span></td>
                         <td class="p-3.5 text-right">
-                            <button onclick="openEditEmpModal(${idx})" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 font-bold text-[11px] inline-flex items-center gap-1">
+                            <button onclick="openEditEmpModal(${idx})" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">edit</span> ແກ້ໄຂ
                             </button>
                         </td>
@@ -1742,14 +1747,18 @@
 
         function closeEmpModal() { document.getElementById('empModal').classList.add('hidden'); }
 
-        async function handleSaveEmployee(e) {
-            e.preventDefault();
+        async function handleSaveEmployee() {
             const editId = document.getElementById('editEmpId').value;
             const u = document.getElementById('modalEmpUser').value.trim();
             const full = document.getElementById('modalEmpFullName').value.trim();
             const lao = document.getElementById('modalEmpNameLao').value.trim();
             const p = document.getElementById('modalEmpPass').value.trim();
             const leader = document.getElementById('modalEmpIsLeader').checked;
+
+            if (!u || !full || !lao || !p) {
+                alert('ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ');
+                return;
+            }
 
             if (editId !== '') {
                 users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
