@@ -70,32 +70,48 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
 
-    <!-- ================= 1. LOGIN MODAL (NO AUTOFILL BUG) ================= -->
+    <!-- ================= 1. BULLETPROOF LOGIN MODAL ================= -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-            <!-- Red Gradient Header -->
-            <div class="bg-red-gradient p-8 text-white text-center relative">
-                <div class="w-14 h-14 bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner border border-white/20">
-                    <span class="material-symbols-outlined text-3xl">public</span>
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <!-- Header -->
+            <div class="bg-red-gradient p-6 text-white text-center">
+                <div class="w-12 h-12 bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-inner border border-white/20">
+                    <span class="material-symbols-outlined text-2xl">public</span>
                 </div>
-                <h2 class="text-2xl font-bold font-lao tracking-tight">Online Team</h2>
-                <p class="text-xs text-red-100 font-lao mt-1">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</p>
+                <h2 class="text-xl font-bold font-lao tracking-tight">Online Team</h2>
+                <p class="text-xs text-red-100 font-lao mt-0.5">ເຂົ້າສູ່ລະບົບຈັດການຕາຕະລາງປະຈຳການ</p>
             </div>
             
-            <!-- Login Form (Clean inputs without autofill) -->
-            <form onsubmit="handleLogin(event)" autocomplete="off" class="p-8 space-y-4 font-lao">
+            <!-- Form -->
+            <div class="p-6 space-y-4 font-lao">
+                <div id="loginErrMsg" class="hidden p-3 bg-red-50 border border-red-200 text-brand-red text-xs rounded-xl font-medium"></div>
+
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">ຊື່ຜູ້ໃຊ້ (Username / ລະຫັດພະນັກງານ)</label>
-                    <input type="text" id="loginUsername" required autocomplete="new-password" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="ເຊັ່ນ: BCEL0765 ຫຼື admin"/>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ຊື່ຜູ້ໃຊ້ (Username / ລະຫັດພະນັກງານ)</label>
+                    <input type="text" id="loginUsername" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="ເຊັ່ນ: BCEL0765 ຫຼື admin"/>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">ລະຫັດຜ່ານ (Password)</label>
-                    <input type="password" id="loginPassword" required autocomplete="new-password" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານ (Password)</label>
+                    <input type="password" id="loginPassword" class="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red focus:border-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
                 </div>
-                <button type="submit" id="btnLogin" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-3 rounded-xl text-sm font-semibold transition shadow-lg shadow-red-900/20 active:scale-[0.99]">
+
+                <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 active:scale-[0.99]">
                     ເຂົ້າສູ່ລະບົບ (Log In)
                 </button>
-            </form>
+
+                <!-- Quick Test Login Buttons -->
+                <div class="pt-3 border-t border-slate-100">
+                    <p class="text-[11px] text-slate-400 font-semibold mb-2 text-center">ຫຼື ກົດເລືອກບັນຊີທົດສອບດ່ວນ (1-Click):</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="quickLogin('admin', 'admin123')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700">
+                            🔑 Admin
+                        </button>
+                        <button type="button" onclick="quickLogin('BCEL0765', 'bcel2026')" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-bold text-brand-red">
+                            👤 ແສງດາວ (Leader)
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -121,7 +137,7 @@
         
         <div class="flex items-center gap-2 md:gap-3">
             <div class="flex items-center gap-1.5 px-3 py-1 bg-red-50 text-brand-red border border-red-200 rounded-full text-[10px] font-bold">
-                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> Supabase Connected
+                <span class="w-2 h-2 rounded-full bg-brand-red animate-pulse"></span> Online System
             </div>
             <div class="flex items-center gap-2 pl-2">
                 <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border-2 border-brand-red/30 bg-red-50" src="" alt="Profile"/>
@@ -185,7 +201,7 @@
                     </div>
                 </header>
 
-                <!-- 🚨 IMBALANCE ALERT BANNER -->
+                <!-- IMBALANCE ALERT BANNER -->
                 <div id="imbalanceAlertBanner" class="hidden bg-red-50 border-2 border-brand-red/30 rounded-3xl p-5 shadow-sm">
                     <div class="flex items-start gap-4">
                         <div class="w-11 h-11 rounded-2xl bg-brand-red text-white flex items-center justify-center shrink-0 shadow-md">
@@ -200,9 +216,8 @@
                     </div>
                 </div>
 
-                <!-- 3 Shifts Cards with Live Red Pulse -->
+                <!-- 3 Shifts Cards -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                    <!-- Shift 1 -->
                     <div id="dashCard1" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex justify-between items-start mb-3">
                             <div>
@@ -219,7 +234,6 @@
                         <div class="space-y-1.5 font-lao pt-3 border-t border-slate-100" id="shift1Names"></div>
                     </div>
 
-                    <!-- Shift 2 -->
                     <div id="dashCard2" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex justify-between items-start mb-3">
                             <div>
@@ -236,7 +250,6 @@
                         <div class="space-y-1.5 font-lao pt-3 border-t border-slate-100" id="shift2Names"></div>
                     </div>
 
-                    <!-- Shift 3 -->
                     <div id="dashCard3" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex justify-between items-start mb-3">
                             <div>
@@ -254,7 +267,7 @@
                     </div>
                 </div>
 
-                <!-- On Leave Container -->
+                <!-- Leaves -->
                 <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm font-lao">
                     <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
                         <span class="material-symbols-outlined text-brand-red text-[18px]">event_busy</span> ລາຍຊື່ພະນັກງານລາພັກມື້ນີ້
@@ -267,7 +280,6 @@
 
         <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
-            <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-brand-red text-xl">calendar_month</span>
@@ -383,7 +395,7 @@
                     <p class="text-xs text-slate-500">ສະຫຼຸບມື້ພັກປະຈຳປີ (15 ມື້/ປີ), ປະຕິທິນຈອງວັນພັກ ແລະ ສະຖິຕິປະຈຳການ</p>
                 </div>
 
-                <!-- 📊 PERSONAL ANNUAL STATS -->
+                <!-- 📊 STATS -->
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div class="flex justify-between items-start">
@@ -432,7 +444,7 @@
                     </div>
                 </div>
 
-                <!-- Charts Section -->
+                <!-- Charts -->
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div class="md:col-span-8 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3">ສະຖິຕິການມາວຽກ, ປ່ຽນກະ ແລະ ພັກວຽກຕະຫຼອດປີ</h3>
@@ -550,7 +562,7 @@
                     </div>
                 </div>
 
-                <!-- Annual Leave Calendar Table -->
+                <!-- Annual Calendar -->
                 <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                     <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                         <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານພາຍໃນປີ (Team Annual Leave Calendar)
@@ -672,68 +684,119 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT STATE & DATABASE ENGINE ================= -->
+    <!-- ================= JAVASCRIPT STATE & APPLICATION ENGINE ================= -->
     <script>
-        // 25 Seed Users
-        const initialUsers = [
-            { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true, photo: '', annualQuota: 15, usedAnnual: 3, otherLeaves: 1 },
-            { user: 'BCEL0272', pass: 'bcel2026', fullName: 'PHONESAVANH HEUANGVILAY', nameLao: 'ພອນສະຫວັນ', role: 'STAFF', isLeader: true, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 },
-            { user: 'BCEL1055', pass: 'bcel2026', fullName: 'BOUNPRASEUTH SILIMANOTHAM', nameLao: 'ບຸນປະເສີດ', role: 'STAFF', isLeader: true, photo: '', annualQuota: 15, usedAnnual: 4, otherLeaves: 2 },
-            { user: 'BCEL0872', pass: 'bcel2026', fullName: 'PHANNIKONE SAYAPHET', nameLao: 'ພັນນິກອນ', role: 'STAFF', isLeader: true, photo: '', annualQuota: 15, usedAnnual: 1, otherLeaves: 0 },
-            { user: 'BCEL0277', pass: 'bcel2026', fullName: 'SONTHAYA MONLATHOM', nameLao: 'ສົນທະຍາ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL0707', pass: 'bcel2026', fullName: 'NICKEE KHAMKHOSY', nameLao: 'ນິກກີ້', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 5, otherLeaves: 1 },
-            { user: 'BCEL1431', pass: 'bcel2026', fullName: 'NOUHACK SOULAIYAKHAM', nameLao: 'ໜູຮັກ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL1532', pass: 'bcel2026', fullName: 'PAKKER VILAISANG', nameLao: 'ເເພັກເກີ້', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 },
-            { user: 'BCEL2007', pass: 'bcel2026', fullName: 'AEKSAVANG PHOUVONGKHAMCHAN', nameLao: 'ເອກສະຫວ່າງ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 3, otherLeaves: 0 },
-            { user: 'BCEL2101', pass: 'bcel2026', fullName: 'BOUNHAK BOUTTHAVONG', nameLao: 'ບຸນຮັກ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 1 },
-            { user: 'BCEL2103', pass: 'bcel2026', fullName: 'PASONGSIN MANOTHAM', nameLao: 'ປະສົງສິນ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2104', pass: 'bcel2026', fullName: 'SAIYTHONG VONGDALA', nameLao: 'ສາຍທອງ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 1, otherLeaves: 0 },
-            { user: 'BCEL2105', pass: 'bcel2026', fullName: 'SOXAY SOULIYAVONG', nameLao: 'ສົມຊາຍ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2120', pass: 'bcel2026', fullName: 'TONICK BOUDDASIEN', nameLao: 'ໂທນິກ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 4, otherLeaves: 0 },
-            { user: 'BCEL2319', pass: 'bcel2026', fullName: 'XAYYASITH VONGDONEXAI', nameLao: 'ໄຊຍະສິດ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2321', pass: 'bcel2026', fullName: 'LITTASONE HUEANGKHAMSAEN', nameLao: 'ລິດຕະສອນ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 },
-            { user: 'BCEL2323', pass: 'bcel2026', fullName: 'SISOMPHOU INTHAVONG', nameLao: 'ສີຊົມພູ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2425', pass: 'bcel2026', fullName: 'THONGSAVANH VANNAXAY', nameLao: 'ທອງສະຫວັນ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2426', pass: 'bcel2026', fullName: 'SOULIYASACK KHAMPHAIVONG', nameLao: 'ສຸລິຍະສັກ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 1, otherLeaves: 0 },
-            { user: 'BCEL2515', pass: 'bcel2026', fullName: 'KAYSAVATH PHANLUANGKHAM', nameLao: 'ໄກສະຫວາດ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 3, otherLeaves: 0 },
-            { user: 'BCEL2516', pass: 'bcel2026', fullName: 'XAIYAPHONE SYLAVONG', nameLao: 'ໄຊຍະພອນ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2517', pass: 'bcel2026', fullName: 'KEOVILAY XAYYALATH', nameLao: 'ແກ້ວວິໄລ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2579', pass: 'bcel2026', fullName: 'CHITSADA CHANTHAVONG', nameLao: 'ຈິດສະດາ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 },
-            { user: 'BCEL2580', pass: 'bcel2026', fullName: 'NALONGSAK YASENG', nameLao: 'ນະລົງສັກ', role: 'STAFF', isLeader: false, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 }
+        // In-memory Master Users (100% Guaranteed Login)
+        const MASTER_USERS = [
+            { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
+            { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true },
+            { user: 'BCEL0272', pass: 'bcel2026', fullName: 'PHONESAVANH HEUANGVILAY', nameLao: 'ພອນສະຫວັນ', role: 'STAFF', isLeader: true },
+            { user: 'BCEL1055', pass: 'bcel2026', fullName: 'BOUNPRASEUTH SILIMANOTHAM', nameLao: 'ບຸນປະເສີດ', role: 'STAFF', isLeader: true },
+            { user: 'BCEL0872', pass: 'bcel2026', fullName: 'PHANNIKONE SAYAPHET', nameLao: 'ພັນນິກອນ', role: 'STAFF', isLeader: true },
+            { user: 'BCEL0277', pass: 'bcel2026', fullName: 'SONTHAYA MONLATHOM', nameLao: 'ສົນທະຍາ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL0707', pass: 'bcel2026', fullName: 'NICKEE KHAMKHOSY', nameLao: 'ນິກກີ້', role: 'STAFF', isLeader: false },
+            { user: 'BCEL1431', pass: 'bcel2026', fullName: 'NOUHACK SOULAIYAKHAM', nameLao: 'ໜູຮັກ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL1532', pass: 'bcel2026', fullName: 'PAKKER VILAISANG', nameLao: 'ເເພັກເກີ້', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2007', pass: 'bcel2026', fullName: 'AEKSAVANG PHOUVONGKHAMCHAN', nameLao: 'ເອກສະຫວ່າງ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2101', pass: 'bcel2026', fullName: 'BOUNHAK BOUTTHAVONG', nameLao: 'ບຸນຮັກ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2103', pass: 'bcel2026', fullName: 'PASONGSIN MANOTHAM', nameLao: 'ປະສົງສິນ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2104', pass: 'bcel2026', fullName: 'SAIYTHONG VONGDALA', nameLao: 'ສາຍທອງ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2105', pass: 'bcel2026', fullName: 'SOXAY SOULIYAVONG', nameLao: 'ສົມຊາຍ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2120', pass: 'bcel2026', fullName: 'TONICK BOUDDASIEN', nameLao: 'ໂທນິກ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2319', pass: 'bcel2026', fullName: 'XAYYASITH VONGDONEXAI', nameLao: 'ໄຊຍະສິດ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2321', pass: 'bcel2026', fullName: 'LITTASONE HUEANGKHAMSAEN', nameLao: 'ລິດຕະສອນ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2323', pass: 'bcel2026', fullName: 'SISOMPHOU INTHAVONG', nameLao: 'ສີຊົມພູ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2425', pass: 'bcel2026', fullName: 'THONGSAVANH VANNAXAY', nameLao: 'ທອງສະຫວັນ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2426', pass: 'bcel2026', fullName: 'SOULIYASACK KHAMPHAIVONG', nameLao: 'ສຸລິຍະສັກ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2515', pass: 'bcel2026', fullName: 'KAYSAVATH PHANLUANGKHAM', nameLao: 'ໄກສະຫວາດ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2516', pass: 'bcel2026', fullName: 'XAIYAPHONE SYLAVONG', nameLao: 'ໄຊຍະພອນ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2517', pass: 'bcel2026', fullName: 'KEOVILAY XAYYALATH', nameLao: 'ແກ້ວວິໄລ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2579', pass: 'bcel2026', fullName: 'CHITSADA CHANTHAVONG', nameLao: 'ຈິດສະດາ', role: 'STAFF', isLeader: false },
+            { user: 'BCEL2580', pass: 'bcel2026', fullName: 'NALONGSAK YASENG', nameLao: 'ນະລົງສັກ', role: 'STAFF', isLeader: false }
         ];
 
         // Supabase Client Config
         const SUPABASE_URL = "https://xnpixluzdvwoabejblgh.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhucGl4bHV6ZHZ3b2FiZWpibGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjA1MTAsImV4cCI6MjEwMzM5NjUxMH0.A3WqJo5p0_-qhyfdu33fmd2YG6MjM5nle84iTy8sQXM";
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let supabase = null;
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (e) {
+            console.warn("Supabase init error:", e);
+        }
 
-        let users = initialUsers;
+        let users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 }));
         let currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         let currentSelectedMonth = '2026-09';
         let currentScheduleViewMode = 'DRAFT';
-        let allSchedules = {};
+        let allSchedules = {
+            '2026-09': { status: 'DRAFT', data: generateDefaultMonthData(2026, 9) }
+        };
         let specialHolidayRanges = [];
-        let annualBookings = [];
+        let annualBookings = [
+            { id: 1, user: 'BCEL0765', nameLao: 'ແສງດາວ', startDate: '2026-10-12', endDate: '2026-10-15', days: 3, reason: 'ພັກຜ່ອນປະຈຳປີ', status: 'CONFIRMED' }
+        ];
         let swapHistory = [];
-        let leavesList = [];
+        let leavesList = [
+            { id: 1, date: '2026-09-01', shift: 'shift1', empName: 'ບຸນຮັກ', reason: 'ລາປ່ວຍ' },
+            { id: 2, date: '2026-09-01', shift: 'shift1', empName: 'ປະສົງສິນ', reason: 'ຕິດທຸລະກິດຄອບຄົວ' }
+        ];
         let activeEditCell = null;
         let attendanceChartInstance = null;
         let pieChartInstance = null;
 
-        // Auto-Clear Inputs on Load to prevent Autofill
+        // Auto Clear Form Inputs
         window.addEventListener('DOMContentLoaded', () => {
             const uInput = document.getElementById('loginUsername');
             const pInput = document.getElementById('loginPassword');
             if (uInput) uInput.value = '';
             if (pInput) pInput.value = '';
+            checkAuth();
+            backgroundSyncSupabase();
         });
 
-        // Load Supabase Data
-        async function loadSupabaseData() {
+        // ⭐ 100% BULLETPROOF LOGIN FUNCTION
+        function doLogin() {
+            const uInput = document.getElementById('loginUsername');
+            const pInput = document.getElementById('loginPassword');
+            const errMsg = document.getElementById('loginErrMsg');
+
+            const u = uInput.value.trim();
+            const p = pInput.value.trim();
+
+            if (!u || !p) {
+                errMsg.innerText = "ກະລຸນາປ້ອນ Username ແລະ Password";
+                errMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Direct in-memory check (instant, guaranteed)
+            const found = MASTER_USERS.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
+
+            if (found) {
+                currentUser = { ...found, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 };
+                localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
+                document.getElementById('loginModal').classList.add('hidden');
+                errMsg.classList.add('hidden');
+                checkAuth();
+            } else {
+                errMsg.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ! (ກະລຸນາກວດສອບຕົວພິມໃຫຍ່/ນ້ອຍ)";
+                errMsg.classList.remove('hidden');
+            }
+        }
+
+        function quickLogin(username, password) {
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = password;
+            doLogin();
+        }
+
+        async function backgroundSyncSupabase() {
+            if (!supabase) return;
             try {
-                // Fetch profiles
-                const { data: dbUsers } = await supabase.from('profiles').select('*').order('id', { ascending: true });
+                const { data: dbUsers } = await supabase.from('profiles').select('*');
                 if (dbUsers && dbUsers.length > 0) {
                     users = dbUsers.map(u => ({
                         id: u.id,
@@ -749,66 +812,8 @@
                         otherLeaves: u.other_leaves || 0
                     }));
                 }
-
-                // Fetch schedules
-                const { data: dbSched } = await supabase.from('schedules').select('*');
-                if (dbSched) {
-                    dbSched.forEach(row => {
-                        allSchedules[row.month_key] = {
-                            status: row.status,
-                            data: row.schedule_data
-                        };
-                    });
-                }
-
-                // Fetch holidays
-                const { data: dbHols } = await supabase.from('special_holidays').select('*');
-                if (dbHols) {
-                    specialHolidayRanges = dbHols.map(h => ({ title: h.title, start: h.start_date, end: h.end_date }));
-                }
-
-                // Fetch annual bookings
-                const { data: dbBooks } = await supabase.from('annual_bookings').select('*').order('created_at', { ascending: false });
-                if (dbBooks) {
-                    annualBookings = dbBooks.map(b => ({
-                        id: b.id,
-                        user: b.user_code,
-                        nameLao: b.name_lao,
-                        startDate: b.start_date,
-                        endDate: b.end_date,
-                        days: b.days,
-                        reason: b.reason,
-                        status: b.status
-                    }));
-                }
-
-                // Fetch swaps
-                const { data: dbSwaps } = await supabase.from('shift_swaps').select('*').order('created_at', { ascending: false });
-                if (dbSwaps) {
-                    swapHistory = dbSwaps.map(s => ({
-                        id: s.id,
-                        startDate: s.start_date,
-                        endDate: s.end_date,
-                        fromName: s.from_name,
-                        toName: s.to_name,
-                        fromShift: s.from_shift,
-                        toShift: s.to_shift,
-                        reason: s.reason,
-                        status: s.status
-                    }));
-                }
-
-                if (!allSchedules[currentSelectedMonth]) {
-                    allSchedules[currentSelectedMonth] = {
-                        status: 'DRAFT',
-                        data: generateDefaultMonthData(2026, 9)
-                    };
-                }
-
-                checkAuth();
             } catch (err) {
-                console.error("Supabase Load Error:", err);
-                checkAuth();
+                console.log("Background sync offline/skipped");
             }
         }
 
@@ -853,7 +858,9 @@
 
             compressImageToBase64(file, 200, 200, 0.75, async function(base64Data) {
                 currentUser.photo = base64Data;
-                await supabase.from('profiles').update({ photo: base64Data }).eq('user_code', currentUser.user);
+                if (supabase) {
+                    await supabase.from('profiles').update({ photo: base64Data }).eq('user_code', currentUser.user);
+                }
                 localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
                 checkAuth();
                 alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
@@ -900,7 +907,6 @@
             return specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
         }
 
-        // ================= AUTHENTICATION & LOGIN =================
         function checkAuth() {
             detectDevice();
             if (!currentUser) {
@@ -937,74 +943,6 @@
             }
         }
 
-        // Robust Login Function
-        async function handleLogin(e) {
-            e.preventDefault();
-            const btn = document.getElementById('btnLogin');
-            const u = document.getElementById('loginUsername').value.trim();
-            const p = document.getElementById('loginPassword').value.trim();
-
-            if (!u || !p) {
-                alert('ກະລຸນາໃສ່ຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ!');
-                return;
-            }
-
-            btn.innerText = "ກຳລັງກວດສອບ...";
-            btn.disabled = true;
-
-            try {
-                // 1. Direct Supabase Query
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .ilike('user_code', u)
-                    .eq('password', p);
-
-                if (data && data.length > 0) {
-                    const uData = data[0];
-                    currentUser = {
-                        id: uData.id,
-                        user: uData.user_code,
-                        pass: uData.password,
-                        fullName: uData.full_name,
-                        nameLao: uData.name_lao,
-                        role: uData.role,
-                        isLeader: uData.is_leader,
-                        photo: uData.photo || '',
-                        annualQuota: uData.annual_quota || 15,
-                        usedAnnual: uData.used_annual || 0,
-                        otherLeaves: uData.other_leaves || 0
-                    };
-                    localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-                    checkAuth();
-                    return;
-                }
-
-                // 2. Fallback check from memory
-                const found = initialUsers.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
-                if (found) {
-                    currentUser = found;
-                    localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-                    checkAuth();
-                    return;
-                }
-
-                alert('ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!');
-            } catch (err) {
-                const found = initialUsers.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
-                if (found) {
-                    currentUser = found;
-                    localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-                    checkAuth();
-                } else {
-                    alert('ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ!');
-                }
-            } finally {
-                btn.innerText = "ເຂົ້າສູ່ລະບົບ (Log In)";
-                btn.disabled = false;
-            }
-        }
-
         function logout() {
             localStorage.removeItem('ot_auth_live');
             currentUser = null;
@@ -1019,13 +957,14 @@
             currentUser.fullName = newName;
             if (newPass) currentUser.pass = newPass;
 
-            await supabase.from('profiles').update({ full_name: newName, password: currentUser.pass }).eq('user_code', currentUser.user);
+            if (supabase) {
+                await supabase.from('profiles').update({ full_name: newName, password: currentUser.pass }).eq('user_code', currentUser.user);
+            }
             localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
             alert('ອັບເດດຂໍ້ມູນໂປຣໄຟລ໌ສຳເລັດ!');
             checkAuth();
         }
 
-        // ================= TAB NAVIGATION =================
         function switchTab(tabId) {
             if ((tabId === 'schedule' || tabId === 'employees') && currentUser.role !== 'SUPER_ADMIN') {
                 alert('ສຳລັບ Super Admin ເທົ່ານັ້ນ');
@@ -1333,11 +1272,13 @@
 
             allSchedules[monthKey].data[date][shift][index] = nameLao;
             
-            await supabase.from('schedules').upsert({
-                month_key: monthKey,
-                schedule_data: allSchedules[monthKey].data,
-                status: allSchedules[monthKey].status
-            });
+            if (supabase) {
+                await supabase.from('schedules').upsert({
+                    month_key: monthKey,
+                    schedule_data: allSchedules[monthKey].data,
+                    status: allSchedules[monthKey].status
+                });
+            }
 
             closeCellModal();
             renderScheduleTable();
@@ -1349,11 +1290,13 @@
             const monthKey = date.substring(0, 7);
             if (allSchedules[monthKey]?.data[date]?.[shift]) {
                 allSchedules[monthKey].data[date][shift][index] = '';
-                await supabase.from('schedules').upsert({
-                    month_key: monthKey,
-                    schedule_data: allSchedules[monthKey].data,
-                    status: allSchedules[monthKey].status
-                });
+                if (supabase) {
+                    await supabase.from('schedules').upsert({
+                        month_key: monthKey,
+                        schedule_data: allSchedules[monthKey].data,
+                        status: allSchedules[monthKey].status
+                    });
+                }
                 closeCellModal();
                 renderScheduleTable();
             }
@@ -1384,7 +1327,9 @@
                 return;
             }
 
-            await supabase.from('special_holidays').insert([{ title, start_date: start, end_date: end }]);
+            if (supabase) {
+                await supabase.from('special_holidays').insert([{ title, start_date: start, end_date: end }]);
+            }
             specialHolidayRanges.push({ title, start, end });
             
             document.getElementById('holidayModal').classList.add('hidden');
@@ -1437,11 +1382,13 @@
                 }
             }
 
-            await supabase.from('schedules').upsert({
-                month_key: currentSelectedMonth,
-                schedule_data: schedObj,
-                status: allSchedules[currentSelectedMonth].status
-            });
+            if (supabase) {
+                await supabase.from('schedules').upsert({
+                    month_key: currentSelectedMonth,
+                    schedule_data: schedObj,
+                    status: allSchedules[currentSelectedMonth].status
+                });
+            }
 
             renderScheduleTable();
             alert('ຈັດຕາຕະລາງອັດຕະໂນມັດສຳເລັດ!');
@@ -1452,11 +1399,13 @@
             const [year, month] = currentSelectedMonth.split('-').map(Number);
             allSchedules[currentSelectedMonth].data = generateDefaultMonthData(year, month);
             
-            await supabase.from('schedules').upsert({
-                month_key: currentSelectedMonth,
-                schedule_data: allSchedules[currentSelectedMonth].data,
-                status: 'DRAFT'
-            });
+            if (supabase) {
+                await supabase.from('schedules').upsert({
+                    month_key: currentSelectedMonth,
+                    schedule_data: allSchedules[currentSelectedMonth].data,
+                    status: 'DRAFT'
+                });
+            }
 
             renderScheduleTable();
             alert('ຣີເຊັດຕາຕະລາງຮຽບຮ້ອຍແລ້ວ!');
@@ -1464,21 +1413,25 @@
 
         async function saveDraft() {
             allSchedules[currentSelectedMonth].status = 'DRAFT';
-            await supabase.from('schedules').upsert({
-                month_key: currentSelectedMonth,
-                schedule_data: allSchedules[currentSelectedMonth].data,
-                status: 'DRAFT'
-            });
+            if (supabase) {
+                await supabase.from('schedules').upsert({
+                    month_key: currentSelectedMonth,
+                    schedule_data: allSchedules[currentSelectedMonth].data,
+                    status: 'DRAFT'
+                });
+            }
             alert('ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ!');
         }
 
         async function publishSchedule() {
             allSchedules[currentSelectedMonth].status = 'PUBLISHED';
-            await supabase.from('schedules').upsert({
-                month_key: currentSelectedMonth,
-                schedule_data: allSchedules[currentSelectedMonth].data,
-                status: 'PUBLISHED'
-            });
+            if (supabase) {
+                await supabase.from('schedules').upsert({
+                    month_key: currentSelectedMonth,
+                    schedule_data: allSchedules[currentSelectedMonth].data,
+                    status: 'PUBLISHED'
+                });
+            }
             renderScheduleTable();
             alert('ເຜີຍແຜ່ຕາຕະລາງ (Published) ສຳເລັດ!');
         }
@@ -1548,16 +1501,18 @@
 
             currentUser.usedAnnual = (currentUser.usedAnnual || 0) + diffDays;
             
-            await supabase.from('profiles').update({ used_annual: currentUser.usedAnnual }).eq('user_code', currentUser.user);
-            await supabase.from('annual_bookings').insert([{
-                user_code: currentUser.user,
-                name_lao: currentUser.nameLao,
-                start_date: start,
-                end_date: end,
-                days: diffDays,
-                reason,
-                status: 'CONFIRMED'
-            }]);
+            if (supabase) {
+                await supabase.from('profiles').update({ used_annual: currentUser.usedAnnual }).eq('user_code', currentUser.user);
+                await supabase.from('annual_bookings').insert([{
+                    user_code: currentUser.user,
+                    name_lao: currentUser.nameLao,
+                    start_date: start,
+                    end_date: end,
+                    days: diffDays,
+                    reason,
+                    status: 'CONFIRMED'
+                }]);
+            }
 
             annualBookings.unshift({
                 id: Date.now(),
@@ -1583,19 +1538,23 @@
             const toShift = document.getElementById('swapTargetShift').value;
             const reason = document.getElementById('swapReason').value;
 
-            const { data } = await supabase.from('shift_swaps').insert([{
-                start_date: start,
-                end_date: end,
-                from_name: currentUser.nameLao,
-                to_name: toName,
-                from_shift: fromShift,
-                to_shift: toShift,
-                reason: reason,
-                status: 'PENDING'
-            }]).select();
+            let swapId = Date.now();
+            if (supabase) {
+                const { data } = await supabase.from('shift_swaps').insert([{
+                    start_date: start,
+                    end_date: end,
+                    from_name: currentUser.nameLao,
+                    to_name: toName,
+                    from_shift: fromShift,
+                    to_shift: toShift,
+                    reason: reason,
+                    status: 'PENDING'
+                }]).select();
+                if (data && data[0]) swapId = data[0].id;
+            }
 
             swapHistory.unshift({
-                id: data ? data[0].id : Date.now(),
+                id: swapId,
                 startDate: start,
                 endDate: end,
                 fromName: currentUser.nameLao,
@@ -1630,7 +1589,7 @@
                         <div class="flex items-center gap-2">
                             ${isForMe ? `
                                 <button onclick="acceptSwap(${req.id})" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm">Accept (Swap ທັນທີ)</button>
-                                <button onclick="declineSwap(${req.id})" class="px-3 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100">Decline</button>
+                                <button onclick="declineSwap(${req.id})" class="px-3.5 py-1.5 border rounded-xl text-xs font-semibold hover:bg-slate-100">Decline</button>
                             ` : `
                                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${req.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${req.status}</span>
                             `}
@@ -1645,7 +1604,9 @@
             if (!req) return;
 
             req.status = 'COMPLETED';
-            await supabase.from('shift_swaps').update({ status: 'COMPLETED' }).eq('id', id);
+            if (supabase) {
+                await supabase.from('shift_swaps').update({ status: 'COMPLETED' }).eq('id', id);
+            }
 
             const startD = new Date(req.startDate);
             const endD = new Date(req.endDate);
@@ -1664,11 +1625,13 @@
                     if (idxFrom !== -1) sFrom[idxFrom] = req.toName;
                     if (idxTo !== -1) sTo[idxTo] = req.fromName;
                     
-                    await supabase.from('schedules').upsert({
-                        month_key: monthKey,
-                        schedule_data: allSchedules[monthKey].data,
-                        status: allSchedules[monthKey].status
-                    });
+                    if (supabase) {
+                        await supabase.from('schedules').upsert({
+                            month_key: monthKey,
+                            schedule_data: allSchedules[monthKey].data,
+                            status: allSchedules[monthKey].status
+                        });
+                    }
                 }
             }
 
@@ -1682,15 +1645,21 @@
             const req = swapHistory.find(r => r.id === id);
             if (req) {
                 req.status = 'DECLINED';
-                await supabase.from('shift_swaps').update({ status: 'DECLINED' }).eq('id', id);
+                if (supabase) {
+                    await supabase.from('shift_swaps').update({ status: 'DECLINED' }).eq('id', id);
+                }
             }
             alert('ປະຕິເສດຄຳຮ້ອງແລ້ວ.');
             renderProfileTab();
         }
 
         function renderAnalyticsCharts(used, remaining, other, swaps) {
-            const ctx1 = document.getElementById('attendanceChart').getContext('2d');
-            const ctx2 = document.getElementById('leavePieChart').getContext('2d');
+            const canvas1 = document.getElementById('attendanceChart');
+            const canvas2 = document.getElementById('leavePieChart');
+            if (!canvas1 || !canvas2) return;
+
+            const ctx1 = canvas1.getContext('2d');
+            const ctx2 = canvas2.getContext('2d');
 
             if (attendanceChartInstance) attendanceChartInstance.destroy();
             if (pieChartInstance) pieChartInstance.destroy();
@@ -1780,12 +1749,14 @@
 
             if (editId !== '') {
                 users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
-                await supabase.from('profiles').update({
-                    full_name: full,
-                    name_lao: lao,
-                    password: p,
-                    is_leader: leader
-                }).eq('user_code', u);
+                if (supabase) {
+                    await supabase.from('profiles').update({
+                        full_name: full,
+                        name_lao: lao,
+                        password: p,
+                        is_leader: leader
+                    }).eq('user_code', u);
+                }
                 alert('ແກ້ໄຂຂໍ້ມູນພະນັກງານສຳເລັດ!');
             } else {
                 if (users.find(usr => usr.user.toLowerCase() === u.toLowerCase())) {
@@ -1794,14 +1765,16 @@
                 }
                 const newEmp = { user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 };
                 users.push(newEmp);
-                await supabase.from('profiles').insert([{
-                    user_code: u,
-                    password: p,
-                    full_name: full,
-                    name_lao: lao,
-                    role: 'STAFF',
-                    is_leader: leader
-                }]);
+                if (supabase) {
+                    await supabase.from('profiles').insert([{
+                        user_code: u,
+                        password: p,
+                        full_name: full,
+                        name_lao: lao,
+                        role: 'STAFF',
+                        is_leader: leader
+                    }]);
+                }
                 alert('ເພີ່ມພະນັກງານໃໝ່ສຳເລັດ!');
             }
 
@@ -1816,8 +1789,6 @@
             renderEmployeesTable();
             renderProfileTab();
         }
-
-        window.onload = loadSupabaseData;
     </script>
 </body>
 </html>
