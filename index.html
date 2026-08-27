@@ -5,6 +5,9 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</title>
     
+    <!-- ⭐ Favicon ຮູບໜ່ວຍໂລກ Online Service -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23002547'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/%3E%3C/svg%3E"/>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     
@@ -14,10 +17,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     
-    <!-- Supabase JS Library (CDN) -->
+    <!-- Supabase JS & Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Chart.js & html2pdf.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
@@ -69,10 +70,10 @@
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
             <div class="bg-primary p-6 text-white text-center">
                 <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-3">
-                    <span class="material-symbols-outlined text-3xl">hub</span>
+                    <span class="material-symbols-outlined text-3xl">public</span>
                 </div>
                 <h2 class="text-xl font-bold font-lao">Online Team</h2>
-                <p class="text-xs text-slate-300 font-lao mt-1">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ (Supabase Live)</p>
+                <p class="text-xs text-slate-300 font-lao mt-1">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ (Online team tools)</p>
             </div>
             
             <form onsubmit="handleLogin(event)" class="p-6 space-y-4 font-lao">
@@ -96,7 +97,7 @@
         <div class="flex items-center gap-3 md:gap-6">
             <div class="flex items-center gap-2">
                 <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold">
-                    <span class="material-symbols-outlined text-lg">hub</span>
+                    <span class="material-symbols-outlined text-lg">public</span>
                 </div>
                 <div>
                     <span class="text-sm md:text-base font-bold text-primary tracking-tight">Online Team</span>
@@ -128,7 +129,7 @@
         </div>
     </header>
 
-    <!-- ================= MAIN CONTAINER ================= -->
+    <!-- ================= MAIN WRAPPER ================= -->
     <div class="flex flex-1 overflow-hidden">
         
         <!-- SIDEBAR -->
@@ -190,7 +191,7 @@
                     </div>
                 </div>
 
-                <!-- 3 Shifts Bento Cards -->
+                <!-- 3 Shifts Cards with Live Pulse -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                     <div id="dashCard1" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm relative">
                         <div class="flex justify-between items-start mb-3">
@@ -241,7 +242,6 @@
                     </div>
                 </div>
 
-                <!-- On Leave Container -->
                 <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm font-lao">
                     <h3 class="text-sm font-bold text-primary mb-3 flex items-center gap-2">
                         <span class="material-symbols-outlined text-error text-[18px]">event_busy</span> ລາຍຊື່ພະນັກງານລາພັກມື້ນີ້
@@ -254,7 +254,6 @@
 
         <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
-            <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary text-xl">calendar_month</span>
@@ -294,7 +293,6 @@
                 </div>
             </div>
 
-            <!-- Workspace -->
             <div class="flex flex-1 overflow-hidden">
                 <div class="w-56 bg-white border-r border-slate-200 p-3 overflow-y-auto space-y-1.5 shrink-0 font-lao hidden md:block">
                     <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">ລາຍຊື່ພະນັກງານ (ກົດຊ່ອງຕາຕະລາງເພື່ອເລືອກ)</p>
@@ -338,8 +336,8 @@
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div>
-                        <h2 class="text-xl font-bold text-primary">ຈັດການຂໍ້ມູນພະນັກງານ (Supabase Synced)</h2>
-                        <p class="text-xs text-slate-500">ເພີ່ມພະນັກງານໃໝ່, ແກ້ໄຂຂໍ້ມູນ ແລະ ກຳນົດຫົວໜ້າກະ</p>
+                        <h2 class="text-xl font-bold text-primary">ຈັດການຂໍ້ມູນພະນັກງານ</h2>
+                        <p class="text-xs text-slate-500">ເພີ່ມພະນັກງານໃໝ່, ແກ້ໄຂຂໍ້ມູນ ແລະ ກຳນົດຫົວໜ້າກະ (Mark ສີແດງ)</p>
                     </div>
                     <button onclick="openAddEmpModal()" class="px-4 py-2 bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່
@@ -441,10 +439,11 @@
                     <div class="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col items-center text-center">
                         <div class="relative mb-3">
                             <img id="profPhotoPreview" class="w-20 h-20 rounded-full object-cover border-2 border-primary shadow-sm bg-slate-100" src="" alt="Profile"/>
+                            <!-- ⭐ File Input ສຳລັບອັບໂຫຼດຮູບ Base64 ພ້ອມ Auto-Compress -->
                             <label for="photoUploadInput" class="absolute bottom-0 right-0 bg-primary text-white p-1 rounded-full cursor-pointer hover:bg-primary-container shadow">
                                 <span class="material-symbols-outlined text-sm">photo_camera</span>
                             </label>
-                            <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden"/>
+                            <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUploadAndCompress(event)" class="hidden"/>
                         </div>
                         <h3 class="text-sm font-bold text-slate-800" id="profNameDisplay">Name</h3>
                         <p class="text-xs text-primary font-semibold" id="profCodeDisplay">BCEL0000</p>
@@ -662,10 +661,9 @@
 
     <!-- ================= SUPABASE CLIENT CONFIG & JAVASCRIPT ENGINE ================= -->
     <script>
-        // ⭐ 1. ຕັ້ງຄ່າ Supabase ຂອງທ່ານ
+        // Supabase Connection
         const SUPABASE_URL = "https://xnpixluzdvwoabejblgh.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhucGl4bHV6ZHZ3b2FiZWpibGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjA1MTAsImV4cCI6MjEwMzM5NjUxMH0.A3WqJo5p0_-qhyfdu33fmd2YG6MjM5nle84iTy8sQXM";
-
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // App States
@@ -696,10 +694,10 @@
                         nameLao: u.name_lao,
                         role: u.role,
                         isLeader: u.is_leader,
-                        photo: u.photo,
-                        annualQuota: u.annual_quota,
-                        usedAnnual: u.used_annual,
-                        otherLeaves: u.other_leaves
+                        photo: u.photo || '',
+                        annualQuota: u.annual_quota || 15,
+                        usedAnnual: u.used_annual || 0,
+                        otherLeaves: u.other_leaves || 0
                     }));
                 }
 
@@ -751,7 +749,6 @@
                     }));
                 }
 
-                // Ensure initial schedule exists
                 if (!allSchedules[currentSelectedMonth]) {
                     allSchedules[currentSelectedMonth] = {
                         status: 'DRAFT',
@@ -763,6 +760,56 @@
             } catch (err) {
                 console.error("Supabase Load Error:", err);
             }
+        }
+
+        // ⭐ CLIENT-SIDE IMAGE AUTO-COMPRESSION TO BASE64
+        function compressImageToBase64(file, maxWidth, maxHeight, quality, callback) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to lightweight compressed Base64 JPEG
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    callback(compressedBase64);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function handlePhotoUploadAndCompress(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Compress to max 200x200 pixels at 75% quality (~15-25 KB Base64)
+            compressImageToBase64(file, 200, 200, 0.75, async function(base64Data) {
+                currentUser.photo = base64Data;
+                await supabase.from('profiles').update({ photo: base64Data }).eq('user_code', currentUser.user);
+                localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
+                checkAuth();
+                alert('ອັບໂຫຼດ ແລະ ປັບຂະໜາດຮູບພາບ Base64 ສຳເລັດແລ້ວ!');
+            });
         }
 
         function generateDefaultMonthData(year, month) {
@@ -785,16 +832,16 @@
                 } else if (dayOfWeek === 0) { // Sun
                     data[dStr] = {
                         isWeekend: true,
-                        shift1: ['ບັກກີ້', '', ''],
-                        shift2: ['ສົມພະຍາ', 'ໄຊນິນຈາ', ''],
-                        shift3: ['ແພັດຕີ້', '', '']
+                        shift1: ['ເເພັກເກີ້', '', ''],
+                        shift2: ['ໂທນິກ', 'ໄຊຍະສິດ', ''],
+                        shift3: ['ພັນນິກອນ', '', '']
                     };
                 } else { // Weekdays
                     data[dStr] = {
                         isWeekend: false,
                         shift1: ['ບຸນປະເສີດ', 'ບຸນຮັກ', 'ທະວີສັກ', 'ສົມຊາຍ', 'ປະສົງສິນ', 'ເອກສະຫວ່າງ'],
-                        shift2: ['ພອນສະຫວັນ', 'ແພັດຕີ້', 'ສີຊົມພູ', 'ໄກສະຫວາດ', 'ສຸລິຍະສັກ', 'ສາຍທອງ'],
-                        shift3: ['ແສງດາວ', 'ບັກກີ້', 'ສົມພະຍາ', 'ໄຊນິນຈາ']
+                        shift2: ['ພອນສະຫວັນ', 'ພັນນິກອນ', 'ສີຊົມພູ', 'ໄກສະຫວາດ', 'ສຸລິຍະສັກ', 'ສາຍທອງ'],
+                        shift3: ['ແສງດາວ', 'ເເພັກເກີ້', 'ໂທນິກ', 'ໄຊຍະສິດ']
                     };
                 }
             }
@@ -805,7 +852,6 @@
             return specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
         }
 
-        // ================= AUTHENTICATION =================
         function checkAuth() {
             detectDevice();
             if (!currentUser) {
@@ -863,19 +909,6 @@
             location.reload();
         }
 
-        async function handlePhotoUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                currentUser.photo = e.target.result;
-                await supabase.from('profiles').update({ photo: currentUser.photo }).eq('user_code', currentUser.user);
-                localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
-                checkAuth();
-            };
-            reader.readAsDataURL(file);
-        }
-
         async function handleUpdateProfile(e) {
             e.preventDefault();
             const newName = document.getElementById('profNameInput').value;
@@ -920,7 +953,7 @@
             if (tabId === 'profile') renderProfileTab();
         }
 
-        // ================= DASHBOARD =================
+        // ================= DASHBOARD ENGINE =================
         function renderDashboard() {
             const date = document.getElementById('dashDateInput').value;
             const monthKey = date.substring(0, 7);
@@ -1033,7 +1066,7 @@
             });
         }
 
-        // ================= MONTHLY SCHEDULE =================
+        // ================= MONTHLY SCHEDULE ENGINE =================
         function changeScheduleMonth() {
             currentSelectedMonth = document.getElementById('scheduleMonthSelect').value;
             if (!allSchedules[currentSelectedMonth]) {
@@ -1094,7 +1127,7 @@
                         </tr>
                     `;
                 }
-                // Monday or Weekday Reset Header Row
+                // Monday / Weekday Reset Header Row
                 else if (dayOfWeek === 'MON' || (i === 1 && !isWeekendOrHol) || (!isWeekendOrHol && prevDayIsWeekendOrHol)) {
                     tbody.innerHTML += `
                         <tr class="bg-slate-100 font-bold border-t-2 border-b border-black">
