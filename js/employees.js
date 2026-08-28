@@ -1,4 +1,3 @@
-javascript
 function renderEmployeesTable() {
     var tbody = document.getElementById('employeesTableBody');
     if (!tbody) return;
