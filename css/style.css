@@ -1,0 +1,58 @@
+css
+body { 
+    font-family: 'Inter', 'Noto Sans Lao', sans-serif; 
+    -webkit-tap-highlight-color: transparent; 
+}
+.tab-view { display: none; }
+.tab-view.active { display: flex; }
+.bg-red-gradient { background: linear-gradient(135deg, #c01e2e 0%, #800f1a 100%); }
+.bg-red-gradient-hover:hover { background: linear-gradient(135deg, #d32738 0%, #941320 100%); }
+
+.password-mask { -webkit-text-security: disc !important; }
+
+/* EXCEL TABLE BORDERS */
+.excel-table { 
+    border-collapse: collapse !important; 
+    width: 100%; 
+    border: 2px solid #000 !important; 
+    table-layout: fixed; 
+}
+.excel-table th, .excel-table td { 
+    border: 1px solid #000 !important; 
+    padding: 0 !important; 
+    margin: 0 !important; 
+    font-size: 11px; 
+    text-align: center; 
+    vertical-align: middle; 
+    height: 48px;
+}
+
+.grid-cell-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 2px;
+    min-height: 23px;
+    font-size: 11px;
+    font-weight: 400 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    box-sizing: border-box;
+}
+.grid-cell-box.editable { cursor: pointer; }
+.grid-cell-box.editable:hover { background-color: #fee2e2; }
+
+@keyframes pulse-ring {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(192, 30, 46, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0); }
+}
+.live-dot-red { animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    #pdfExportArea { border: none !important; box-shadow: none !important; }
+}
+```
