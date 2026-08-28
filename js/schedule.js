@@ -1,4 +1,4 @@
-// ================= ⭐ MATHEMATICALLY PERFECT FAIR SCHEDULE ENGINE =================
+// ================= ⭐ 4 LEADERS + 13 STAFF FAIR ZIGZAG ENGINE =================
 
 // 1. ຈັດການລັອກກະປະຈຳ (Fix Shift)
 function openFixedShiftModal() {
@@ -54,7 +54,7 @@ function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// 2. ສູດສຳລັບທີມ 7 ຄົນ (7-Person Permutation)
+// 2. ສູດສຳລັບທີມ 7 ຄົນ (7-Person Flexible Permutation)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -85,28 +85,34 @@ function generate7PersonFlexZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ⭐ ສູດສຳລັບທີມ 17 ຄົນ (ແລະ ທີມໃຫຍ່ທຸກຂະໜາດ) - ແບ່ງກະ 3 ແລະ ວັນພັກເສົາ-ອາທິດ ເທົ່າທຽມກັນ 100%
-function generateStandardMonthDataZigzag(year, month, staffList) {
+// 3. ⭐ ສູດສຳລັບທີມ 17 ຄົນ (4 ຫົວໜ້າກະ + 13 ພະນັກງານ) - ແບ່ງເທົ່າທຽມກັນ 100%
+function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
 
     var fixedStaff = staffList.filter(n => window.fixedShiftsConfig.some(f => f.nameLao === n));
     var rotatingStaff = staffList.filter(n => !window.fixedShiftsConfig.some(f => f.nameLao === n));
-    var N = rotatingStaff.length;
 
-    // ຈຳນວນຄົນໃນແຕ່ລະກະສຳລັບວັນທຳມະດາ (17 ຄົນ: ກະ1=7, ກະ2=6, ກະ3=4)
-    var s3Count = 4;
-    var s2Count = 6;
-    var s1Count = N - s3Count - s2Count;
+    // ແຍກ 4 ຫົວໜ້າກະ ແລະ 13 ພະນັກງານ
+    var leaderNames = rotatingStaff.filter(name => {
+        var u = window.users.find(usr => usr.nameLao === name);
+        return u && u.isLeader;
+    });
 
-    var weekendDutyPointer = 0;
+    if (leaderNames.length < 4) {
+        leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(n => rotatingStaff.includes(n));
+    }
+    var regularStaff = rotatingStaff.filter(n => !leaderNames.includes(n));
+    var numRegular = regularStaff.length; // 13 ຄົນ
+
+    var weekendCounter = 0;
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
         var dateObj = new Date(Date.UTC(year, month - 1, i));
-        var dayOfWeek = dateObj.getUTCDay(); // 0 = Sun, 6 = Sat
+        var dayOfWeek = dateObj.getUTCDay(); // 0=Sun, 6=Sat
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
         var W = getGlobalWeekIndex(dateObj);
 
@@ -122,38 +128,50 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
             else if (cfg.fixedShift === 'shift3') s3List.push(fName);
         });
 
+        // 2. ໝູນວຽນ 4 ຫົວໜ້າກະ (1A -> 3 -> 2 -> 1B -> 1A)
+        var l_1A = leaderNames.length > 0 ? leaderNames[(0 + W) % leaderNames.length] : '';
+        var l_1B = leaderNames.length > 1 ? leaderNames[(1 + W) % leaderNames.length] : '';
+        var l_S2 = leaderNames.length > 2 ? leaderNames[(2 + W) % leaderNames.length] : '';
+        var l_S3 = leaderNames.length > 3 ? leaderNames[(3 + W) % leaderNames.length] : '';
+
         if (isWeekend) {
-            // 2. ວັນເສົາ-ອາທິດ: ໝູນວຽນຄົນມາເຮັດວຽກ 6 ຄົນແບບ Equidistant Queue (ຕັດຄົນທີ່ຍາມກະ 3 ວັນທຳມະດາອອກ ເພື່ອບໍ່ໃຫ້ກະດຶກຊ້ຳຊ້ອນ)
-            var weekendAssigned = [];
-            for (var k = 0; k < 6; k++) {
-                var pickIdx = (weekendDutyPointer + k * 3) % N;
-                weekendAssigned.push(rotatingStaff[pickIdx]);
-            }
-            weekendDutyPointer = (weekendDutyPointer + 6) % N;
+            // 3. ວັນເສົາ-ອາທິດ: ເຮັດວຽກ 6 ຄົນ (3 ຫົວໜ້າ + 3 ພະນັກງານ)
+            weekendCounter++;
+            var isSat = (dayOfWeek === 6);
+
+            // ຫົວໜ້າກະປະຈຳການເສົາ-ອາທິດ: 1 ຄົນຕໍ່ 1 ກະ
+            var weekendLeaderS1 = isSat ? l_1A : l_1B;
+            var weekendLeaderS2 = l_S2;
+            var weekendLeaderS3 = l_S3;
+
+            // 13 ພະນັກງານໝູນວຽນມາເສົາ-ອາທິດ 3 ຄົນຕໍ່ມື້ (ແບ່ງເທົ່າກັນທຸກຄົນ: Coprime Step = 3)
+            var p1 = regularStaff[(weekendCounter * 3 + 0) % numRegular];
+            var p2 = regularStaff[(weekendCounter * 3 + 1) % numRegular];
+            var p3 = regularStaff[(weekendCounter * 3 + 2) % numRegular];
 
             data[dStr] = {
                 isWeekend: true,
-                shift1: [...s1List, weekendAssigned[0] || '', weekendAssigned[1] || ''].filter(Boolean),
-                shift2: [...s2List, weekendAssigned[2] || '', weekendAssigned[3] || ''].filter(Boolean),
-                shift3: [...s3List, weekendAssigned[4] || '', weekendAssigned[5] || ''].filter(Boolean)
+                shift1: [...s1List, weekendLeaderS1, p1].filter(Boolean),
+                shift2: [...s2List, weekendLeaderS2, p2].filter(Boolean),
+                shift3: [...s3List, weekendLeaderS3, p3].filter(Boolean)
             };
         } else {
-            // 3. ວັນຈັນ-ສຸກ: ໝູນວຽນ Zigzag Flow ($3 \rightarrow 2 \rightarrow 1 \rightarrow 3$)
-            var shiftOffset = (W * s3Count) % N;
+            // 4. ວັນຈັນ-ສຸກ: 13 ພະນັກງານໝູນວຽນ Zigzag Flow (ກະ3=3ຄົນ, ກະ2=5ຄົນ, ກະ1=5ຄົນ)
+            var shiftOffset = (W * 3) % numRegular; // Step by 3
             var rotatedStaff = [];
-            for (var r = 0; r < N; r++) {
-                rotatedStaff.push(rotatingStaff[(r + shiftOffset) % N]);
+            for (var r = 0; r < numRegular; r++) {
+                rotatedStaff.push(regularStaff[(r + shiftOffset) % numRegular]);
             }
 
-            var weekdayS3 = rotatedStaff.slice(0, s3Count);
-            var weekdayS2 = rotatedStaff.slice(s3Count, s3Count + s2Count);
-            var weekdayS1 = rotatedStaff.slice(s3Count + s2Count, N);
+            var staff_S3 = rotatedStaff.slice(0, 3); // 3 ພະນັກງານ + 1 ຫົວໜ້າ = 4 ຄົນ
+            var staff_S2 = rotatedStaff.slice(3, 8); // 5 ພະນັກງານ + 1 ຫົວໜ້າ = 6 ຄົນ
+            var staff_S1 = rotatedStaff.slice(8, 13); // 5 ພະນັກງານ + 2 ຫົວໜ້າ = 7 ຄົນ
 
             data[dStr] = {
                 isWeekend: false,
-                shift1: [...s1List, ...weekdayS1].filter(Boolean),
-                shift2: [...s2List, ...weekdayS2].filter(Boolean),
-                shift3: [...s3List, ...weekdayS3].filter(Boolean)
+                shift1: [...s1List, l_1A, l_1B, ...staff_S1].filter(Boolean),
+                shift2: [...s2List, l_S2, ...staff_S2].filter(Boolean),
+                shift3: [...s3List, l_S3, ...staff_S3].filter(Boolean)
             };
         }
     }
@@ -172,7 +190,7 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
     if (staffList.length === 7) {
         return generate7PersonFlexZigzag(year, month, staffList);
     } else {
-        return generateStandardMonthDataZigzag(year, month, staffList);
+        return generate17PersonLeadersAndStaffZigzag(year, month, staffList);
     }
 }
 
@@ -194,7 +212,7 @@ function executeGroupRandomSchedule() {
     renderDashboard();
     if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
     else renderUserCurrentWeekWorkspace();
-    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ແບບເທົ່າທຽມສົມບູນແລ້ວ!`, 'success');
+    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag (4 ຫົວໜ້າ + 13 ພະນັກງານ) ສຳເລັດ!`, 'success');
 }
 
 function executeBatchMonthGenerate() {
