@@ -1,4 +1,3 @@
-javascript
 function checkAuth() {
     var modal = document.getElementById('loginModal');
     if (!currentUser) {
