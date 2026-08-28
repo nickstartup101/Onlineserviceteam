@@ -1,20 +1,20 @@
 function checkAuth() {
     var modal = document.getElementById('loginModal');
-    if (!currentUser) {
+    if (!window.currentUser) {
         if (modal) modal.classList.remove('hidden');
     } else {
         if (modal) modal.classList.add('hidden');
-        document.getElementById('topUserName').innerText = currentUser.nameLao;
-        document.getElementById('topUserRole').innerText = currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff';
+        document.getElementById('topUserName').innerText = window.currentUser.nameLao;
+        document.getElementById('topUserRole').innerText = window.currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff';
         
-        var avatar = currentUser.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nameLao)}&background=c01e2e&color=fff`;
+        var avatar = window.currentUser.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(window.currentUser.nameLao)}&background=c01e2e&color=fff`;
         document.getElementById('topAvatar').src = avatar;
         document.getElementById('profPhotoPreview').src = avatar;
-        document.getElementById('profNameDisplay').innerText = currentUser.fullName;
-        document.getElementById('profCodeDisplay').innerText = currentUser.user;
-        document.getElementById('profNameInput').value = currentUser.fullName;
+        document.getElementById('profNameDisplay').innerText = window.currentUser.fullName;
+        document.getElementById('profCodeDisplay').innerText = window.currentUser.user;
+        document.getElementById('profNameInput').value = window.currentUser.fullName;
 
-        var isAdmin = currentUser.role === 'SUPER_ADMIN';
+        var isAdmin = window.currentUser.role === 'SUPER_ADMIN';
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'flex' : 'none');
 
         var topProfileNav = document.getElementById('topProfileNavTitle');
@@ -54,14 +54,22 @@ function checkAuth() {
 function doLogin() {
     var u = document.getElementById('loginUsername').value.trim();
     var p = document.getElementById('loginPassword').value.trim();
-    var found = users.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
+    
+    // ດຶງຖານຂໍ້ມູນພະນັກງານແບບປອດໄພ 100%
+    var userPool = window.users || JSON.parse(localStorage.getItem('ot_users_master')) || window.MASTER_USERS_DEFAULT || [];
+    
+    if (!window.users || window.users.length === 0) {
+        window.users = userPool;
+    }
+
+    var found = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
     if (found) {
-        currentUser = { ...found };
-        localStorage.setItem('ot_auth_live', JSON.stringify(currentUser));
+        window.currentUser = { ...found };
+        localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
         document.getElementById('loginModal').classList.add('hidden');
         checkAuth();
-        showToast('ເຂົ້າສູ່ລະບົບສຳເລັດ', `ຍິນດີຕ້ອນຮັບທ່ານ ${currentUser.nameLao}`, 'success');
+        showToast('ເຂົ້າສູ່ລະບົບສຳເລັດ', `ຍິນດີຕ້ອນຮັບທ່ານ ${window.currentUser.nameLao}`, 'success');
     } else {
         var err = document.getElementById('loginErrMsg');
         err.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!";
@@ -71,6 +79,6 @@ function doLogin() {
 
 function logout() {
     localStorage.removeItem('ot_auth_live');
-    currentUser = null;
+    window.currentUser = null;
     location.reload();
 }
