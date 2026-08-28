@@ -1,4 +1,4 @@
-// ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE =================
+// ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE (LEADER-FIRST) =================
 
 function openEditPublishedScheduleGuide() {
     var sheet = getActiveSheet();
@@ -62,7 +62,7 @@ function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// 2. ສູດສຳລັບທີມ 7 ຄົນ
+// 1. ສູດສຳລັບທີມ 7 ຄົນ
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -93,7 +93,7 @@ function generate7PersonFlexZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ສູດສຳລັບທີມ 17 ຄົນ (4 ຫົວໜ້າ + 13 ພະນັກງານ)
+// 2. ⭐ ສູດສຳລັບທີມ 17 ຄົນ (4 ຫົວໜ້າກະ + 13 ພະນັກງານ) - ຫົວໜ້າກະຢູ່ລຳດັບທີ 1 ສະເໝີ 👑
 function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -101,6 +101,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var fixedStaff = staffList.filter(n => window.fixedShiftsConfig.some(f => f.nameLao === n));
     var rotatingStaff = staffList.filter(n => !window.fixedShiftsConfig.some(f => f.nameLao === n));
 
+    // ແຍກ 4 ຫົວໜ້າກະ
     var leaderNames = rotatingStaff.filter(name => {
         var u = window.users.find(usr => usr.nameLao === name);
         return u && u.isLeader;
@@ -119,27 +120,29 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
         var dateObj = new Date(Date.UTC(year, month - 1, i));
-        var dayOfWeek = dateObj.getUTCDay();
+        var dayOfWeek = dateObj.getUTCDay(); // 0=Sun, 6=Sat
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
         var W = getGlobalWeekIndex(dateObj);
 
-        var s1List = [];
-        var s2List = [];
-        var s3List = [];
+        var s1Fixed = [];
+        var s2Fixed = [];
+        var s3Fixed = [];
 
         fixedStaff.forEach(fName => {
             var cfg = window.fixedShiftsConfig.find(f => f.nameLao === fName);
-            if (cfg.fixedShift === 'shift1') s1List.push(fName);
-            else if (cfg.fixedShift === 'shift2') s2List.push(fName);
-            else if (cfg.fixedShift === 'shift3') s3List.push(fName);
+            if (cfg.fixedShift === 'shift1') s1Fixed.push(fName);
+            else if (cfg.fixedShift === 'shift2') s2Fixed.push(fName);
+            else if (cfg.fixedShift === 'shift3') s3Fixed.push(fName);
         });
 
+        // ໝູນວຽນ 4 ຫົວໜ້າກະ (1A -> 3 -> 2 -> 1B -> 1A)
         var l_1A = leaderNames.length > 0 ? leaderNames[(0 + W) % leaderNames.length] : '';
         var l_1B = leaderNames.length > 1 ? leaderNames[(1 + W) % leaderNames.length] : '';
         var l_S2 = leaderNames.length > 2 ? leaderNames[(2 + W) % leaderNames.length] : '';
         var l_S3 = leaderNames.length > 3 ? leaderNames[(3 + W) % leaderNames.length] : '';
 
         if (isWeekend) {
+            // ວັນເສົາ-ອາທິດ: ຫົວໜ້າກະຢູ່ຊ່ອງທີ 1 ສະເໝີ
             weekendCounter++;
             var isSat = (dayOfWeek === 6);
 
@@ -153,11 +156,12 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
 
             data[dStr] = {
                 isWeekend: true,
-                shift1: [...s1List, weekendLeaderS1, p1].filter(Boolean),
-                shift2: [...s2List, weekendLeaderS2, p2].filter(Boolean),
-                shift3: [...s3List, weekendLeaderS3, p3].filter(Boolean)
+                shift1: [weekendLeaderS1, ...s1Fixed, p1].filter(Boolean),
+                shift2: [weekendLeaderS2, ...s2Fixed, p2].filter(Boolean),
+                shift3: [weekendLeaderS3, ...s3Fixed, p3].filter(Boolean)
             };
         } else {
+            // ວັນຈັນ-ສຸກ: ຫົວໜ້າກະຢູ່ຊ່ອງທີ 1 ສະເໝີ
             var shiftOffset = (W * 3) % numRegular;
             var rotatedStaff = [];
             for (var r = 0; r < numRegular; r++) {
@@ -170,16 +174,16 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
 
             data[dStr] = {
                 isWeekend: false,
-                shift1: [...s1List, l_1A, l_1B, ...staff_S1].filter(Boolean),
-                shift2: [...s2List, l_S2, ...staff_S2].filter(Boolean),
-                shift3: [...s3List, l_S3, ...staff_S3].filter(Boolean)
+                shift1: [l_1A, l_1B, ...s1Fixed, ...staff_S1].filter(Boolean),
+                shift2: [l_S2, ...s2Fixed, ...staff_S2].filter(Boolean),
+                shift3: [l_S3, ...s3Fixed, ...staff_S3].filter(Boolean)
             };
         }
     }
     return data;
 }
 
-// 4. Dispatcher
+// 3. Dispatcher
 function generateMonthDataZigzag(year, month, targetGroupMembers) {
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
@@ -216,7 +220,7 @@ function executeGroupRandomSchedule() {
     } else {
         if (typeof window.renderUserCurrentWeekWorkspace === 'function') window.renderUserCurrentWeekWorkspace();
     }
-    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ສຳເລັດ!`, 'success');
+    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag (ຫົວໜ້າຢູ່ລຳດັບ 1) ສຳເລັດ!`, 'success');
 }
 
 function openBatchMonthModal() {
@@ -274,7 +278,7 @@ function executeBatchMonthGenerate() {
                 monthKey: monthKey,
                 title: title,
                 notes: window.defaultNotesTemplate,
-                status: 'DRAFT',
+                status: 'DRAFT', // ຕັ້ງເປັນສະບັບຮ່າງລ່ວງໜ້າ
                 data: generatedData
             });
         }
@@ -292,12 +296,10 @@ function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
 }
 
-// ⭐ PUBLISH SCHEDULE ພ້ອມ BROADCAST NOTIFICATION ຫາ USER ທຸກຄົນ
 function publishSchedule() {
     var sheet = getActiveSheet();
     sheet.status = 'PUBLISHED';
 
-    // ສ້າງຂໍ້ຄວາມແຈ້ງເຕືອນລົງລະບົບສູນກາງ
     if (!window.systemNotifications) window.systemNotifications = [];
     window.systemNotifications.unshift({
         id: Date.now(),
@@ -306,16 +308,17 @@ function publishSchedule() {
         tag: 'Publish ທາງການ',
         sheetId: sheet.id,
         date: new Date().toLocaleString('lo-LA'),
-        readBy: [window.currentUser?.user] // Admin ອ່ານແລ້ວ, User ອື່ນໆຈະເຫັນເປັນຂໍ້ຄວາມໃໝ່
+        readBy: [window.currentUser?.user]
     });
 
     saveAll();
     renderSheetDropdown();
     renderScheduleTable();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ແລະ ແຈ້ງເຕືອນຫາພະນັກງານທຸກຄົນແລ້ວ!', 'success');
+    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການ ແລະ ແຈ້ງເຕືອນຫາພະນັກງານແລ້ວ!', 'success');
 }
 
+// ຕາຕະລາງສະແດງຜົນ + ປ້າຍສະຖານະ [ທາງການ] / [ສະບັບຮ່າງ]
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -324,23 +327,25 @@ function renderScheduleTable() {
     var [year, month] = sheet.monthKey.split('-').map(Number);
     var daysCount = new Date(year, month, 0).getDate();
 
-    document.getElementById('scheduleTableTitle').innerText = sheet.title;
+    var isOfficial = sheet.status === 'PUBLISHED';
+    var statusTagTitle = isOfficial ? ' [ສະບັບທາງການ]' : ' [ສະບັບຮ່າງ - ຍັງບໍ່ເປັນທາງການ]';
+
+    document.getElementById('scheduleTableTitle').innerText = sheet.title + statusTagTitle;
     document.getElementById('scheduleNotesDisplay').innerText = sheet.notes || window.defaultNotesTemplate;
 
     var banner = document.getElementById('scheduleStatusBanner');
     var badge = document.getElementById('scheduleStatusBadge');
     var modCountText = document.getElementById('modifiedCellCountText');
 
-    var isOfficial = sheet.status === 'PUBLISHED';
     if (banner && badge) {
         if (isOfficial) {
             banner.className = "px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs";
             badge.className = "font-bold text-emerald-800 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> [ສະບັບທາງການ] PUBLISHED OFFICIAL`;
         } else {
             banner.className = "px-6 py-2.5 bg-amber-100/90 border-b border-amber-300 flex justify-between items-center text-xs";
             badge.className = "font-bold text-amber-900 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ (ຍັງບໍ່ເປັນທາງການ - ສຳລັບວາງແຜນພັກຜ່ອນ)`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> [ສະບັບຮ່າງ] UNOFFICIAL DRAFT (ສຳລັບວາງແຜນພັກຜ່ອນ)`;
         }
     }
 
