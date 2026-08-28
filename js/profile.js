@@ -3,7 +3,7 @@ function renderAdminAllStaffReport() {
 
     var sheet = getActiveSheet();
     var matrixTbody = document.getElementById('adminAllStaffMatrixReportBody');
-    var swapTbody = document.getElementById('adminSwapAuditTableBody');
+    var auditTbody = document.getElementById('adminScheduleAuditTableBody');
 
     var staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN');
     document.getElementById('adminMetricStaffCount').innerText = `${staffList.length} ທ່ານ`;
@@ -30,6 +30,7 @@ function renderAdminAllStaffReport() {
 
     document.getElementById('adminMetricDutyCount').innerText = `${totalDutyCount} ກະ`;
 
+    // 1. Matrix Report
     if (matrixTbody) {
         matrixTbody.innerHTML = '';
         Object.values(stats).forEach(st => {
@@ -56,20 +57,21 @@ function renderAdminAllStaffReport() {
         });
     }
 
-    if (swapTbody) {
-        swapTbody.innerHTML = '';
-        if (window.swapHistory.length === 0) {
-            swapTbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">ບໍ່ມີລາຍການຂໍປ່ຽນກະ</td></tr>`;
+    // 2. Post-Publish Audit Trail Table
+    if (auditTbody) {
+        auditTbody.innerHTML = '';
+        if (window.scheduleAuditLogs.length === 0) {
+            auditTbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">ຍັງບໍ່ມີປະຫວັດການແກ້ໄຂຕາຕະລາງຫຼັງ Publish</td></tr>`;
         } else {
-            window.swapHistory.forEach(sw => {
-                var statusClass = sw.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (sw.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200');
-                swapTbody.innerHTML += `
+            window.scheduleAuditLogs.forEach(log => {
+                auditTbody.innerHTML += `
                     <tr class="hover:bg-slate-50 font-lao">
-                        <td class="p-3 font-bold text-slate-800">${sw.fromName} ↔ ${sw.toName}</td>
-                        <td class="p-3 text-slate-600">${sw.startDate} ຫາ ${sw.endDate}</td>
-                        <td class="p-3 text-slate-700 font-medium">${sw.fromShift} ↔ ${sw.toShift}</td>
-                        <td class="p-3 text-slate-500">${sw.reason || '-'}</td>
-                        <td class="p-3 text-right"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusClass}">${sw.status}</span></td>
+                        <td class="p-3 font-bold text-slate-700 truncate max-w-[150px]">${log.sheetTitle}</td>
+                        <td class="p-3 font-semibold">${log.date} (${log.shift})</td>
+                        <td class="p-3 text-amber-950 font-bold bg-amber-50 rounded">${log.oldName} ➔ ${log.newName}</td>
+                        <td class="p-3 text-slate-600 italic">"${log.reason}"</td>
+                        <td class="p-3 font-medium text-brand-red">${log.adminName}</td>
+                        <td class="p-3 text-right text-slate-400 text-[11px]">${log.timestamp}</td>
                     </tr>
                 `;
             });
@@ -173,31 +175,7 @@ function handleBookAnnualLeave() {
     renderUserCurrentWeekWorkspace();
 }
 
-function handleCreateSwap() {
-    var start = document.getElementById('swapDateStart').value;
-    var end = document.getElementById('swapDateEnd').value;
-    var toName = document.getElementById('swapTargetPeer').value;
-    var fromShift = document.getElementById('swapMyShift').value;
-    var toShift = document.getElementById('swapTargetShift').value;
-    var reason = document.getElementById('swapReason').value.trim();
-    if (!start || !end || !toName) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກຂໍ້ມູນໃຫ້ຄົບ', 'error'); return; }
-
-    window.swapHistory.unshift({
-        id: Date.now(),
-        fromName: window.currentUser.nameLao,
-        toName: toName,
-        startDate: start,
-        endDate: end,
-        fromShift: fromShift,
-        toShift: toShift,
-        reason: reason,
-        status: 'PENDING'
-    });
-    saveAll();
-    showToast('ສຳເລັດ', `ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ແລ້ວ!`, 'success');
-}
-
-// ================= ⭐ FAIRNESS MODAL & CLOSE HANDLERS =================
+// ================= ⭐ FAIRNESS MODAL CONTROLLERS =================
 window.openFairnessSummaryModal = function() {
     var groupSelect = document.getElementById('fairnessGroupFilterSelect');
     if (groupSelect) {
