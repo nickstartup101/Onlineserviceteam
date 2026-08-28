@@ -100,7 +100,7 @@
 
     <!-- ================= IN-APP CUSTOM TOAST POPUP ================= -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
-        <div class="bg-white border-2 border-slate-100 shadow-2xl rounded-2xl p-4 flex items-center gap-3 min-w-[320px] max-w-md font-lao">
+        <div class="bg-white border-2 border-slate-100 shadow-2xl rounded-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-md font-lao">
             <div id="toastIconBox" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
                 <span class="material-symbols-outlined text-2xl" id="toastIcon">check_circle</span>
             </div>
@@ -112,7 +112,7 @@
         </div>
     </div>
 
-    <!-- ================= ⭐ IN-APP CONFIRMATION ASK MODAL (REPLACES BROWSER CONFIRM) ================= -->
+    <!-- ================= IN-APP CONFIRMATION ASK MODAL ================= -->
     <div id="appConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-100 font-lao animate-in fade-in zoom-in-95 duration-150">
             <div class="p-5 bg-red-50 flex items-center gap-3 border-b border-red-100">
@@ -168,9 +168,66 @@
         </div>
     </div>
 
+    <!-- ================= ⭐ MOBILE SLIDE DRAWER (HAMBURGER MENU) ================= -->
+    <div id="mobileDrawerBackdrop" onclick="toggleMobileDrawer()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden md:hidden transition-opacity"></div>
+    <aside id="mobileDrawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform -translate-x-full transition-transform duration-300 md:hidden flex flex-col p-5 font-lao">
+        <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-red-gradient flex items-center justify-center text-white font-bold">
+                    <span class="material-symbols-outlined text-lg">headset_mic</span>
+                </div>
+                <div>
+                    <h2 class="text-sm font-bold text-brand-red">Online Team</h2>
+                    <p class="text-[10px] text-slate-400">ເມນູຫຼັກ</p>
+                </div>
+            </div>
+            <button onclick="toggleMobileDrawer()" class="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+                <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+        </div>
+        
+        <nav class="flex flex-col gap-1.5 flex-1 text-xs">
+            <button type="button" onclick="switchTab('dashboard'); toggleMobileDrawer();" id="mob-side-dashboard" class="mob-side-btn flex items-center gap-3 px-4 py-3 bg-red-50 text-brand-red rounded-xl font-bold text-left">
+                <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard ຕິດຕາມ
+            </button>
+            <button type="button" onclick="switchTab('schedule'); toggleMobileDrawer();" id="mob-side-schedule" class="mob-side-btn flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[18px]">table_view</span> ຕາຕະລາງປະຈຳການ
+                </div>
+                <span class="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold">All</span>
+            </button>
+            <button type="button" onclick="switchTab('groups'); toggleMobileDrawer();" id="mob-side-groups" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random
+                </div>
+                <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+            </button>
+            <button type="button" onclick="switchTab('employees'); toggleMobileDrawer();" id="mob-side-employees" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ
+                </div>
+                <span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+            </button>
+            <button type="button" onclick="switchTab('profile'); toggleMobileDrawer();" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left">
+                <span class="material-symbols-outlined text-[18px]">account_circle</span> Workspace & ໂປຣໄຟລ໌
+            </button>
+        </nav>
+
+        <div class="pt-4 border-t border-slate-100">
+            <button type="button" onclick="logout()" class="w-full py-2.5 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">logout</span> ອອກຈາກລະບົບ (Sign Out)
+            </button>
+        </div>
+    </aside>
+
     <!-- ================= TOP NAVIGATION ================= -->
     <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-30 shadow-sm">
-        <div class="flex items-center gap-3 md:gap-6">
+        <div class="flex items-center gap-2 md:gap-6">
+            <!-- ⭐ Mobile Hamburger Menu Button -->
+            <button type="button" onclick="toggleMobileDrawer()" class="md:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 focus:outline-none" title="ເມນູ">
+                <span class="material-symbols-outlined text-2xl">menu</span>
+            </button>
+
             <div class="flex items-center gap-2.5">
                 <div class="w-9 h-9 rounded-xl bg-red-gradient flex items-center justify-center text-white font-bold shadow-md shadow-red-900/20">
                     <span class="material-symbols-outlined text-xl">headset_mic</span>
@@ -180,6 +237,8 @@
                     <p class="text-[10px] text-slate-400 font-lao hidden sm:block">ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</p>
                 </div>
             </div>
+            
+            <!-- Desktop Nav Links -->
             <nav class="hidden md:flex gap-1 pl-4">
                 <button type="button" onclick="switchTab('dashboard')" id="top-btn-dashboard" class="top-nav-link text-brand-red font-bold border-b-2 border-brand-red pb-1 text-xs font-lao px-3 py-1.5">Dashboard</button>
                 <button type="button" onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">Monthly Schedule</button>
@@ -191,8 +250,8 @@
             </nav>
         </div>
         
-        <div class="flex items-center gap-3">
-            <!-- NOTIFICATION BELL -->
+        <div class="flex items-center gap-2 md:gap-3">
+            <!-- Notification Bell -->
             <div class="relative flex items-center">
                 <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 transition relative cursor-pointer flex items-center justify-center shadow-sm" title="ການແຈ້ງເຕືອນ">
                     <span class="material-symbols-outlined text-[22px]">notifications</span>
@@ -220,7 +279,7 @@
                 <span class="w-2 h-2 rounded-full bg-amber-500"></span> 💾 Trial Mode
             </div>
             
-            <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
                 <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border-2 border-brand-red/30 bg-red-50" src="" alt="Profile"/>
                 <div class="text-left font-lao hidden sm:block">
                     <p class="text-xs font-bold text-slate-800" id="topUserName">User</p>
@@ -236,7 +295,7 @@
     <!-- ================= MAIN WRAPPER ================= -->
     <div class="flex flex-1 overflow-hidden">
         
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR (DESKTOP) -->
         <aside class="w-60 bg-white border-r border-slate-200 flex-col py-6 px-4 shrink-0 hidden md:flex">
             <div class="mb-4 px-2">
                 <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Main Menu</h2>
@@ -271,7 +330,7 @@
         </aside>
 
         <!-- ================= 2. DASHBOARD VIEW ================= -->
-        <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50">
+        <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full flex flex-col gap-6">
                 
                 <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
@@ -398,7 +457,7 @@
         </main>
 
         <!-- ================= 3. MONTHLY SCHEDULE BUILDER ================= -->
-        <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
+        <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100 pb-20 md:pb-0">
             <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 font-lao shadow-sm">
                 <div class="flex flex-wrap items-center gap-2">
@@ -428,7 +487,6 @@
                     <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer">
                         <span class="material-symbols-outlined text-sm text-indigo-700">psychology</span> Random ຕາມໝວດກຸ່ມ
                     </button>
-                    <!-- ⭐ Reset Button (Triggers In-App Ask Dialog) -->
                     <button type="button" onclick="promptResetSchedule()" class="admin-only px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">delete_sweep</span> Reset
                     </button>
@@ -493,7 +551,7 @@
         </main>
 
         <!-- ================= 4. GROUP & TEAM SCHEDULING MANAGEMENT ================= -->
-        <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50 font-lao">
+        <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div>
@@ -511,7 +569,7 @@
         </main>
 
         <!-- ================= 5. EMPLOYEES MANAGEMENT ================= -->
-        <main id="view-employees" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col gap-6 bg-slate-50 font-lao">
+        <main id="view-employees" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div>
@@ -541,7 +599,7 @@
         </main>
 
         <!-- ================= 6. MY PROFILE / ADMIN CENTRAL REPORT HUB ================= -->
-        <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 flex-col bg-slate-50 font-lao">
+        <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 
                 <div class="border-b border-slate-200 pb-3 flex justify-between items-center">
@@ -746,6 +804,30 @@
 
     </div>
 
+    <!-- ================= ⭐ MOBILE BOTTOM NAVIGATION BAR (FIXED FOR MOBILE) ================= -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 flex justify-around items-center h-16 px-1 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] font-lao">
+        <button type="button" onclick="switchTab('dashboard')" id="mob-nav-dashboard" class="mob-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-brand-red font-bold transition">
+            <span class="material-symbols-outlined text-[22px]">dashboard</span>
+            <span class="text-[9px] mt-0.5">Dashboard</span>
+        </button>
+        <button type="button" onclick="switchTab('schedule')" id="mob-nav-schedule" class="mob-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-slate-500 font-medium transition">
+            <span class="material-symbols-outlined text-[22px]">table_view</span>
+            <span class="text-[9px] mt-0.5">ຕາຕະລາງ</span>
+        </button>
+        <button type="button" onclick="switchTab('groups')" id="mob-nav-groups" class="mob-nav-btn admin-only flex flex-col items-center justify-center flex-1 py-1 text-slate-500 font-medium transition">
+            <span class="material-symbols-outlined text-[22px]">category</span>
+            <span class="text-[9px] mt-0.5">ໝວດກຸ່ມ</span>
+        </button>
+        <button type="button" onclick="switchTab('employees')" id="mob-nav-employees" class="mob-nav-btn admin-only flex flex-col items-center justify-center flex-1 py-1 text-slate-500 font-medium transition">
+            <span class="material-symbols-outlined text-[22px]">group</span>
+            <span class="text-[9px] mt-0.5">ພະນັກງານ</span>
+        </button>
+        <button type="button" onclick="switchTab('profile')" id="mob-nav-profile" class="mob-nav-btn flex flex-col items-center justify-center flex-1 py-1 text-slate-500 font-medium transition">
+            <span class="material-symbols-outlined text-[22px]">account_circle</span>
+            <span class="text-[9px] mt-0.5">Workspace</span>
+        </button>
+    </nav>
+
     <!-- ================= CELL SELECTOR MODAL ================= -->
     <div id="cellSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden font-lao">
@@ -839,7 +921,7 @@
         </div>
     </div>
 
-    <!-- ================= CREATE NEW SHEET MODAL ================= -->
+    <!-- ================= CREATE NEW SHEET MODAL (WITH COPY TEMPLATE) ================= -->
     <div id="newSheetModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
@@ -856,7 +938,6 @@
                     <input type="text" id="newSheetTitleInput" placeholder="ເຊັ່ນ: ຕາຕະລາງປະຈຳການ ທີມ 1 ປະຈຳເດືອນ 10/2026" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
                 </div>
                 
-                <!-- Option to Copy Template from Previous Month/Sheet -->
                 <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 space-y-1.5">
                     <label class="block font-bold text-amber-900">📋 ຄັດລອກຮູບແບບ/Template ຈາກຕາຕະລາງເກົ່າ:</label>
                     <select id="copyTemplateSourceSelect" onchange="previewTemplateSelection()" class="w-full border border-amber-300 rounded-xl p-2 outline-none bg-white text-slate-800 text-xs">
@@ -972,9 +1053,9 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT STATE, IN-APP DIALOGS & ENGINE ================= -->
+    <!-- ================= JAVASCRIPT STATE & ENGINE ================= -->
     <script>
-        // ⭐ IN-APP TOAST SYSTEM
+        // ⭐ 1. IN-APP TOAST SYSTEM
         let toastTimeout = null;
         function showToast(title, message, type = 'success') {
             const toast = document.getElementById('appToast');
@@ -1014,7 +1095,7 @@
             }
         }
 
-        // ⭐ IN-APP CONFIRMATION ASK MODAL (NO BROWSER POPUP)
+        // ⭐ IN-APP CONFIRMATION ASK DIALOG
         let confirmModalCallback = null;
         function askConfirm(title, message, callback, icon = 'help', btnText = 'ຢືນຢັນ (Confirm)') {
             document.getElementById('confirmModalTitle').innerText = title;
@@ -1033,6 +1114,21 @@
                 confirmModalCallback();
             }
             confirmModalCallback = null;
+        }
+
+        // ⭐ MOBILE DRAWER TOGGLE
+        function toggleMobileDrawer() {
+            const drawer = document.getElementById('mobileDrawer');
+            const backdrop = document.getElementById('mobileDrawerBackdrop');
+            if (!drawer || !backdrop) return;
+
+            if (drawer.classList.contains('-translate-x-full')) {
+                drawer.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                drawer.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
         }
 
         function detectDevice() {
@@ -1112,9 +1208,9 @@
 
         var currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         var users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
-        var activeSheetId = localStorage.getItem('ot_active_sheet_id_v13') || 'sheet-1';
-        var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_v13')) || [];
-        var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_v13')) || [
+        var activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
+        var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial2')) || [];
+        var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_trial2')) || [
             {
                 id: 'sheet-1',
                 monthKey: '2026-09',
@@ -1125,7 +1221,7 @@
             }
         ];
 
-        var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_v13')) || [
+        var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial2')) || [
             {
                 id: 'grp-1',
                 name: 'ກຸ່ມທີມບໍລິການຫຼັກ (ພັກ 1 ມື້ເສົາ/ອາທິດ + 1 ທິດພັກ 2 ມື້)',
@@ -1143,8 +1239,8 @@
         var annualBookings = [
             { id: 1, user: 'BCEL0765', nameLao: 'ແສງດາວ', startDate: '2026-10-12', endDate: '2026-10-15', days: 3, reason: 'ພັກຜ່ອນປະຈຳປີ', status: 'CONFIRMED' }
         ];
-        var swapHistory = JSON.parse(localStorage.getItem('ot_swaps_v13')) || [];
-        var systemNotifications = JSON.parse(localStorage.getItem('ot_sys_notifs_v13')) || [];
+        var swapHistory = JSON.parse(localStorage.getItem('ot_swaps_trial2')) || [];
+        var systemNotifications = JSON.parse(localStorage.getItem('ot_sys_notifs_trial2')) || [];
         var leavesList = [
             { id: 1, date: '2026-09-01', shift: 'shift1', empName: 'ບຸນຮັກ', reason: 'ລາປ່ວຍ' },
             { id: 2, date: '2026-09-01', shift: 'shift1', empName: 'ປະສົງສິນ', reason: 'ຕິດທຸລະກິດຄອບຄົວ' }
@@ -1161,12 +1257,12 @@
         }
 
         function saveAll() {
-            localStorage.setItem('ot_schedule_sheets_v13', JSON.stringify(scheduleSheets));
-            localStorage.setItem('ot_active_sheet_id_v13', activeSheetId);
-            localStorage.setItem('ot_holidays_v13', JSON.stringify(specialHolidayRanges));
-            localStorage.setItem('ot_emp_groups_v13', JSON.stringify(employeeGroups));
-            localStorage.setItem('ot_swaps_v13', JSON.stringify(swapHistory));
-            localStorage.setItem('ot_sys_notifs_v13', JSON.stringify(systemNotifications));
+            localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(scheduleSheets));
+            localStorage.setItem('ot_active_sheet_id_trial2', activeSheetId);
+            localStorage.setItem('ot_holidays_trial2', JSON.stringify(specialHolidayRanges));
+            localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(employeeGroups));
+            localStorage.setItem('ot_swaps_trial2', JSON.stringify(swapHistory));
+            localStorage.setItem('ot_sys_notifs_trial2', JSON.stringify(systemNotifications));
         }
 
         function isDateInHolidayRange(dStr) {
@@ -1181,28 +1277,53 @@
             }
 
             document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+            
+            // Desktop Top Buttons
+            document.querySelectorAll('.top-nav-link').forEach(b => {
+                b.classList.remove('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red');
+                b.classList.add('text-slate-600');
+            });
+            // Desktop Sidebar Buttons
             document.querySelectorAll('.side-nav-btn').forEach(b => {
                 b.classList.remove('bg-red-50', 'text-brand-red', 'font-bold');
                 b.classList.add('text-slate-600');
             });
-            document.querySelectorAll('.top-nav-link').forEach(b => {
-                b.classList.remove('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red');
+            // Mobile Bottom Nav Buttons
+            document.querySelectorAll('.mob-nav-btn').forEach(b => {
+                b.classList.remove('text-brand-red', 'font-bold');
+                b.classList.add('text-slate-500', 'font-medium');
+            });
+            // Mobile Drawer Buttons
+            document.querySelectorAll('.mob-side-btn').forEach(b => {
+                b.classList.remove('bg-red-50', 'text-brand-red', 'font-bold');
                 b.classList.add('text-slate-600');
             });
 
             var targetView = document.getElementById(`view-${tabId}`);
             if (targetView) targetView.classList.add('active');
             
+            // Highlight Desktop
+            var top = document.getElementById(`top-btn-${tabId}`);
+            if (top) {
+                top.classList.add('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red');
+                top.classList.remove('text-slate-600');
+            }
             var side = document.getElementById(`side-${tabId}`);
             if (side) {
                 side.classList.add('bg-red-50', 'text-brand-red', 'font-bold');
                 side.classList.remove('text-slate-600');
             }
-            
-            var top = document.getElementById(`top-btn-${tabId}`);
-            if (top) {
-                top.classList.add('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red');
-                top.classList.remove('text-slate-600');
+            // Highlight Mobile Bottom
+            var mobNav = document.getElementById(`mob-nav-${tabId}`);
+            if (mobNav) {
+                mobNav.classList.add('text-brand-red', 'font-bold');
+                mobNav.classList.remove('text-slate-500', 'font-medium');
+            }
+            // Highlight Mobile Drawer
+            var mobSide = document.getElementById(`mob-side-${tabId}`);
+            if (mobSide) {
+                mobSide.classList.add('bg-red-50', 'text-brand-red', 'font-bold');
+                mobSide.classList.remove('text-slate-600');
             }
 
             if (tabId === 'dashboard') renderDashboard();
@@ -1433,6 +1554,7 @@
             document.getElementById('shift2TimeText').innerText = isWeekendOrHol ? '13:30 - 19:00' : '12:00 - 20:00';
             document.getElementById('shift3TimeText').innerText = isWeekendOrHol ? '19:00 - 08:00' : '20:00 - 08:00';
 
+            // AGGREGATE ALL TEAMS
             var allS1ByTeam = [];
             var allS2ByTeam = [];
             var allS3ByTeam = [];
@@ -1473,6 +1595,7 @@
 
             updateLiveShiftIndicators(isWeekendOrHol);
 
+            // Combined Activity
             document.getElementById('dashActivityDateLabel').innerText = `ວັນທີ ${date}`;
 
             var dayLeaves = leavesList.filter(l => l.date === date);
@@ -1585,7 +1708,7 @@
             }
         }
 
-        // ================= MONTHLY SCHEDULE ENGINE (CLONE TEMPLATE SUPPORT) =================
+        // ================= MONTHLY SCHEDULE ENGINE =================
         function renderSheetDropdown() {
             var select = document.getElementById('scheduleSheetSelect');
             if (!select) return;
@@ -2077,7 +2200,6 @@
             var leadersInGroup = targetMembers.filter(name => users.find(u => u.nameLao === name && u.isLeader));
             var normalStaffInGroup = targetMembers.filter(name => !users.find(u => u.nameLao === name && u.isLeader));
 
-            // Fallback list of leaders if group has few leaders
             var allFourLeaders = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
             var leaderPool = leadersInGroup.length >= 4 ? leadersInGroup : allFourLeaders;
 
@@ -2750,6 +2872,7 @@
         window.handleCreateSwap = handleCreateSwap;
         window.acceptSwap = acceptSwap;
         window.declineSwap = declineSwap;
+        window.toggleMobileDrawer = toggleMobileDrawer;
     </script>
 </body>
 </html>
