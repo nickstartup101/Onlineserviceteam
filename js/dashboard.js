@@ -1,4 +1,3 @@
-javascript
 function renderDashboard() {
     var date = document.getElementById('dashDateInput').value;
     var isWeekend = new Date(date).getDay() === 6 || new Date(date).getDay() === 0;
