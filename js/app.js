@@ -1,4 +1,3 @@
-javascript
 // MASTER PRESET USERS (25 Staff)
 var MASTER_USERS_DEFAULT = [
     { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
