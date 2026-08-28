@@ -1,5 +1,14 @@
 // ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE =================
 
+function openEditPublishedScheduleGuide() {
+    var sheet = getActiveSheet();
+    if (sheet.status !== 'PUBLISHED') {
+        showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງນີ້ຍັງເປັນສະບັບຮ່າງ (Draft) ສາມາດຄລິກແກ້ໄຂໄດ້ເລີຍປົກກະຕິ', 'info');
+        return;
+    }
+    showToast('ວິທີດັດແກ້', 'ທ່ານສາມາດຄລິກໃສ່ຊ່ອງພະນັກງານໃນຕາຕະລາງໄດ້ເລີຍ ລະບົບຈະຖາມເຫດຜົນ (Remark) ແລະ Highlight ໃຫ້ອັດຕະໂນມັດ', 'info');
+}
+
 function openFixedShiftModal() {
     var userSelect = document.getElementById('fixedShiftUserSelect');
     if (userSelect) {
@@ -28,7 +37,7 @@ function renderActiveFixedShiftsList() {
             <div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">
                 <div>
                     <span class="font-bold text-slate-800">${f.nameLao}</span>
-                    <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">🔒 ${shiftLabel}</span>
+                    <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">ລັອກ ${shiftLabel}</span>
                 </div>
                 <button type="button" onclick="removeFixedShift(${idx})" class="text-brand-red hover:underline font-bold text-xs">ລຶບ</button>
             </div>
@@ -207,15 +216,15 @@ function executeGroupRandomSchedule() {
     } else {
         if (typeof window.renderUserCurrentWeekWorkspace === 'function') window.renderUserCurrentWeekWorkspace();
     }
-    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ສຳເລັດ!`, 'success');
+    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ສຳເລັດ!`, 'success');
 }
 
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
     if (select) {
-        select.innerHTML = `<option value="ALL">⭐ ພະນັກງານທັງໝົດ (All Staff)</option>`;
+        select.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
         (window.employeeGroups || []).forEach(grp => {
-            select.innerHTML += `<option value="${grp.id}">👥 ${grp.name} (${grp.members.length} ຄົນ)</option>`;
+            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)</option>`;
         });
     }
     document.getElementById('batchMonthModal')?.classList.remove('hidden');
@@ -303,17 +312,17 @@ function renderScheduleTable() {
         if (isOfficial) {
             banner.className = "px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs";
             badge.className = "font-bold text-emerald-800 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ✅ ຕາຕະລາງທາງການ (Published Official)`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)`;
         } else {
             banner.className = "px-6 py-2.5 bg-amber-100/90 border-b border-amber-300 flex justify-between items-center text-xs";
             badge.className = "font-bold text-amber-900 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">warning</span> ⚠️ ສະບັບຮ່າງລ່ວງໜ້າ (ຍັງບໍ່ເປັນທາງການ - ສຳລັບວາງແຜນພັກຜ່ອນ)`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ (ຍັງບໍ່ເປັນທາງການ - ສຳລັບວາງແຜນພັກຜ່ອນ)`;
         }
     }
 
     var sheetLogs = (window.scheduleAuditLogs || []).filter(l => l.sheetId === sheet.id);
     if (modCountText) {
-        modCountText.innerText = sheetLogs.length > 0 ? `✏️ ມີການດັດແກ້ຫຼັງ Publish: ${sheetLogs.length} ຈຸດ` : '';
+        modCountText.innerHTML = sheetLogs.length > 0 ? `<span class="material-symbols-outlined text-xs text-amber-700">history_edu</span> ມີການດັດແກ້: ${sheetLogs.length} ຈຸດ` : '';
     }
 
     var tbody = document.getElementById('scheduleTableBody');
@@ -374,14 +383,14 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var clickHandler = isAdmin ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
 
         var isModified = (window.scheduleAuditLogs || []).some(l => l.sheetId === sheetId && l.date === date && l.shift === shift && l.newName === name);
-        var highlightClass = isModified ? 'bg-amber-200/80 font-bold text-amber-950 border-amber-400 ring-1 ring-amber-400' : '';
+        var highlightClass = isModified ? 'bg-amber-200/90 font-bold text-amber-950 border-2 border-amber-500 shadow-inner' : '';
 
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
         html += `
-            <div class="grid-cell-box ${borderR} ${borderB} ${isAdmin ? 'editable' : ''} ${highlightClass} ${isLeader ? 'text-brand-red font-semibold' : 'text-slate-800'}" ${clickHandler} title="${isModified ? '✏️ ຊ່ອງນີ້ມີການປັບປ່ຽນຫຼັງ Publish' : ''}">
-                ${name} ${isModified ? '<span class="text-[9px] ml-0.5">✏️</span>' : ''}
+            <div class="grid-cell-box ${borderR} ${borderB} ${isAdmin ? 'editable' : ''} ${highlightClass} ${isLeader ? 'text-brand-red font-semibold' : 'text-slate-800'}" ${clickHandler}>
+                ${name}
             </div>
         `;
     }
@@ -492,7 +501,7 @@ function renderSheetDropdown() {
     window.scheduleSheets.forEach(sheet => {
         var opt = document.createElement('option');
         opt.value = sheet.id;
-        opt.innerText = (sheet.status === 'PUBLISHED' ? '✅ ' : '⚠️ [Draft] ') + sheet.title;
+        opt.innerText = (sheet.status === 'PUBLISHED' ? '[ທາງການ] ' : '[ສະບັບຮ່າງ] ') + sheet.title;
         if (sheet.id === window.activeSheetId) opt.selected = true;
         select.appendChild(opt);
     });
@@ -526,24 +535,6 @@ function handleCreateNewSheet() {
     showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
 }
 
-function openDuplicateSheetModal() {
-    var sheet = getActiveSheet();
-    var month = prompt('ກະລຸນາໃສ່ເດືອນທີ່ຕ້ອງການ Clone (ເຊັ່ນ: 2026-11):', '2026-11');
-    if (!month) return;
-    var [y, m] = month.split('-').map(Number);
-    var newId = 'sheet-' + Date.now();
-    var title = `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${m < 10 ? '0' + m : m}/${y}`;
-    var clonedData = JSON.parse(JSON.stringify(sheet.data));
-
-    window.scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: sheet.notes || window.defaultNotesTemplate, status: 'DRAFT', data: clonedData });
-    window.activeSheetId = newId;
-    saveAll();
-    renderSheetDropdown();
-    renderScheduleTable();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    showToast('ສຳເລັດ', `ຄັດລອກ Template ໄປເດືອນ ${month} ແລ້ວ!`, 'success');
-}
-
 function openEditSheetInfoModal() {
     var sheet = getActiveSheet();
     document.getElementById('editSheetTitleInput').value = sheet.title;
@@ -569,7 +560,7 @@ function promptResetSchedule() {
         saveAll();
         renderScheduleTable();
         showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງແລ້ວ', 'success');
-    }, 'delete_sweep', 'Reset');
+    }, 'restart_alt', 'Reset');
 }
 
 function promptDeleteCurrentSheet() {
@@ -675,7 +666,7 @@ function openRandomGroupSelectModal() {
     select.innerHTML = '';
     var optAll = document.createElement('option');
     optAll.value = 'ALL';
-    optAll.innerText = '⭐ ພະນັກງານທັງໝົດ (All Staff)';
+    optAll.innerText = 'ພະນັກງານທັງໝົດ (All Staff)';
     select.appendChild(optAll);
 
     window.employeeGroups.forEach(grp => {
@@ -688,6 +679,7 @@ function openRandomGroupSelectModal() {
 }
 
 // ຜູກທຸກ Function ເຂົ້າ window.
+window.openEditPublishedScheduleGuide = openEditPublishedScheduleGuide;
 window.renderScheduleTable = renderScheduleTable;
 window.renderSheetDropdown = renderSheetDropdown;
 window.changeActiveSheet = changeActiveSheet;
@@ -703,7 +695,6 @@ window.handleAddFixedShift = handleAddFixedShift;
 window.removeFixedShift = removeFixedShift;
 window.openNewSheetModal = openNewSheetModal;
 window.handleCreateNewSheet = handleCreateNewSheet;
-window.openDuplicateSheetModal = openDuplicateSheetModal;
 window.openEditSheetInfoModal = openEditSheetInfoModal;
 window.handleSaveSheetInfo = handleSaveSheetInfo;
 window.promptResetSchedule = promptResetSchedule;
