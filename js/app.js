@@ -29,23 +29,23 @@ var MASTER_USERS_DEFAULT = [
 
 var defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
-// State Initialization
+// Load Storage
 var savedUsers = JSON.parse(localStorage.getItem('ot_users_master'));
-var users = (savedUsers && savedUsers.length > 0) ? savedUsers : MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
+window.users = (savedUsers && savedUsers.length > 0) ? savedUsers : MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
 
-var currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
-var activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
-var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial2')) || [];
+window.currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
+window.activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
+window.specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial2')) || [];
 
-var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial2')) || [
+window.employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial2')) || [
     {
         id: 'grp-main',
         name: 'ກຸ່ມພະນັກງານຫຼັກ (Zigzag 24/7)',
-        members: users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao)
+        members: window.users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao)
     }
 ];
 
-var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_trial2')) || [
+window.scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_trial2')) || [
     {
         id: 'sheet-1',
         monthKey: '2026-09',
@@ -56,40 +56,43 @@ var scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_trial2'
     }
 ];
 
-var swapHistory = JSON.parse(localStorage.getItem('ot_swaps_trial2')) || [];
-var leavesList = [
+window.fixedShiftsConfig = JSON.parse(localStorage.getItem('ot_fixed_shifts_cfg')) || [];
+window.scheduleAuditLogs = JSON.parse(localStorage.getItem('ot_schedule_audit_logs')) || [];
+window.swapHistory = JSON.parse(localStorage.getItem('ot_swaps_trial2')) || [];
+window.leavesList = [
     { id: 1, date: '2026-09-01', shift: 'shift1', empName: 'ບຸນຮັກ', reason: 'ລາປ່ວຍ' }
 ];
 
-var activeEditCell = null;
-var EPOCH_MONDAY = new Date('2026-01-05T00:00:00Z');
+window.activeEditCell = null;
+window.EPOCH_MONDAY = new Date('2026-01-05T00:00:00Z');
 
 function getGlobalWeekIndex(dateObj) {
-    var diffMs = dateObj.getTime() - EPOCH_MONDAY.getTime();
+    var diffMs = dateObj.getTime() - window.EPOCH_MONDAY.getTime();
     var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return Math.floor(diffDays / 7);
 }
 
 function getActiveSheet() {
-    var s = scheduleSheets.find(sheet => sheet.id === activeSheetId);
-    if (!s) { activeSheetId = scheduleSheets[0]?.id || 'sheet-1'; s = scheduleSheets[0]; }
+    var s = window.scheduleSheets.find(sheet => sheet.id === window.activeSheetId);
+    if (!s) { window.activeSheetId = window.scheduleSheets[0]?.id || 'sheet-1'; s = window.scheduleSheets[0]; }
     return s;
 }
 
 function saveAll() {
-    localStorage.setItem('ot_users_master', JSON.stringify(users));
-    localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(scheduleSheets));
-    localStorage.setItem('ot_active_sheet_id_trial2', activeSheetId);
-    localStorage.setItem('ot_holidays_trial2', JSON.stringify(specialHolidayRanges));
-    localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(employeeGroups));
-    localStorage.setItem('ot_swaps_trial2', JSON.stringify(swapHistory));
+    localStorage.setItem('ot_users_master', JSON.stringify(window.users));
+    localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
+    localStorage.setItem('ot_active_sheet_id_trial2', window.activeSheetId);
+    localStorage.setItem('ot_holidays_trial2', JSON.stringify(window.specialHolidayRanges));
+    localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(window.employeeGroups));
+    localStorage.setItem('ot_swaps_trial2', JSON.stringify(window.swapHistory));
+    localStorage.setItem('ot_fixed_shifts_cfg', JSON.stringify(window.fixedShiftsConfig));
+    localStorage.setItem('ot_schedule_audit_logs', JSON.stringify(window.scheduleAuditLogs));
 }
 
 function isDateInHolidayRange(dStr) {
-    return specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
+    return window.specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
 }
 
-// In-App Toast & Confirmation
 function showToast(title, message, type = 'success') {
     var toast = document.getElementById('appToast');
     if (!toast) return;
@@ -130,7 +133,6 @@ function toggleMobileDrawer() {
 function toggleNotificationDropdown() { document.getElementById('notifDropdown')?.classList.toggle('hidden'); }
 function markAllNotificationsAsRead() { showToast('ສຳເລັດ', 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດ', 'success'); }
 
-// Tab Navigation Switcher
 function switchTab(tabId) {
     document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.top-nav-link').forEach(b => { b.classList.remove('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red'); b.classList.add('text-slate-600'); });
@@ -149,12 +151,11 @@ function switchTab(tabId) {
     if (tabId === 'groups') renderGroupsTab();
     if (tabId === 'employees') renderEmployeesTable();
     if (tabId === 'profile') {
-        if (currentUser && currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
+        if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
         else renderUserCurrentWeekWorkspace();
     }
 }
 
-// Initialize on DOM load
 window.addEventListener('DOMContentLoaded', () => {
     saveAll();
     checkAuth();
