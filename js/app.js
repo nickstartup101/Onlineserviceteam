@@ -27,13 +27,11 @@ window.MASTER_USERS_DEFAULT = [
     { user: 'BCEL2580', pass: 'bcel2026', fullName: 'NALONGSAK YASENG', nameLao: 'ນະລົງສັກ', role: 'STAFF', isLeader: false }
 ];
 
-var defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
+window.defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
 // Load Storage
 var savedUsers = JSON.parse(localStorage.getItem('ot_users_master'));
 window.users = (savedUsers && savedUsers.length > 0) ? savedUsers : window.MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
-
-// ປະກາດຕົວປ່ຽນ Global ທັງ 2 ແບບ ເພື່ອປ້ອງກັນ ReferenceError 100%
 var users = window.users;
 
 window.currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
@@ -53,7 +51,7 @@ window.scheduleSheets = JSON.parse(localStorage.getItem('ot_schedule_sheets_tria
         id: 'sheet-1',
         monthKey: '2026-09',
         title: 'ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026',
-        notes: defaultNotesTemplate,
+        notes: window.defaultNotesTemplate,
         status: 'PUBLISHED',
         data: {}
     }
@@ -189,6 +187,7 @@ function markAllNotificationsAsRead() {
     showToast('ສຳເລັດ', 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດ', 'success');
 }
 
+// Global Tab Switcher ພ້ອມກວດສອບ Function ແບບປອດໄພ
 function switchTab(tabId) {
     document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.top-nav-link').forEach(b => { b.classList.remove('border-b-2', 'border-brand-red', 'font-bold', 'text-brand-red'); b.classList.add('text-slate-600'); });
@@ -202,20 +201,36 @@ function switchTab(tabId) {
     var side = document.getElementById(`side-${tabId}`);
     if (side) { side.classList.add('bg-red-50', 'text-brand-red', 'font-bold'); side.classList.remove('text-slate-600'); }
 
-    if (tabId === 'dashboard') renderDashboard();
-    if (tabId === 'schedule') renderScheduleTable();
-    if (tabId === 'groups') renderGroupsTab();
-    if (tabId === 'employees') renderEmployeesTable();
+    if (tabId === 'dashboard' && typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (tabId === 'schedule' && typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+    if (tabId === 'groups' && typeof window.renderGroupsTab === 'function') window.renderGroupsTab();
+    if (tabId === 'employees' && typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
     if (tabId === 'profile') {
-        if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
-        else renderUserCurrentWeekWorkspace();
+        if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') {
+            if (typeof window.renderAdminAllStaffReport === 'function') window.renderAdminAllStaffReport();
+        } else {
+            if (typeof window.renderUserCurrentWeekWorkspace === 'function') window.renderUserCurrentWeekWorkspace();
+        }
     }
 }
 
+window.switchTab = switchTab;
+window.getGlobalWeekIndex = getGlobalWeekIndex;
+window.getActiveSheet = getActiveSheet;
+window.saveAll = saveAll;
+window.showToast = showToast;
+window.hideToast = hideToast;
+window.askConfirm = askConfirm;
+window.closeConfirmModal = closeConfirmModal;
+window.toggleMobileDrawer = toggleMobileDrawer;
+window.toggleNotificationDropdown = toggleNotificationDropdown;
+window.updateNotificationBadge = updateNotificationBadge;
+window.markAllNotificationsAsRead = markAllNotificationsAsRead;
+
 window.addEventListener('DOMContentLoaded', () => {
     saveAll();
-    checkAuth();
-    if (Object.keys(getActiveSheet().data || {}).length === 0) {
-        executeGroupRandomSchedule();
+    if (typeof window.checkAuth === 'function') window.checkAuth();
+    if (Object.keys(getActiveSheet().data || {}).length === 0 && typeof window.executeGroupRandomSchedule === 'function') {
+        window.executeGroupRandomSchedule();
     }
 });
