@@ -1,17 +1,82 @@
-javascript
-function generateMonthDataZigzag(year, month, targetGroupMembers) {
+// ================= ⭐ SMART ZIGZAG SCHEDULE GENERATION ALGORITHM =================
+
+// 1. ສູດສຳລັບທີມ 7 ຄົນ (Flexible 24/7: ກະ1=3, ກະ2=1, ກະ3=1, ພັກ 2 ມື້/ອາທິດ)
+function generate7PersonFlexZigzag(year, month, staffList) {
+    var daysCount = new Date(year, month, 0).getDate();
+    var data = {};
+    var N = staffList.length; // 7 ຄົນ
+
+    // ຕາຕະລາງມື້ພັກ 2 ມື້ຕໍ່ອາທິດຂອງ 7 ຄົນ (ໝູນວຽນແບບຄົງທີ່ບໍ່ຊ້ອນກັນ)
+    // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+    var offDaysPattern = [
+        [0, 1], // ຄົນທີ 0: ພັກ ຈັນ-ອັງຄານ
+        [1, 2], // ຄົນທີ 1: ພັກ ອັງຄານ-ພຸດ
+        [2, 3], // ຄົນທີ 2: ພັກ ພຸດ-ພະຫັດ
+        [3, 4], // ຄົນທີ 3: ພັກ ພະຫັດ-ສຸກ
+        [4, 5], // ຄົນທີ 4: ພັກ ສຸກ-ເສົາ
+        [5, 6], // ຄົນທີ 5: ພັກ ເສົາ-ອາທິດ
+        [6, 0]  // ຄົນທີ 6: ພັກ ອາທິດ-ຈັນ
+    ];
+
+    for (var i = 1; i <= daysCount; i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = `${year}-${mNum}-${dayNum}`;
+        var dateObj = new Date(Date.UTC(year, month - 1, i));
+        var dayOfWeek = (dateObj.getUTCDay() + 6) % 7; // 0 = Mon, ..., 6 = Sun
+        var W = getGlobalWeekIndex(dateObj);
+
+        // ໝູນວຽນລຳດັບພະນັກງານຕາມອາທິດ (Zigzag Wheel: 3 -> 2 -> 1)
+        var weeklyRotatedStaff = [];
+        for (var r = 0; r < N; r++) {
+            weeklyRotatedStaff.push(staffList[(r + W) % N]);
+        }
+
+        // ແຍກຄົນເຮັດວຽກ ແລະ ຄົນພັກຜ່ອນໃນມື້ນີ້
+        var workingToday = [];
+        var offToday = [];
+
+        for (var sIdx = 0; sIdx < N; sIdx++) {
+            var originalStaffIndex = staffList.indexOf(weeklyRotatedStaff[sIdx]);
+            var myOffDays = offDaysPattern[originalStaffIndex];
+
+            if (myOffDays.includes(dayOfWeek)) {
+                offToday.push(weeklyRotatedStaff[sIdx]);
+            } else {
+                workingToday.push(weeklyRotatedStaff[sIdx]);
+            }
+        }
+
+        // ຈັດສັນເຂົ້າ 3 ກະ (workingToday ມີ 5 ຄົນສະເໝີ: ກະ3 = 1, ກະ2 = 1, ກະ1 = 3)
+        // workingToday[0] -> ກະ 3 (Night)
+        // workingToday[1] -> ກະ 2 (Afternoon)
+        // workingToday[2,3,4] -> ກະ 1 (Morning 3 ຄົນ)
+        data[dStr] = {
+            isWeekend: (dayOfWeek === 5 || dayOfWeek === 6), // ສຳລັບສະແດງສີ
+            shift1: [workingToday[2] || '', workingToday[3] || '', workingToday[4] || ''],
+            shift2: [workingToday[1] || ''],
+            shift3: [workingToday[0] || '']
+        };
+    }
+    return data;
+}
+
+// 2. ສູດສຳລັບທີມໃຫຍ່ປົກກະຕິ (Standard Multi-Person Team)
+function generateStandardMonthDataZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
 
-    var allStaff = users.filter(u => u.role !== 'SUPER_ADMIN' && (!targetGroupMembers || targetGroupMembers.includes(u.nameLao)));
-    var leaderNames = allStaff.filter(u => u.isLeader).map(u => u.nameLao);
-    if (leaderNames.length < 4) leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
+    var leaderNames = staffList.filter(name => {
+        var u = window.users.find(usr => usr.nameLao === name);
+        return u && u.isLeader;
+    });
 
-    var regularStaff = allStaff.filter(u => !leaderNames.includes(u.nameLao)).map(u => u.nameLao);
+    if (leaderNames.length < 4) leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(n => staffList.includes(n));
+    var regularStaff = staffList.filter(n => !leaderNames.includes(n));
     var N = regularStaff.length;
 
-    var s3Count = Math.floor(N / 3);
-    var s2Count = Math.floor(N / 3);
+    var s3Count = Math.max(1, Math.floor(N / 3));
+    var s2Count = Math.max(1, Math.floor(N / 3));
     var s1Count = N - s3Count - s2Count;
 
     for (var i = 1; i <= daysCount; i++) {
@@ -21,15 +86,14 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
         var dateObj = new Date(Date.UTC(year, month - 1, i));
         var dayOfWeek = dateObj.getUTCDay();
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
-
         var W = getGlobalWeekIndex(dateObj);
 
-        var l_1A = leaderNames[(0 + W) % 4];
-        var l_1B = leaderNames[(1 + W) % 4];
-        var l_S2 = leaderNames[(2 + W) % 4];
-        var l_S3 = leaderNames[(3 + W) % 4];
+        var l_1A = leaderNames.length > 0 ? leaderNames[(0 + W) % leaderNames.length] : '';
+        var l_1B = leaderNames.length > 1 ? leaderNames[(1 + W) % leaderNames.length] : '';
+        var l_S2 = leaderNames.length > 2 ? leaderNames[(2 + W) % leaderNames.length] : '';
+        var l_S3 = leaderNames.length > 3 ? leaderNames[(3 + W) % leaderNames.length] : '';
 
-        var shiftOffset = (W * s3Count) % N;
+        var shiftOffset = (W * s3Count) % (N || 1);
         var rotatedStaff = [];
         for (var r = 0; r < N; r++) {
             rotatedStaff.push(regularStaff[(r + shiftOffset) % N]);
@@ -43,20 +107,38 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
             var isSat = (dayOfWeek === 6);
             data[dStr] = {
                 isWeekend: true,
-                shift1: isSat ? [l_1A, staff_S1[0] || ''] : [l_1B, staff_S1[1] || ''],
-                shift2: isSat ? [l_S2, staff_S2[0] || ''] : [staff_S2[1] || '', staff_S2[2] || ''],
-                shift3: isSat ? [l_S3, staff_S3[0] || ''] : [staff_S3[1] || '', staff_S3[2] || '']
+                shift1: isSat ? [l_1A, staff_S1[0] || ''].filter(Boolean) : [l_1B, staff_S1[1] || ''].filter(Boolean),
+                shift2: isSat ? [l_S2, staff_S2[0] || ''].filter(Boolean) : [staff_S2[1] || '', staff_S2[2] || ''].filter(Boolean),
+                shift3: isSat ? [l_S3, staff_S3[0] || ''].filter(Boolean) : [staff_S3[1] || '', staff_S3[2] || ''].filter(Boolean)
             };
         } else {
             data[dStr] = {
                 isWeekend: false,
-                shift1: [l_1A, l_1B, ...staff_S1],
-                shift2: [l_S2, ...staff_S2],
-                shift3: [l_S3, ...staff_S3]
+                shift1: [l_1A, l_1B, ...staff_S1].filter(Boolean),
+                shift2: [l_S2, ...staff_S2].filter(Boolean),
+                shift3: [l_S3, ...staff_S3].filter(Boolean)
             };
         }
     }
     return data;
+}
+
+// 3. Main Dispatcher Function
+function generateMonthDataZigzag(year, month, targetGroupMembers) {
+    // ກັ່ນຕອງສະເພາະຜູ້ທີ່ຢູ່ໃນກຸ່ມເທົ່ານັ້ນ
+    var staffList = [];
+    if (targetGroupMembers && targetGroupMembers.length > 0) {
+        staffList = [...targetGroupMembers];
+    } else {
+        staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
+    }
+
+    // ຖ້າກຸ່ມມີ 7 ຄົນ -> ໃຊ້ສູດ 7-Person Flex
+    if (staffList.length === 7) {
+        return generate7PersonFlexZigzag(year, month, staffList);
+    } else {
+        return generateStandardMonthDataZigzag(year, month, staffList);
+    }
 }
 
 function executeGroupRandomSchedule() {
@@ -66,28 +148,34 @@ function executeGroupRandomSchedule() {
     
     var members = null;
     if (selectedGrpId !== 'ALL') {
-        var found = employeeGroups.find(g => g.id === selectedGrpId);
-        if (found) members = found.members;
+        var found = window.employeeGroups.find(g => g.id === selectedGrpId);
+        if (found && found.members) members = found.members;
     }
 
     sheet.data = generateMonthDataZigzag(year, month, members);
     saveAll();
-    document.getElementById('randomGroupSelectModal').classList.add('hidden');
+    document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
     renderScheduleTable();
     renderDashboard();
-    renderAdminAllStaffReport();
-    renderUserCurrentWeekWorkspace();
-    showToast('Zigzag Rotation ສຳເລັດ', `ຈັດຕາຕະລາງຮອບວຽນ Zigzag ສຳເລັດ!`, 'success');
+    if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
+    else renderUserCurrentWeekWorkspace();
+    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ໃຫ້ສະມາຊິກໃນກຸ່ມສຳເລັດ!`, 'success');
 }
 
-function openBatchMonthModal() { document.getElementById('batchMonthModal').classList.remove('hidden'); }
+function openBatchMonthModal() { document.getElementById('batchMonthModal')?.classList.remove('hidden'); }
 
 function executeBatchMonthGenerate() {
-    var startM = document.getElementById('batchStartMonth').value;
-    var count = parseInt(document.getElementById('batchMonthCount').value) || 6;
+    var startM = document.getElementById('batchStartMonth')?.value;
+    var count = parseInt(document.getElementById('batchMonthCount')?.value) || 6;
     if (!startM) return;
 
     var [startYear, startMonth] = startM.split('-').map(Number);
+    var currentSheet = getActiveSheet();
+
+    // ກວດສອບກຸ່ມທີ່ຜູກກັບ Sheet ປັດຈຸບັນ
+    var selectedMembers = null;
+    var currentGrp = window.employeeGroups.find(g => currentSheet.title.includes(g.name));
+    if (currentGrp) selectedMembers = currentGrp.members;
 
     for (var c = 0; c < count; c++) {
         var targetDate = new Date(startYear, startMonth - 1 + c, 1);
@@ -97,13 +185,13 @@ function executeBatchMonthGenerate() {
         var monthKey = `${y}-${mStr}`;
         var title = `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${mStr}/${y}`;
 
-        var existingSheet = scheduleSheets.find(s => s.monthKey === monthKey);
-        var generatedData = generateMonthDataZigzag(y, m, null);
+        var existingSheet = window.scheduleSheets.find(s => s.monthKey === monthKey);
+        var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
 
         if (existingSheet) {
             existingSheet.data = generatedData;
         } else {
-            scheduleSheets.push({
+            window.scheduleSheets.push({
                 id: 'sheet-' + Date.now() + '-' + c,
                 monthKey: monthKey,
                 title: title,
@@ -114,12 +202,12 @@ function executeBatchMonthGenerate() {
         }
     }
 
-    activeSheetId = scheduleSheets.find(s => s.monthKey === `${startYear}-${startMonth < 10 ? '0' + startMonth : startMonth}`)?.id || scheduleSheets[0].id;
+    window.activeSheetId = window.scheduleSheets.find(s => s.monthKey === `${startYear}-${startMonth < 10 ? '0' + startMonth : startMonth}`)?.id || window.scheduleSheets[0].id;
     saveAll();
-    document.getElementById('batchMonthModal').classList.add('hidden');
+    document.getElementById('batchMonthModal')?.classList.add('hidden');
     renderScheduleTable();
     renderDashboard();
-    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
+    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງລ່ວງໜ້າ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
 }
 
 function renderScheduleTable() {
@@ -136,7 +224,7 @@ function renderScheduleTable() {
     var tbody = document.getElementById('scheduleTableBody');
     tbody.innerHTML = '';
     var dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    var isAdmin = currentUser && currentUser.role === 'SUPER_ADMIN';
+    var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
@@ -185,7 +273,7 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin) {
     var total = rows * cols;
     for (var idx = 0; idx < total; idx++) {
         var name = list[idx] || '';
-        var isLeader = users.find(u => u.nameLao === name && u.isLeader);
+        var isLeader = window.users.find(u => u.nameLao === name && u.isLeader);
         var clickHandler = isAdmin ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
@@ -199,44 +287,61 @@ function renderSheetDropdown() {
     var select = document.getElementById('scheduleSheetSelect');
     if (!select) return;
     select.innerHTML = '';
-    scheduleSheets.forEach(sheet => {
+    window.scheduleSheets.forEach(sheet => {
         var opt = document.createElement('option');
         opt.value = sheet.id;
         opt.innerText = sheet.title;
-        if (sheet.id === activeSheetId) opt.selected = true;
+        if (sheet.id === window.activeSheetId) opt.selected = true;
         select.appendChild(opt);
     });
 }
 
 function changeActiveSheet() {
-    activeSheetId = document.getElementById('scheduleSheetSelect').value;
+    window.activeSheetId = document.getElementById('scheduleSheetSelect').value;
     saveAll();
     renderScheduleTable();
     renderDashboard();
-    renderAdminAllStaffReport();
-    renderUserCurrentWeekWorkspace();
+    if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
+    else renderUserCurrentWeekWorkspace();
 }
 
-function openNewSheetModal() { document.getElementById('newSheetTitleInput').value = ''; document.getElementById('newSheetModal').classList.remove('hidden'); }
+function openNewSheetModal() { document.getElementById('newSheetTitleInput').value = ''; document.getElementById('newSheetModal')?.classList.remove('hidden'); }
 function handleCreateNewSheet() {
     var month = document.getElementById('newSheetMonthInput').value;
     var title = document.getElementById('newSheetTitleInput').value.trim() || `ຕາຕະລາງປະຈຳການ ${month}`;
     var [y, m] = month.split('-').map(Number);
     var newId = 'sheet-' + Date.now();
     var generated = generateMonthDataZigzag(y, m, null);
-    scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: defaultNotesTemplate, status: 'DRAFT', data: generated });
-    activeSheetId = newId;
+    window.scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: defaultNotesTemplate, status: 'DRAFT', data: generated });
+    window.activeSheetId = newId;
     saveAll();
-    document.getElementById('newSheetModal').classList.add('hidden');
+    document.getElementById('newSheetModal')?.classList.add('hidden');
     renderScheduleTable();
     showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
+}
+
+function openDuplicateSheetModal() {
+    var sheet = getActiveSheet();
+    var month = prompt('ກະລຸນາໃສ່ເດືອນທີ່ຕ້ອງການ Clone (ເຊັ່ນ: 2026-11):', '2026-11');
+    if (!month) return;
+    var [y, m] = month.split('-').map(Number);
+    var newId = 'sheet-' + Date.now();
+    var title = `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${m < 10 ? '0' + m : m}/${y}`;
+    var clonedData = JSON.parse(JSON.stringify(sheet.data));
+
+    window.scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: sheet.notes || defaultNotesTemplate, status: 'DRAFT', data: clonedData });
+    window.activeSheetId = newId;
+    saveAll();
+    renderScheduleTable();
+    renderDashboard();
+    showToast('ສຳເລັດ', `ຄັດລອກ Template ໄປເດືອນ ${month} ແລ້ວ!`, 'success');
 }
 
 function openEditSheetInfoModal() {
     var sheet = getActiveSheet();
     document.getElementById('editSheetTitleInput').value = sheet.title;
     document.getElementById('editSheetNotesInput').value = sheet.notes || defaultNotesTemplate;
-    document.getElementById('editSheetInfoModal').classList.remove('hidden');
+    document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
 }
 
 function handleSaveSheetInfo() {
@@ -244,7 +349,7 @@ function handleSaveSheetInfo() {
     sheet.title = document.getElementById('editSheetTitleInput').value.trim();
     sheet.notes = document.getElementById('editSheetNotesInput').value.trim();
     saveAll();
-    document.getElementById('editSheetInfoModal').classList.add('hidden');
+    document.getElementById('editSheetInfoModal')?.classList.add('hidden');
     renderScheduleTable();
     showToast('ສຳເລັດ', 'ບັນທຶກການແກ້ໄຂແລ້ວ', 'success');
 }
@@ -273,33 +378,33 @@ function exportToA4PDF() {
     }).from(document.getElementById('pdfExportArea')).save();
 }
 
-function openHolidayModal() { document.getElementById('holidayModal').classList.remove('hidden'); }
+function openHolidayModal() { document.getElementById('holidayModal')?.classList.remove('hidden'); }
 function handleSaveHolidayRange() {
     var title = document.getElementById('holidayTitleInput').value.trim();
     var start = document.getElementById('holidayStartDateInput').value;
     var end = document.getElementById('holidayEndDateInput').value;
     if (!title || !start || !end) return;
-    specialHolidayRanges.push({ title, start, end });
+    window.specialHolidayRanges.push({ title, start, end });
     saveAll();
-    document.getElementById('holidayModal').classList.add('hidden');
+    document.getElementById('holidayModal')?.classList.add('hidden');
     renderScheduleTable();
     renderDashboard();
     showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
 }
 
 function openCellModal(date, shift, index, currentName) {
-    if (!currentUser || currentUser.role !== 'SUPER_ADMIN') return;
-    activeEditCell = { date, shift, index, currentName };
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.activeEditCell = { date, shift, index, currentName };
     document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift}]`;
     renderCellStaffList('');
-    document.getElementById('cellSelectModal').classList.remove('hidden');
+    document.getElementById('cellSelectModal')?.classList.remove('hidden');
 }
 
-function closeCellModal() { document.getElementById('cellSelectModal').classList.add('hidden'); activeEditCell = null; }
+function closeCellModal() { document.getElementById('cellSelectModal')?.classList.add('hidden'); window.activeEditCell = null; }
 function renderCellStaffList(q) {
     var container = document.getElementById('cellStaffListContainer');
     container.innerHTML = '';
-    users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
+    window.users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
         container.innerHTML += `
             <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">
                 <span>${u.nameLao} (${u.fullName})</span>
@@ -310,8 +415,8 @@ function renderCellStaffList(q) {
 }
 function filterCellStaffList() { renderCellStaffList(document.getElementById('searchCellStaffInput').value.trim()); }
 function selectStaffForCell(nameLao) {
-    if (!activeEditCell) return;
-    var { date, shift, index } = activeEditCell;
+    if (!window.activeEditCell) return;
+    var { date, shift, index } = window.activeEditCell;
     var sheet = getActiveSheet();
     if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
     if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
@@ -321,8 +426,8 @@ function selectStaffForCell(nameLao) {
     renderScheduleTable();
 }
 function clearCurrentCell() {
-    if (!activeEditCell) return;
-    var { date, shift, index } = activeEditCell;
+    if (!window.activeEditCell) return;
+    var { date, shift, index } = window.activeEditCell;
     var sheet = getActiveSheet();
     if (sheet.data[date]?.[shift]) {
         sheet.data[date][shift][index] = '';
@@ -330,4 +435,21 @@ function clearCurrentCell() {
         closeCellModal();
         renderScheduleTable();
     }
+}
+function openRandomGroupSelectModal() {
+    var select = document.getElementById('randomSelectedGroupId');
+    if (!select) return;
+    select.innerHTML = '';
+    var optAll = document.createElement('option');
+    optAll.value = 'ALL';
+    optAll.innerText = '⭐ ພະນັກງານທັງໝົດ (All Staff)';
+    select.appendChild(optAll);
+
+    window.employeeGroups.forEach(grp => {
+        var opt = document.createElement('option');
+        opt.value = grp.id;
+        opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)`;
+        select.appendChild(opt);
+    });
+    document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
