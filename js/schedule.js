@@ -412,4 +412,157 @@ function clearCurrentCell() {
         var reason = prompt(`⚠️ ຕາຕະລາງນີ້ຖືກ Publish ແລ້ວ!\nກະລຸນາໃສ່ເຫດຜົນການລຶບ ${currentName} ອອກ:`, 'ຍົກເລີກກະປະຈຳການ');
         if (reason === null) return;
 
-        window.scheduleAuditLogs.unshift
+        window.scheduleAuditLogs.unshift({
+            id: Date.now(),
+            sheetId: sheet.id,
+            sheetTitle: sheet.title,
+            date: date,
+            shift: shift,
+            oldName: currentName,
+            newName: '(ວ່າງ)',
+            reason: reason || 'ລຶບອອກຈາກກະ',
+            adminName: window.currentUser.fullName || 'Admin',
+            timestamp: new Date().toLocaleString('lo-LA')
+        });
+    }
+
+    if (sheet.data[date]?.[shift]) {
+        sheet.data[date][shift][index] = '';
+        saveAll();
+        closeCellModal();
+        renderScheduleTable();
+    }
+}
+
+function renderSheetDropdown() {
+    var select = document.getElementById('scheduleSheetSelect');
+    if (!select) return;
+    select.innerHTML = '';
+    window.scheduleSheets.forEach(sheet => {
+        var opt = document.createElement('option');
+        opt.value = sheet.id;
+        opt.innerText = (sheet.status === 'PUBLISHED' ? '✅ ' : '⚠️ [Draft] ') + sheet.title;
+        if (sheet.id === window.activeSheetId) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+function changeActiveSheet() {
+    window.activeSheetId = document.getElementById('scheduleSheetSelect').value;
+    saveAll();
+    renderScheduleTable();
+    renderDashboard();
+    if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
+    else renderUserCurrentWeekWorkspace();
+}
+
+function openNewSheetModal() { document.getElementById('newSheetTitleInput').value = ''; document.getElementById('newSheetModal')?.classList.remove('hidden'); }
+function handleCreateNewSheet() {
+    var month = document.getElementById('newSheetMonthInput').value;
+    var title = document.getElementById('newSheetTitleInput').value.trim() || `ຕາຕະລາງປະຈຳການ ${month}`;
+    var [y, m] = month.split('-').map(Number);
+    var newId = 'sheet-' + Date.now();
+    var generated = generateMonthDataZigzag(y, m, null);
+    window.scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: defaultNotesTemplate, status: 'DRAFT', data: generated });
+    window.activeSheetId = newId;
+    saveAll();
+    document.getElementById('newSheetModal')?.classList.add('hidden');
+    renderScheduleTable();
+    showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
+}
+
+function openEditSheetInfoModal() {
+    var sheet = getActiveSheet();
+    document.getElementById('editSheetTitleInput').value = sheet.title;
+    document.getElementById('editSheetNotesInput').value = sheet.notes || defaultNotesTemplate;
+    document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
+}
+
+function handleSaveSheetInfo() {
+    var sheet = getActiveSheet();
+    sheet.title = document.getElementById('editSheetTitleInput').value.trim();
+    sheet.notes = document.getElementById('editSheetNotesInput').value.trim();
+    saveAll();
+    document.getElementById('editSheetInfoModal')?.classList.add('hidden');
+    renderScheduleTable();
+    showToast('ສຳເລັດ', 'ບັນທຶກການແກ້ໄຂແລ້ວ', 'success');
+}
+
+function promptResetSchedule() {
+    askConfirm('ຣີເຊັດຕາຕະລາງ', 'ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?', () => {
+        var sheet = getActiveSheet();
+        sheet.data = {};
+        saveAll();
+        renderScheduleTable();
+        showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງແລ້ວ', 'success');
+    }, 'delete_sweep', 'Reset');
+}
+
+function saveDraft() { getActiveSheet().status = 'DRAFT'; saveAll(); renderScheduleTable(); showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); }
+function publishSchedule() { getActiveSheet().status = 'PUBLISHED'; saveAll(); renderScheduleTable(); showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ', 'success'); }
+
+function exportToA4PDF() {
+    var sheet = getActiveSheet();
+    html2pdf().set({
+        margin: [3, 3, 3, 3],
+        filename: `${sheet.title}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(document.getElementById('pdfExportArea')).save();
+}
+
+function openHolidayModal() { document.getElementById('holidayModal')?.classList.remove('hidden'); }
+function handleSaveHolidayRange() {
+    var title = document.getElementById('holidayTitleInput').value.trim();
+    var start = document.getElementById('holidayStartDateInput').value;
+    var end = document.getElementById('holidayEndDateInput').value;
+    if (!title || !start || !end) return;
+    window.specialHolidayRanges.push({ title, start, end });
+    saveAll();
+    document.getElementById('holidayModal')?.classList.add('hidden');
+    renderScheduleTable();
+    renderDashboard();
+    showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
+}
+
+function openCellModal(date, shift, index, currentName) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.activeEditCell = { date, shift, index, currentName };
+    document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift}]`;
+    renderCellStaffList('');
+    document.getElementById('cellSelectModal')?.classList.remove('hidden');
+}
+
+function closeCellModal() { document.getElementById('cellSelectModal')?.classList.add('hidden'); window.activeEditCell = null; }
+function renderCellStaffList(q) {
+    var container = document.getElementById('cellStaffListContainer');
+    container.innerHTML = '';
+    window.users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
+        container.innerHTML += `
+            <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">
+                <span>${u.nameLao} (${u.fullName})</span>
+                ${u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : ''}
+            </div>
+        `;
+    });
+}
+function filterCellStaffList() { renderCellStaffList(document.getElementById('searchCellStaffInput').value.trim()); }
+
+function openRandomGroupSelectModal() {
+    var select = document.getElementById('randomSelectedGroupId');
+    if (!select) return;
+    select.innerHTML = '';
+    var optAll = document.createElement('option');
+    optAll.value = 'ALL';
+    optAll.innerText = '⭐ ພະນັກງານທັງໝົດ (All Staff)';
+    select.appendChild(optAll);
+
+    window.employeeGroups.forEach(grp => {
+        var opt = document.createElement('option');
+        opt.value = grp.id;
+        opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)`;
+        select.appendChild(opt);
+    });
+    document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
+}
