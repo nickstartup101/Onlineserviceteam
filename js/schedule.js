@@ -1,5 +1,6 @@
-// ================= ⭐ FIX SHIFT & SMART FAIR ROTATION ENGINE =================
+// ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE (7 & 17+ PERSONS) =================
 
+// 1. ຈັດການລັອກກະປະຈຳ (Fix Shift)
 function openFixedShiftModal() {
     var userSelect = document.getElementById('fixedShiftUserSelect');
     if (userSelect) {
@@ -39,10 +40,8 @@ function renderActiveFixedShiftsList() {
 function handleAddFixedShift() {
     var name = document.getElementById('fixedShiftUserSelect').value;
     var shift = document.getElementById('fixedShiftSlotSelect').value;
-
     window.fixedShiftsConfig = window.fixedShiftsConfig.filter(f => f.nameLao !== name);
     window.fixedShiftsConfig.push({ nameLao: name, fixedShift: shift });
-
     saveAll();
     renderActiveFixedShiftsList();
     showToast('ສຳເລັດ', `ລັອກ "${name}" ໄວ້ ${shift} ແລ້ວ!`, 'success');
@@ -55,14 +54,11 @@ function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// 1. ສູດ 7 ຄົນ ພ້ອມຮອງຮັບ Fix Shift (ກະຈາຍກະດຶກໃຫ້ຄົນທີ່ເຫຼືອແບບ Fair)
+// 2. ສູດສຳລັບທີມ 7 ຄົນ (7-Person Deterministic Permutation)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
-
-    var fixedStaff = staffList.filter(n => window.fixedShiftsConfig.some(f => f.nameLao === n));
-    var rotatingStaff = staffList.filter(n => !window.fixedShiftsConfig.some(f => f.nameLao === n));
-
+    var N = 7;
     var epochDate = new Date(Date.UTC(2026, 0, 1));
 
     for (var i = 1; i <= daysCount; i++) {
@@ -70,48 +66,26 @@ function generate7PersonFlexZigzag(year, month, staffList) {
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
         var currentDate = new Date(Date.UTC(year, month - 1, i));
-
         var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24));
         var dayOfWeek = (currentDate.getUTCDay() + 6) % 7;
 
-        var s1List = [];
-        var s2List = [];
-        var s3List = [];
-
-        // 1. ເອົາຄົນທີ່ຖືກ Fix ໃສ່ປະຈຳກ່ອນ
-        fixedStaff.forEach(fName => {
-            var cfg = window.fixedShiftsConfig.find(f => f.nameLao === fName);
-            if (cfg.fixedShift === 'shift1') s1List.push(fName);
-            else if (cfg.fixedShift === 'shift2') s2List.push(fName);
-            else if (cfg.fixedShift === 'shift3') s3List.push(fName);
-        });
-
-        // 2. ໝູນວຽນຄົນທີ່ເຫຼືອໃສ່ຊ່ອງທີ່ຍັງຕ້ອງການ
-        var rotN = rotatingStaff.length;
-        var dailyRotSlots = [];
-        for (var p = 0; p < rotN; p++) {
-            var assignedSlot = (p + totalDays) % rotN;
-            dailyRotSlots[assignedSlot] = rotatingStaff[p];
-        }
-
-        // ຕື່ມກະດຶກ (ກະ 3) ໃຫ້ເຕັມກ່ອນສະເໝີ
-        if (s3List.length < 1 && dailyRotSlots.length > 0) s3List.push(dailyRotSlots[0] || '');
-        if (s2List.length < 1 && dailyRotSlots.length > 1) s2List.push(dailyRotSlots[1] || '');
-        for (var k = 2; k < dailyRotSlots.length; k++) {
-            if (s1List.length < 3 && dailyRotSlots[k]) s1List.push(dailyRotSlots[k]);
+        var dailySlots = [];
+        for (var p = 0; p < N; p++) {
+            var assignedSlot = (p + totalDays) % N;
+            dailySlots[assignedSlot] = staffList[p];
         }
 
         data[dStr] = {
             isWeekend: (dayOfWeek === 5 || dayOfWeek === 6),
-            shift1: s1List,
-            shift2: s2List,
-            shift3: s3List
+            shift1: [dailySlots[2] || '', dailySlots[3] || '', dailySlots[4] || ''],
+            shift2: [dailySlots[1] || ''],
+            shift3: [dailySlots[0] || '']
         };
     }
     return data;
 }
 
-// 2. ສູດທີມໃຫຍ່ທົ່ວໄປ
+// 3. ⭐ ສູດສຳລັບທີມ 17 ຄົນ (ແລະ ທີມໃຫຍ່ທຸກຂະໜາດ) - ແບ່ງກະດຶກເທົ່າກັນ 100% ຜ່ານ Continuous Fair Queue
 function generateStandardMonthDataZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -124,20 +98,25 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
         return u && u.isLeader;
     });
 
-    if (leaderNames.length < 4) leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(n => rotatingStaff.includes(n));
+    if (leaderNames.length < 4) {
+        leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(n => rotatingStaff.includes(n));
+    }
     var regularStaff = rotatingStaff.filter(n => !leaderNames.includes(n));
     var N = regularStaff.length;
 
-    var s3Count = Math.max(1, Math.floor(N / 3));
-    var s2Count = Math.max(1, Math.floor(N / 3));
-    var s1Count = N - s3Count - s2Count;
+    // ຈຳນວນຄົນໃນແຕ່ລະກະສຳລັບວັນທຳມະດາ
+    var weekdayS3Need = Math.max(1, Math.floor(N / 3.2));
+    var weekdayS2Need = Math.max(1, Math.floor(N / 2.8));
+    var weekdayS1Need = N - weekdayS3Need - weekdayS2Need;
+
+    var weekendCounter = 0;
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
         var dateObj = new Date(Date.UTC(year, month - 1, i));
-        var dayOfWeek = dateObj.getUTCDay();
+        var dayOfWeek = dateObj.getUTCDay(); // 0 = Sun, 6 = Sat
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
         var W = getGlobalWeekIndex(dateObj);
 
@@ -145,6 +124,7 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
         var s2List = [];
         var s3List = [];
 
+        // 1. ໃສ່ຄົນທີ່ຖືກ Fix Shift ກ່ອນ
         fixedStaff.forEach(fName => {
             var cfg = window.fixedShiftsConfig.find(f => f.nameLao === fName);
             if (cfg.fixedShift === 'shift1') s1List.push(fName);
@@ -152,28 +132,41 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
             else if (cfg.fixedShift === 'shift3') s3List.push(fName);
         });
 
+        // 2. ໝູນວຽນຫົວໜ້າກະ (1A -> 3 -> 2 -> 1B -> 1A)
         var l_1A = leaderNames.length > 0 ? leaderNames[(0 + W) % leaderNames.length] : '';
         var l_1B = leaderNames.length > 1 ? leaderNames[(1 + W) % leaderNames.length] : '';
         var l_S2 = leaderNames.length > 2 ? leaderNames[(2 + W) % leaderNames.length] : '';
         var l_S3 = leaderNames.length > 3 ? leaderNames[(3 + W) % leaderNames.length] : '';
 
-        var shiftOffset = (W * s3Count) % (N || 1);
-        var rotatedStaff = [];
-        for (var r = 0; r < N; r++) rotatedStaff.push(regularStaff[(r + shiftOffset) % N]);
-
-        var staff_S3 = rotatedStaff.slice(0, s3Count);
-        var staff_S2 = rotatedStaff.slice(s3Count, s3Count + s2Count);
-        var staff_S1 = rotatedStaff.slice(s3Count + s2Count, N);
-
         if (isWeekend) {
+            // 3. ວັນເສົາ-ອາທິດ: ໃຊ້ Continuous Weekend Queue ເພື່ອບໍ່ໃຫ້ກະດຶກໄປກອງໃສ່ຄົນເດີມ
+            weekendCounter++;
             var isSat = (dayOfWeek === 6);
+
+            // ໝູນວຽນຄົນມາເຮັດວຽກເສົາ-ອາທິດ 6 ຄົນຕໍ່ມື້ (ແບ່ງເທົ່າກັນທຸກຄົນ)
+            var weekendPool = [];
+            for (var wIdx = 0; wIdx < N; wIdx++) {
+                weekendPool.push(regularStaff[(wIdx + weekendCounter * 4) % N]);
+            }
+
             data[dStr] = {
                 isWeekend: true,
-                shift1: [...s1List, isSat ? l_1A : l_1B, staff_S1[0] || ''].filter(Boolean),
-                shift2: [...s2List, isSat ? l_S2 : staff_S2[0] || ''].filter(Boolean),
-                shift3: [...s3List, isSat ? l_S3 : staff_S3[0] || ''].filter(Boolean)
+                shift1: [...s1List, isSat ? l_1A : l_1B, weekendPool[0] || ''].filter(Boolean),
+                shift2: [...s2List, isSat ? l_S2 : weekendPool[1] || ''].filter(Boolean),
+                shift3: [...s3List, isSat ? l_S3 : weekendPool[2] || ''].filter(Boolean)
             };
         } else {
+            // 4. ວັນຈັນ-ສຸກ: ໝູນວຽນ Zigzag Flow (3 -> 2 -> 1 -> 3)
+            var shiftOffset = (W * weekdayS3Need) % (N || 1);
+            var rotatedStaff = [];
+            for (var r = 0; r < N; r++) {
+                rotatedStaff.push(regularStaff[(r + shiftOffset) % N]);
+            }
+
+            var staff_S3 = rotatedStaff.slice(0, weekdayS3Need);
+            var staff_S2 = rotatedStaff.slice(weekdayS3Need, weekdayS3Need + weekdayS2Need);
+            var staff_S1 = rotatedStaff.slice(weekdayS3Need + weekdayS2Need, N);
+
             data[dStr] = {
                 isWeekend: false,
                 shift1: [...s1List, l_1A, l_1B, ...staff_S1].filter(Boolean),
@@ -185,6 +178,7 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
     return data;
 }
 
+// 4. Dispatcher
 function generateMonthDataZigzag(year, month, targetGroupMembers) {
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
@@ -193,8 +187,11 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
         staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
     }
 
-    if (staffList.length === 7) return generate7PersonFlexZigzag(year, month, staffList);
-    else return generateStandardMonthDataZigzag(year, month, staffList);
+    if (staffList.length === 7) {
+        return generate7PersonFlexZigzag(year, month, staffList);
+    } else {
+        return generateStandardMonthDataZigzag(year, month, staffList);
+    }
 }
 
 function executeGroupRandomSchedule() {
@@ -249,7 +246,7 @@ function executeBatchMonthGenerate() {
                 monthKey: monthKey,
                 title: title,
                 notes: defaultNotesTemplate,
-                status: 'DRAFT', // ຕັ້ງເປັນ Draft ສຳລັບເບິ່ງລ່ວງໜ້າ
+                status: 'DRAFT',
                 data: generatedData
             });
         }
@@ -263,7 +260,6 @@ function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງລ່ວງໜ້າ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
 }
 
-// ຕາຕະລາງສະແດງຜົນ + Watermark Banner + Cell Highlight
 function renderScheduleTable() {
     renderSheetDropdown();
     renderScheduleStaffRoster();
@@ -275,7 +271,6 @@ function renderScheduleTable() {
     document.getElementById('scheduleTableTitle').innerText = sheet.title;
     document.getElementById('scheduleNotesDisplay').innerText = sheet.notes || defaultNotesTemplate;
 
-    // ອັບເດດ Status Banner
     var banner = document.getElementById('scheduleStatusBanner');
     var badge = document.getElementById('scheduleStatusBadge');
     var modCountText = document.getElementById('modifiedCellCountText');
@@ -352,7 +347,6 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var isLeader = window.users.find(u => u.nameLao === name && u.isLeader);
         var clickHandler = isAdmin ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
 
-        // ກວດສອບວ່າຊ່ອງນີ້ເຄີຍຖືກດັດແກ້ຫຼັງ Publish ບໍ່
         var isModified = window.scheduleAuditLogs.some(l => l.sheetId === sheetId && l.date === date && l.shift === shift && l.newName === name);
         var highlightClass = isModified ? 'bg-amber-200/80 font-bold text-amber-950 border-amber-400 ring-1 ring-amber-400' : '';
 
@@ -374,10 +368,9 @@ function selectStaffForCell(nameLao) {
     var { date, shift, index, currentName } = window.activeEditCell;
     var sheet = getActiveSheet();
 
-    // ຖ້າຕາຕະລາງ Publish ໄປແລ້ວ ຕ້ອງຖາມເຫດຜົນ (Remark)
     if (sheet.status === 'PUBLISHED' && currentName !== nameLao) {
         var reason = prompt(`⚠️ ຕາຕະລາງນີ້ຖືກ Publish ແລ້ວ!\nກະລຸນາໃສ່ເຫດຜົນການປ່ຽນແປງ (${currentName || 'ວ່າງ'} ➔ ${nameLao}):`, 'ປ່ຽນແທນຍ້ອນພະນັກງານຕິດທຸລະກິດກະທັນຫັນ');
-        if (reason === null) return; // ຍົກເລີກ
+        if (reason === null) return;
 
         window.scheduleAuditLogs.unshift({
             id: Date.now(),
