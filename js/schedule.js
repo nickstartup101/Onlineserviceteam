@@ -1,14 +1,13 @@
-// ================= ⭐ SMART ZIGZAG SCHEDULE GENERATION ALGORITHM =================
+// ================= ⭐ FAIR ZIGZAG SCHEDULE GENERATOR =================
 
-// 1. ສູດສຳລັບທີມ 7 ຄົນ (Flexible 24/7: ກະ1=3, ກະ2=1, ກະ3=1, ພັກ 2 ມື້/ອາທິດ)
+// 1. ສູດຄຳນວນທີມ 7 ຄົນ (ລັອກໂຄຕ້າກະ 3 ໃຫ້ເທົ່າກັນ 100% ພ້ອມ Zigzag 3 -> 2 -> 1)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
     var N = staffList.length; // 7 ຄົນ
 
-    // ຕາຕະລາງມື້ພັກ 2 ມື້ຕໍ່ອາທິດຂອງ 7 ຄົນ (ໝູນວຽນແບບຄົງທີ່ບໍ່ຊ້ອນກັນ)
-    // 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
-    var offDaysPattern = [
+    // ແຕ່ລະມື້ມີຄົນພັກ 2 ຄົນແບບໝູນວຽນ (0=Mon, ..., 6=Sun)
+    var offSchedule = [
         [0, 1], // ຄົນທີ 0: ພັກ ຈັນ-ອັງຄານ
         [1, 2], // ຄົນທີ 1: ພັກ ອັງຄານ-ພຸດ
         [2, 3], // ຄົນທີ 2: ພັກ ພຸດ-ພະຫັດ
@@ -23,45 +22,64 @@ function generate7PersonFlexZigzag(year, month, staffList) {
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
         var dateObj = new Date(Date.UTC(year, month - 1, i));
-        var dayOfWeek = (dateObj.getUTCDay() + 6) % 7; // 0 = Mon, ..., 6 = Sun
-        var W = getGlobalWeekIndex(dateObj);
+        var dayOfWeek = (dateObj.getUTCDay() + 6) % 7; // 0=Mon, ..., 6=Sun
+        var W = getGlobalWeekIndex(dateObj); // ອາທິດສົມບູນ
 
-        // ໝູນວຽນລຳດັບພະນັກງານຕາມອາທິດ (Zigzag Wheel: 3 -> 2 -> 1)
-        var weeklyRotatedStaff = [];
-        for (var r = 0; r < N; r++) {
-            weeklyRotatedStaff.push(staffList[(r + W) % N]);
-        }
+        // ກຳນົດບົດບາດຫຼັກປະຈຳອາທິດແບບ Zigzag (3 -> 2 -> 1)
+        // ໃນອາທິດ W:
+        // ຄົນທີ່ (0 - W + 700) % 7 ຈະໄດ້ກະ 3 ຕະຫຼອດອາທິດ
+        // ຄົນທີ່ (1 - W + 700) % 7 ຈະໄດ້ກະ 2 ຕະຫຼອດອາທິດ
+        // ຄົນທີ່ເຫຼືອອີກ 5 ຄົນ ຈະໄດ້ກະ 1 (ເຊິ່ງແຕ່ລະມື້ຈະມີ 2 ຄົນພັກ, 3 ຄົນມາເຮັດກະ 1)
+        var s3PersonIndex = (0 - W % 7 + 7) % 7;
+        var s2PersonIndex = (1 - W % 7 + 7) % 7;
 
-        // ແຍກຄົນເຮັດວຽກ ແລະ ຄົນພັກຜ່ອນໃນມື້ນີ້
-        var workingToday = [];
-        var offToday = [];
+        var s3Person = staffList[s3PersonIndex];
+        var s2Person = staffList[s2PersonIndex];
 
-        for (var sIdx = 0; sIdx < N; sIdx++) {
-            var originalStaffIndex = staffList.indexOf(weeklyRotatedStaff[sIdx]);
-            var myOffDays = offDaysPattern[originalStaffIndex];
+        // ຫາກມື້ນີ້ກົງກັບມື້ພັກຂອງຄົນກະ 3 ຫຼື ກະ 2 ຈະໃຫ້ຄົນໃນກະ 1 ມາສັບປ່ຽນແທນ
+        var activeS3 = s3Person;
+        var activeS2 = s2Person;
+        var activeS1 = [];
 
-            if (myOffDays.includes(dayOfWeek)) {
-                offToday.push(weeklyRotatedStaff[sIdx]);
+        for (var idx = 0; idx < N; idx++) {
+            var person = staffList[idx];
+            var myOff = offSchedule[idx];
+
+            // ຖ້າມື້ນີ້ແມ່ນມື້ພັກຂອງຕົນເອງ
+            if (myOff.includes(dayOfWeek)) {
+                continue; // ພັກຜ່ອນ
+            }
+
+            if (idx === s3PersonIndex) {
+                activeS3 = person;
+            } else if (idx === s2PersonIndex) {
+                activeS2 = person;
             } else {
-                workingToday.push(weeklyRotatedStaff[sIdx]);
+                activeS1.push(person);
             }
         }
 
-        // ຈັດສັນເຂົ້າ 3 ກະ (workingToday ມີ 5 ຄົນສະເໝີ: ກະ3 = 1, ກະ2 = 1, ກະ1 = 3)
-        // workingToday[0] -> ກະ 3 (Night)
-        // workingToday[1] -> ກະ 2 (Afternoon)
-        // workingToday[2,3,4] -> ກະ 1 (Morning 3 ຄົນ)
+        // ຖ້າຄົນກະ 3 ພັກມື້ນີ້ ໃຫ້ດຶງຄົນກະ 1 ມາແທນ 1 ຄົນ
+        if (offSchedule[s3PersonIndex].includes(dayOfWeek)) {
+            activeS3 = activeS1.pop() || s3Person;
+        }
+        // ຖ້າຄົນກະ 2 ພັກມື້ນີ້ ໃຫ້ດຶງຄົນກະ 1 ມາແທນ 1 ຄົນ
+        if (offSchedule[s2PersonIndex].includes(dayOfWeek)) {
+            activeS2 = activeS1.pop() || s2Person;
+        }
+
+        // ຮັບປະກັນວ່າ ກະ 1 ມີ 3 ຄົນ, ກະ 2 ມີ 1 ຄົນ, ກະ 3 ມີ 1 ຄົນ
         data[dStr] = {
-            isWeekend: (dayOfWeek === 5 || dayOfWeek === 6), // ສຳລັບສະແດງສີ
-            shift1: [workingToday[2] || '', workingToday[3] || '', workingToday[4] || ''],
-            shift2: [workingToday[1] || ''],
-            shift3: [workingToday[0] || '']
+            isWeekend: (dayOfWeek === 5 || dayOfWeek === 6),
+            shift1: [activeS1[0] || '', activeS1[1] || '', activeS1[2] || ''],
+            shift2: [activeS2 || ''],
+            shift3: [activeS3 || '']
         };
     }
     return data;
 }
 
-// 2. ສູດສຳລັບທີມໃຫຍ່ປົກກະຕິ (Standard Multi-Person Team)
+// 2. ສູດສຳລັບທີມໃຫຍ່ທົ່ວໄປ (24 ຄົນ)
 function generateStandardMonthDataZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -123,9 +141,8 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. Main Dispatcher Function
+// 3. Dispatcher (ກັ່ນຕອງສະເພາະຄົນໃນກຸ່ມເທົ່ານັ້ນ)
 function generateMonthDataZigzag(year, month, targetGroupMembers) {
-    // ກັ່ນຕອງສະເພາະຜູ້ທີ່ຢູ່ໃນກຸ່ມເທົ່ານັ້ນ
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
         staffList = [...targetGroupMembers];
@@ -133,7 +150,6 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
         staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
     }
 
-    // ຖ້າກຸ່ມມີ 7 ຄົນ -> ໃຊ້ສູດ 7-Person Flex
     if (staffList.length === 7) {
         return generate7PersonFlexZigzag(year, month, staffList);
     } else {
@@ -159,7 +175,7 @@ function executeGroupRandomSchedule() {
     renderDashboard();
     if (window.currentUser && window.currentUser.role === 'SUPER_ADMIN') renderAdminAllStaffReport();
     else renderUserCurrentWeekWorkspace();
-    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ໃຫ້ສະມາຊິກໃນກຸ່ມສຳເລັດ!`, 'success');
+    showToast('Zigzag Rotation ສຳເລັດ', `ສ້າງຕາຕະລາງຮອບວຽນ Zigzag ແບບເທົ່າທຽມສຳເລັດ!`, 'success');
 }
 
 function openBatchMonthModal() { document.getElementById('batchMonthModal')?.classList.remove('hidden'); }
@@ -172,7 +188,6 @@ function executeBatchMonthGenerate() {
     var [startYear, startMonth] = startM.split('-').map(Number);
     var currentSheet = getActiveSheet();
 
-    // ກວດສອບກຸ່ມທີ່ຜູກກັບ Sheet ປັດຈຸບັນ
     var selectedMembers = null;
     var currentGrp = window.employeeGroups.find(g => currentSheet.title.includes(g.name));
     if (currentGrp) selectedMembers = currentGrp.members;
