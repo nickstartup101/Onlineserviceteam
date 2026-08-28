@@ -1,8 +1,14 @@
-css
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+* {
+    font-family: 'Noto Sans Lao', 'Inter', sans-serif !important;
+}
+
 body { 
-    font-family: 'Inter', 'Noto Sans Lao', sans-serif; 
+    font-family: 'Noto Sans Lao', 'Inter', sans-serif !important; 
     -webkit-tap-highlight-color: transparent; 
 }
+
 .tab-view { display: none; }
 .tab-view.active { display: flex; }
 .bg-red-gradient { background: linear-gradient(135deg, #c01e2e 0%, #800f1a 100%); }
@@ -55,4 +61,3 @@ body {
     body { background: white !important; }
     #pdfExportArea { border: none !important; box-shadow: none !important; }
 }
-```
