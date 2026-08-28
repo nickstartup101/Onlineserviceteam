@@ -81,13 +81,6 @@
         .grid-cell-box.editable { cursor: pointer; }
         .grid-cell-box.editable:hover { background-color: #fee2e2; }
 
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(192, 30, 46, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0); }
-        }
-        .live-dot-red { animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
-
         @media print {
             .no-print { display: none !important; }
             body { background: white !important; }
@@ -240,7 +233,7 @@
                 <button type="button" onclick="switchTab('dashboard')" id="top-btn-dashboard" class="top-nav-link text-brand-red font-bold border-b-2 border-brand-red pb-1 text-xs font-lao px-3 py-1.5">Dashboard</button>
                 <button type="button" onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">Monthly Schedule</button>
                 <button type="button" onclick="switchTab('groups')" id="top-btn-groups" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">ໝວດພະນັກງານ (Groups)</button>
-                <button type="button" onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Employees</button>
+                <button type="button" onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao admin-only">Employees (ພະນັກງານ)</button>
                 <button type="button" onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs font-lao">
                     <span id="topProfileNavTitle">My Workspace & Hub</span>
                 </button>
@@ -248,33 +241,6 @@
         </div>
         
         <div class="flex items-center gap-2 md:gap-3">
-            <div class="relative flex items-center">
-                <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 transition relative cursor-pointer flex items-center justify-center shadow-sm" title="ການແຈ້ງເຕືອນ">
-                    <span class="material-symbols-outlined text-[22px]">notifications</span>
-                    <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
-                </button>
-                
-                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border-2 border-red-100 z-50 p-4 font-lao animate-in fade-in zoom-in-95 duration-150">
-                    <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
-                        <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
-                            <span class="material-symbols-outlined text-brand-red text-base">notifications_active</span>
-                            ການແຈ້ງເຕືອນ (Notifications)
-                        </span>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold cursor-pointer">
-                                ໝາຍວ່າອ່ານແລ້ວ
-                            </button>
-                            <span id="notifCountText" class="text-[10px] bg-red-100 text-brand-red font-bold px-2 py-0.5 rounded-full">0</span>
-                        </div>
-                    </div>
-                    <div id="notifDropdownList" class="space-y-2 max-h-80 overflow-y-auto"></div>
-                </div>
-            </div>
-
-            <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-[10px] font-bold">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> ⚡ Zigzag Engine Active
-            </div>
-            
             <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
                 <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border-2 border-brand-red/30 bg-red-50" src="" alt="Profile"/>
                 <div class="text-left font-lao hidden sm:block">
@@ -394,33 +360,6 @@
                     </div>
                 </div>
 
-                <!-- COMBINED TODAY'S ACTIVITY -->
-                <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm font-lao space-y-4">
-                    <div class="flex justify-between items-center border-b pb-3">
-                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-brand-red text-lg">event_available</span>
-                            ລາຍການລາພັກ ແລະ ປ່ຽນກະປະຈຳວັນ (Daily Leaves & Swaps)
-                        </h3>
-                        <span class="text-xs text-slate-500" id="dashActivityDateLabel">ວັນທີ 01/09/2026</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <p class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-sm text-red-500">event_busy</span> ພະນັກງານລາພັກມື້ນີ້ (Leaves)
-                            </p>
-                            <div id="dashLeavesContainer" class="space-y-1.5 text-xs"></div>
-                        </div>
-
-                        <div class="space-y-2">
-                            <p class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-sm text-emerald-600">sync_alt</span> ການປ່ຽນກະສຳເລັດມື້ນີ້ (Completed Swaps)
-                            </p>
-                            <div id="dashSwapsContainer" class="space-y-1.5 text-xs"></div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </main>
 
@@ -436,10 +375,6 @@
 
                     <button type="button" onclick="openNewSheetModal()" class="admin-only px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer">
                         <span class="material-symbols-outlined text-sm">add_box</span> + ສ້າງຕາຕະລາງໃໝ່
-                    </button>
-
-                    <button type="button" onclick="openDuplicateSheetModal()" class="admin-only px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer" title="ຄັດລອກຮູບແບບຕາຕະລາງນີ້ໄປເດືອນອື່ນ">
-                        <span class="material-symbols-outlined text-sm">content_copy</span> 📋 ຄັດລອກ Template
                     </button>
 
                     <button type="button" onclick="openEditSheetInfoModal()" class="admin-only px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
@@ -473,7 +408,7 @@
             <div class="flex flex-1 overflow-hidden">
                 <div class="admin-only w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-3 shrink-0 font-lao hidden md:flex flex-col shadow-sm">
                     <div>
-                        <p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ</p>
+                        <p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ (<span id="rosterCountText">0</span> ທ່ານ)</p>
                         <p class="text-[10px] text-slate-400">ກົດໃສ່ຊ່ອງໃນຕາຕະລາງເພື່ອເລືອກໃສ່ກະ</p>
                     </div>
 
@@ -533,12 +468,17 @@
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-800">ຈັດການຂໍ້ມູນພະນັກງານ</h2>
+                        <h2 class="text-xl font-bold text-slate-800">ຈັດການຂໍ້ມູນພະນັກງານ (<span id="empCountHeader">25</span> ທ່ານ)</h2>
                         <p class="text-xs text-slate-500">ເພີ່ມພະນັກງານໃໝ່, ແກ້ໄຂຂໍ້ມູນ ແລະ ກຳນົດຫົວໜ້າກະ (Mark ສີແດງ)</p>
                     </div>
-                    <button type="button" onclick="openAddEmpModal()" class="px-4 py-2.5 bg-red-gradient bg-red-gradient-hover text-white text-xs font-bold rounded-xl shadow-md shadow-red-900/20 flex items-center gap-1.5 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="promptRestoreDefaultUsers()" class="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer" title="ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ 25 ທ່ານ">
+                            <span class="material-symbols-outlined text-sm">restart_alt</span> 🔄 ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ (25 ທ່ານ)
+                        </button>
+                        <button type="button" onclick="openAddEmpModal()" class="px-4 py-2.5 bg-red-gradient bg-red-gradient-hover text-white text-xs font-bold rounded-xl shadow-md shadow-red-900/20 flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
@@ -657,6 +597,69 @@
         </div>
     </div>
 
+    <!-- ================= EDIT / ADD EMPLOYEE MODAL ================= -->
+    <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
+            <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3>
+                <button type="button" onclick="closeEmpModal()" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-3.5 text-xs">
+                <input type="hidden" id="editEmpId"/>
+                <div>
+                    <label class="block font-semibold mb-1">Username / ລະຫັດພະນັກງານ</label>
+                    <input type="text" id="modalEmpUser" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ເຕັມ (Full Name)</label>
+                    <input type="text" id="modalEmpFullName" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label>
+                    <input type="text" id="modalEmpNameLao" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label>
+                    <input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/>
+                    <label for="modalEmpIsLeader" class="font-bold text-brand-red">ກຳນົດເປັນຫົວໜ້າກະ (Shift Leader - ສີແດງ)</label>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
+                    <button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold cursor-pointer">ບັນທຶກ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= GROUP MODAL ================= -->
+    <div id="groupModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden font-lao">
+            <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm" id="groupModalTitle">ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່</h3>
+                <button type="button" onclick="closeGroupModal()" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="editGroupId"/>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ໝວດ / ກຸ່ມ</label>
+                    <input type="text" id="groupNameInput" placeholder="ເຊັ່ນ: ກຸ່ມ A: ທີມບໍລິການຫຼັກ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ເລືອກສະມາຊິກພະນັກງານໃນກຸ່ມນີ້:</label>
+                    <div class="border border-slate-200 rounded-2xl p-3 max-h-48 overflow-y-auto space-y-1.5" id="groupMemberCheckboxList">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeGroupModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
+                    <button type="button" onclick="handleSaveGroup()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກກຸ່ມ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= MODALS (Group Select, Holidays, Cells) ================= -->
     <div id="randomGroupSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
@@ -688,7 +691,6 @@
         </div>
     </div>
 
-    <!-- Cell Modal, Create Sheet Modal, Edit Sheet Modal & Employee Modal -->
     <div id="cellSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden font-lao">
             <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
@@ -778,9 +780,10 @@
         </div>
     </div>
 
-    <!-- ================= JAVASCRIPT ENGINE WITH DETERMINISTIC ZIGZAG ================= -->
+    <!-- ================= JAVASCRIPT ENGINE ================= -->
     <script>
-        var MASTER_USERS = [
+        // MASTER PRESET USERS (25 USERS)
+        var MASTER_USERS_DEFAULT = [
             { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
             { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true },
             { user: 'BCEL0272', pass: 'bcel2026', fullName: 'PHONESAVANH HEUANGVILAY', nameLao: 'ພອນສະຫວັນ', role: 'STAFF', isLeader: true },
@@ -810,17 +813,20 @@
 
         var defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
+        // LOAD USERS FROM LOCALSTORAGE OR FALLBACK TO MASTER LIST
+        var savedUsers = JSON.parse(localStorage.getItem('ot_users_master'));
+        var users = (savedUsers && savedUsers.length > 0) ? savedUsers : MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
+
         var currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
-        var users = MASTER_USERS.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
         var activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
         var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial2')) || [];
         
         var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial2')) || [
             {
                 id: 'grp-main',
-                name: 'ກຸ່ມພະນັກງານທັງໝົດ 24 ທ່ານ (Zigzag 24/7)',
+                name: 'ກຸ່ມພະນັກງານທັງໝົດ (Zigzag 24/7)',
                 restRule: '1_DAY_WEEKEND_ONE_2DAY_WEEK',
-                members: MASTER_USERS.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao)
+                members: users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao)
             }
         ];
 
@@ -836,8 +842,6 @@
         ];
 
         var activeEditCell = null;
-
-        // Global deterministic anchor epoch: 2026-01-05 (Monday)
         var EPOCH_MONDAY = new Date('2026-01-05T00:00:00Z');
 
         function getGlobalWeekIndex(dateObj) {
@@ -853,6 +857,7 @@
         }
 
         function saveAll() {
+            localStorage.setItem('ot_users_master', JSON.stringify(users));
             localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(scheduleSheets));
             localStorage.setItem('ot_active_sheet_id_trial2', activeSheetId);
             localStorage.setItem('ot_holidays_trial2', JSON.stringify(specialHolidayRanges));
@@ -870,19 +875,17 @@
             var daysCount = new Date(year, month, 0).getDate();
 
             var allStaff = users.filter(u => u.role !== 'SUPER_ADMIN');
+            var leaderNames = allStaff.filter(u => u.isLeader).map(u => u.nameLao);
+            if (leaderNames.length < 4) {
+                leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
+            }
             
-            // 4 Shift Leaders in predefined initial sequence:
-            // Index 0: 1A, Index 1: 1B, Index 2: Shift 2, Index 3: Shift 3
-            var leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
             var regularStaff = allStaff.filter(u => !leaderNames.includes(u.nameLao)).map(u => u.nameLao);
-            
-            var N = regularStaff.length; // e.g. 20 regular staff
+            var N = regularStaff.length;
 
-            // Calculate shift needs for regular staff
-            // Shift 3 = floor(N / 3), Shift 2 = floor(N / 3), Shift 1 gets remainder (largest)
             var s3Count = Math.floor(N / 3);
             var s2Count = Math.floor(N / 3);
-            var s1Count = N - s3Count - s2Count; // Shift 1 gets the excess
+            var s1Count = N - s3Count - s2Count;
 
             sheet.data = {};
 
@@ -891,40 +894,29 @@
                 var mNum = month < 10 ? '0' + month : '' + month;
                 var dStr = `${year}-${mNum}-${dayNum}`;
                 var dateObj = new Date(Date.UTC(year, month - 1, i));
-                var dayOfWeek = dateObj.getUTCDay(); // 0 = Sun, 6 = Sat
+                var dayOfWeek = dateObj.getUTCDay();
                 var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
-                var W = getGlobalWeekIndex(dateObj); // Deterministic absolute week number
+                var W = getGlobalWeekIndex(dateObj);
 
                 // 1. LEADER ROTATION (1A -> 3 -> 2 -> 1B -> 1A)
-                // In week W, state offset k = (W % 4)
-                // Leader roles at k:
-                // k=0: 1A=0, 1B=1, S2=2, S3=3
-                // k=1: 1A=1, 1B=2, S2=3, S3=0 (Old 1A went to 3)
-                // k=2: 1A=2, 1B=3, S2=0, S3=1
-                // k=3: 1A=3, 1B=0, S2=1, S3=2
                 var l_1A = leaderNames[(0 + W) % 4];
                 var l_1B = leaderNames[(1 + W) % 4];
                 var l_S2 = leaderNames[(2 + W) % 4];
                 var l_S3 = leaderNames[(3 + W) % 4];
 
                 // 2. REGULAR STAFF ZIGZAG ROTATION (3 -> 2 -> 1 -> 3)
-                // Rotate staff index window by (W * s3Count) mod N each week
                 var shiftOffset = (W * s3Count) % N;
                 var rotatedStaff = [];
                 for (var r = 0; r < N; r++) {
                     rotatedStaff.push(regularStaff[(r + shiftOffset) % N]);
                 }
 
-                // Partition: First s3Count -> Shift 3, Next s2Count -> Shift 2, Next s1Count -> Shift 1
                 var staff_S3 = rotatedStaff.slice(0, s3Count);
                 var staff_S2 = rotatedStaff.slice(s3Count, s3Count + s2Count);
                 var staff_S1 = rotatedStaff.slice(s3Count + s2Count, N);
 
                 if (isWeekend) {
-                    // Weekend rule: 3 people have full weekend off.
-                    // Duty is compressed into 2 per shift.
-                    // Saturday vs Sunday rotation of leaders & staff:
                     var isSat = (dayOfWeek === 6);
                     sheet.data[dStr] = {
                         isWeekend: true,
@@ -933,7 +925,6 @@
                         shift3: isSat ? [l_S3, staff_S3[0] || ''] : [staff_S3[1] || '', staff_S3[2] || '']
                     };
                 } else {
-                    // Weekday standard full duty
                     sheet.data[dStr] = {
                         isWeekend: false,
                         shift1: [l_1A, l_1B, ...staff_S1],
@@ -968,7 +959,6 @@
             var [year, month] = sheet.monthKey.split('-').map(Number);
             var daysCount = new Date(year, month, 0).getDate();
 
-            // Count weekends
             var weekendDays = [];
             for (var d = 1; d <= daysCount; d++) {
                 var dateObj = new Date(year, month - 1, d);
@@ -991,7 +981,6 @@
                 }
             }
 
-            // Calculate weekend offs (Saturdays/Sundays not on duty)
             weekendDays.forEach(wDate => {
                 var dayInfo = sheet.data[wDate] || { shift1: [], shift2: [], shift3: [] };
                 var workingToday = [...(dayInfo.shift1 || []), ...(dayInfo.shift2 || []), ...(dayInfo.shift3 || [])];
@@ -1024,6 +1013,232 @@
 
         function closeFairnessSummaryModal() {
             document.getElementById('fairnessModal').classList.add('hidden');
+        }
+
+        // ================= EMPLOYEES CRUD =================
+        function renderEmployeesTable() {
+            var tbody = document.getElementById('employeesTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            var countEl = document.getElementById('empCountHeader');
+            if (countEl) countEl.innerText = users.length;
+
+            users.forEach((u, idx) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 font-lao">
+                        <td class="p-3.5 font-bold text-brand-red">${u.user}</td>
+                        <td class="p-3.5 font-semibold text-slate-700">${u.fullName}</td>
+                        <td class="p-3.5 font-bold ${u.isLeader ? 'text-brand-red' : 'text-slate-800'}">
+                            ${u.nameLao} ${u.isLeader ? '<span class="text-[10px] bg-red-50 text-brand-red px-2 py-0.5 rounded-full border border-red-200 ml-1">ຫົວໜ້າກະ</span>' : ''}
+                        </td>
+                        <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'SUPER_ADMIN' ? 'bg-red-gradient text-white' : 'bg-slate-100 text-slate-700'}">${u.role}</span></td>
+                        <td class="p-3.5 text-right">
+                            <button type="button" onclick="openEditEmpModal(${idx})" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-xs">edit</span> ແກ້ໄຂ
+                            </button>
+                            ${u.role !== 'SUPER_ADMIN' ? `
+                                <button type="button" onclick="promptDeleteEmployee(${idx})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl font-bold text-[11px] ml-1">
+                                    <span class="material-symbols-outlined text-xs">delete</span>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function promptRestoreDefaultUsers() {
+            askConfirm('ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ', 'ທ່ານຕ້ອງການຣີເຊັດລາຍຊື່ພະນັກງານທັງໝົດ 25 ທ່ານໃຫ້ເປັນຄ່າເລີ່ມຕົ້ນແທ້ບໍ່?', () => {
+                users = MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
+                saveAll();
+                renderEmployeesTable();
+                renderScheduleStaffRoster();
+                showToast('ກູ້ຄືນສຳເລັດ', 'ລາຍຊື່ພະນັກງານ 25 ທ່ານຖືກກູ້ຄືນແລ້ວ', 'success');
+            }, 'restart_alt', 'ກູ້ຄືນຂໍ້ມູນ');
+        }
+
+        function openAddEmpModal() {
+            document.getElementById('empModalTitle').innerText = 'ເພີ່ມພະນັກງານໃໝ່';
+            document.getElementById('editEmpId').value = '';
+            document.getElementById('modalEmpUser').value = '';
+            document.getElementById('modalEmpFullName').value = '';
+            document.getElementById('modalEmpNameLao').value = '';
+            document.getElementById('modalEmpPass').value = 'bcel2026';
+            document.getElementById('modalEmpIsLeader').checked = false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function openEditEmpModal(index) {
+            var emp = users[index];
+            document.getElementById('empModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນພະນັກງານ';
+            document.getElementById('editEmpId').value = index;
+            document.getElementById('modalEmpUser').value = emp.user;
+            document.getElementById('modalEmpFullName').value = emp.fullName;
+            document.getElementById('modalEmpNameLao').value = emp.nameLao;
+            document.getElementById('modalEmpPass').value = emp.pass;
+            document.getElementById('modalEmpIsLeader').checked = emp.isLeader || false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function closeEmpModal() { document.getElementById('empModal').classList.add('hidden'); }
+
+        function handleSaveEmployee() {
+            var editId = document.getElementById('editEmpId').value;
+            var u = document.getElementById('modalEmpUser').value.trim();
+            var full = document.getElementById('modalEmpFullName').value.trim();
+            var lao = document.getElementById('modalEmpNameLao').value.trim();
+            var p = document.getElementById('modalEmpPass').value.trim();
+            var leader = document.getElementById('modalEmpIsLeader').checked;
+
+            if (!u || !full || !lao || !p) {
+                showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ', 'error');
+                return;
+            }
+
+            if (editId !== '') {
+                users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
+                showToast('ສຳເລັດ', 'ແກ້ໄຂຂໍ້ມູນພະນັກງານສຳເລັດ!', 'success');
+            } else {
+                if (users.find(usr => usr.user.toLowerCase() === u.toLowerCase())) {
+                    showToast('ແຈ້ງເຕືອນ', 'Username ນີ້ມີໃນລະບົບແລ້ວ!', 'error');
+                    return;
+                }
+                var newEmp = { user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 };
+                users.push(newEmp);
+                showToast('ສຳເລັດ', 'ເພີ່ມພະນັກງານໃໝ່ສຳເລັດ!', 'success');
+            }
+
+            closeEmpModal();
+            renderEmployeesTable();
+            renderScheduleStaffRoster();
+            saveAll();
+        }
+
+        function promptDeleteEmployee(idx) {
+            var emp = users[idx];
+            askConfirm('ລຶບພະນັກງານ', `ທ່ານຕ້ອງການລຶບ "${emp.nameLao}" ແທ້ບໍ່?`, () => {
+                users.splice(idx, 1);
+                saveAll();
+                renderEmployeesTable();
+                renderScheduleStaffRoster();
+                showToast('ສຳເລັດ', 'ລຶບພະນັກງານຮຽບຮ້ອຍ', 'success');
+            }, 'delete', 'ລຶບອອກ');
+        }
+
+        // ================= SCHEDULE ROSTER SIDEBAR =================
+        function renderScheduleStaffRoster() {
+            var container = document.getElementById('scheduleStaffRoster');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            var staffOnly = users.filter(u => u.role !== 'SUPER_ADMIN');
+            var countEl = document.getElementById('rosterCountText');
+            if (countEl) countEl.innerText = staffOnly.length;
+
+            var q = (document.getElementById('rosterSearchInput')?.value || '').toLowerCase().trim();
+            var filtered = staffOnly.filter(u => u.nameLao.toLowerCase().includes(q) || u.fullName.toLowerCase().includes(q) || u.user.toLowerCase().includes(q));
+
+            filtered.forEach(u => {
+                var isLeader = u.isLeader;
+                container.innerHTML += `
+                    <div class="p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-2 shadow-sm ${isLeader ? 'bg-red-50/60 border-red-200' : 'bg-white border-slate-200/80 hover:border-slate-300'}">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isLeader ? 'bg-brand-red text-white' : 'bg-slate-100 text-slate-600'}">
+                                ${u.nameLao.substring(0, 1)}
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold text-slate-800 truncate">${u.nameLao}</p>
+                                <p class="text-[9px] text-slate-400 truncate">${u.user}</p>
+                            </div>
+                        </div>
+                        ${isLeader ? `<span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 shadow-sm">ຫົວໜ້າ</span>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function filterRosterSidebar() { renderScheduleStaffRoster(); }
+
+        // ================= GROUPS TAB =================
+        function renderGroupsTab() {
+            var grid = document.getElementById('groupsListGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            employeeGroups.forEach((grp, idx) => {
+                grid.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <h3 class="font-bold text-base text-slate-800">${grp.name}</h3>
+                                <span class="px-2.5 py-1 bg-red-50 text-brand-red rounded-xl font-bold text-[10px] border border-red-200">Zigzag 24/7</span>
+                            </div>
+                            <p class="text-xs text-slate-500 font-semibold mb-3">ສະມາຊິກໃນກຸ່ມ (${grp.members.length} ຄົນ):</p>
+                            <div class="flex flex-wrap gap-1 max-h-36 overflow-y-auto">
+                                ${grp.members.map(m => `<span class="bg-slate-100 px-2 py-0.5 rounded-lg text-xs font-lao">${m}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-2 pt-3 border-t">
+                            <button type="button" onclick="openEditGroupModal(${idx})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">ແກ້ໄຂ</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openAddGroupModal() {
+            document.getElementById('groupModalTitle').innerText = 'ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່';
+            document.getElementById('editGroupId').value = '';
+            document.getElementById('groupNameInput').value = '';
+            renderGroupMemberCheckboxes([]);
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function openEditGroupModal(index) {
+            var grp = employeeGroups[index];
+            document.getElementById('groupModalTitle').innerText = 'ແກ້ໄຂໝວດ/ກຸ່ມພະນັກງານ';
+            document.getElementById('editGroupId').value = index;
+            document.getElementById('groupNameInput').value = grp.name;
+            renderGroupMemberCheckboxes(grp.members || []);
+            document.getElementById('groupModal').classList.remove('hidden');
+        }
+
+        function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+
+        function renderGroupMemberCheckboxes(selectedMembers) {
+            var container = document.getElementById('groupMemberCheckboxList');
+            container.innerHTML = '';
+            users.filter(u => u.role !== 'SUPER_ADMIN').forEach(u => {
+                var isChecked = selectedMembers.includes(u.nameLao) ? 'checked' : '';
+                container.innerHTML += `
+                    <label class="flex items-center gap-2 text-xs p-1 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input type="checkbox" value="${u.nameLao}" class="group-member-checkbox rounded text-brand-red focus:ring-brand-red h-4 w-4" ${isChecked}/>
+                        <span class="${u.isLeader ? 'text-brand-red font-bold' : ''}">${u.nameLao} (${u.fullName})</span>
+                    </label>
+                `;
+            });
+        }
+
+        function handleSaveGroup() {
+            var editId = document.getElementById('editGroupId').value;
+            var name = document.getElementById('groupNameInput').value.trim();
+
+            if (!name) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ກຸ່ມ', 'error'); return; }
+
+            var selected = [];
+            document.querySelectorAll('.group-member-checkbox:checked').forEach(cb => selected.push(cb.value));
+
+            if (editId !== '') {
+                employeeGroups[editId] = { ...employeeGroups[editId], name, members: selected };
+            } else {
+                employeeGroups.push({ id: 'grp-' + Date.now(), name, restRule: '1_DAY_WEEKEND_ONE_2DAY_WEEK', members: selected });
+            }
+
+            saveAll();
+            closeGroupModal();
+            renderGroupsTab();
+            showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນໝວດກຸ່ມຮຽບຮ້ອຍ', 'success');
         }
 
         // ================= RENDERING & UI FUNCTIONS =================
@@ -1091,13 +1306,13 @@
                         <td class="font-bold whitespace-nowrap">${i}/${mNum}/${year}</td>
                         <td class="font-bold ${isWeekendOrHol ? 'text-brand-red' : ''}">${dayOfWeek}</td>
                         <td class="p-0">
-                            ${renderPixelExcelGrid(dStr, 'shift1', s1Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.ceil(s1Slots.length / 2), isAdmin)}
+                            ${renderPixelExcelGrid(dStr, 'shift1', s1Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil(s1Slots.length / 2)), isAdmin)}
                         </td>
                         <td class="p-0">
-                            ${renderPixelExcelGrid(dStr, 'shift2', s2Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.ceil(s2Slots.length / 2), isAdmin)}
+                            ${renderPixelExcelGrid(dStr, 'shift2', s2Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil(s2Slots.length / 2)), isAdmin)}
                         </td>
                         <td class="p-0">
-                            ${renderPixelExcelGrid(dStr, 'shift3', s3Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.ceil(s3Slots.length / 2), isAdmin)}
+                            ${renderPixelExcelGrid(dStr, 'shift3', s3Slots, isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(2, Math.ceil(s3Slots.length / 2)), isAdmin)}
                         </td>
                     </tr>
                 `;
@@ -1127,6 +1342,70 @@
             }
             html += `</div>`;
             return html;
+        }
+
+        function openCellModal(date, shift, index, currentName) {
+            if (!currentUser || currentUser.role !== 'SUPER_ADMIN') return;
+            activeEditCell = { date, shift, index, currentName };
+
+            document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift} - ຊ່ອງທີ ${index + 1}]`;
+            document.getElementById('searchCellStaffInput').value = '';
+            renderCellStaffList('');
+            document.getElementById('cellSelectModal').classList.remove('hidden');
+        }
+
+        function closeCellModal() {
+            document.getElementById('cellSelectModal').classList.add('hidden');
+            activeEditCell = null;
+        }
+
+        function renderCellStaffList(query) {
+            var container = document.getElementById('cellStaffListContainer');
+            container.innerHTML = '';
+            
+            var filtered = users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.toLowerCase().includes(query) || u.fullName.toLowerCase().includes(query)));
+
+            filtered.forEach(u => {
+                container.innerHTML += `
+                    <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50/50 flex items-center justify-between cursor-pointer text-xs font-lao ${u.isLeader ? 'border-red-200 bg-red-50 text-brand-red font-semibold' : 'border-slate-200'}">
+                        <span>${u.nameLao} (${u.fullName})</span>
+                        ${u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າກະ</span>' : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function filterCellStaffList() {
+            var q = document.getElementById('searchCellStaffInput').value.toLowerCase().trim();
+            renderCellStaffList(q);
+        }
+
+        function selectStaffForCell(nameLao) {
+            if (!activeEditCell) return;
+            var { date, shift, index } = activeEditCell;
+            var sheet = getActiveSheet();
+
+            if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
+            if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
+
+            sheet.data[date][shift][index] = nameLao;
+            saveAll();
+            closeCellModal();
+            renderScheduleTable();
+            renderUserCurrentWeekWorkspace();
+        }
+
+        function clearCurrentCell() {
+            if (!activeEditCell) return;
+            var { date, shift, index } = activeEditCell;
+            var sheet = getActiveSheet();
+            if (sheet.data[date]?.[shift]) {
+                sheet.data[date][shift][index] = '';
+                saveAll();
+                closeCellModal();
+                renderScheduleTable();
+                renderUserCurrentWeekWorkspace();
+            }
         }
 
         function switchTab(tabId) {
@@ -1167,6 +1446,8 @@
                 });
 
                 renderDashboard();
+                renderEmployeesTable();
+                renderScheduleStaffRoster();
                 renderUserCurrentWeekWorkspace();
             }
         }
@@ -1174,7 +1455,7 @@
         function doLogin() {
             var u = document.getElementById('loginUsername').value.trim();
             var p = document.getElementById('loginPassword').value.trim();
-            var found = MASTER_USERS.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
+            var found = users.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
             if (found) {
                 currentUser = { ...found };
@@ -1239,7 +1520,7 @@
             for (var i = 1; i <= 7; i++) {
                 var dNum = i < 10 ? '0' + i : '' + i;
                 var mNum = m < 10 ? '0' + m : '' + m;
-                var dStr = `${y}-${mNum}-${dNum}`;
+                var dStr = `${y}-${mNum}-${dayNum}`;
                 var dInfo = sheet.data?.[dStr] || {};
                 var shift = 'ພັກ (OFF)';
                 var pillClass = 'bg-slate-100 text-slate-500';
@@ -1288,6 +1569,64 @@
             setTimeout(() => toast.classList.add('translate-y-[-150%]', 'opacity-0', 'pointer-events-none'), 3500);
         }
 
+        var confirmModalCallback = null;
+        function askConfirm(title, message, callback, icon = 'help', btnText = 'ຢືນຢັນ (Confirm)') {
+            document.getElementById('confirmModalTitle').innerText = title;
+            document.getElementById('confirmModalMessage').innerText = message;
+            document.getElementById('confirmModalIcon').innerText = icon;
+            document.getElementById('btnConfirmAction').innerText = btnText;
+            confirmModalCallback = callback;
+            document.getElementById('appConfirmModal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal(isConfirmed) {
+            document.getElementById('appConfirmModal').classList.add('hidden');
+            if (isConfirmed && typeof confirmModalCallback === 'function') {
+                confirmModalCallback();
+            }
+            confirmModalCallback = null;
+        }
+
+        function toggleMobileDrawer() {
+            var d = document.getElementById('mobileDrawer');
+            var b = document.getElementById('mobileDrawerBackdrop');
+            if (d.classList.contains('-translate-x-full')) {
+                d.classList.remove('-translate-x-full');
+                b.classList.remove('hidden');
+            } else {
+                d.classList.add('-translate-x-full');
+                b.classList.add('hidden');
+            }
+        }
+
+        function openRandomGroupSelectModal() {
+            var select = document.getElementById('randomSelectedGroupId');
+            select.innerHTML = '';
+            employeeGroups.forEach(grp => {
+                var opt = document.createElement('option');
+                opt.value = grp.id;
+                opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)`;
+                select.appendChild(opt);
+            });
+            document.getElementById('randomGroupSelectModal').classList.remove('hidden');
+        }
+
+        function promptResetSchedule() {
+            askConfirm('ຣີເຊັດຕາຕະລາງ', 'ທ່ານຕ້ອງການລຶບຂໍ້ມູນຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?', () => {
+                var sheet = getActiveSheet();
+                sheet.data = {};
+                saveAll();
+                renderScheduleTable();
+                showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງແລ້ວ', 'success');
+            }, 'delete_sweep', 'Reset');
+        }
+
+        function publishSchedule() {
+            getActiveSheet().status = 'PUBLISHED';
+            saveAll();
+            showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ຮຽບຮ້ອຍແລ້ວ', 'success');
+        }
+
         function exportToA4PDF() {
             var sheet = getActiveSheet();
             var element = document.getElementById('pdfExportArea');
@@ -1303,6 +1642,7 @@
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', () => {
+            saveAll();
             checkAuth();
             if (Object.keys(getActiveSheet().data || {}).length === 0) {
                 executeGroupRandomSchedule();
@@ -1310,4 +1650,4 @@
         });
     </script>
 </body>
-</html>
+</html
