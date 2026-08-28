@@ -32,7 +32,7 @@ function checkAuth() {
             
             document.getElementById('adminReportsSection')?.classList.remove('hidden');
             document.getElementById('userStaffWorkspaceSection')?.classList.add('hidden');
-            renderAdminAllStaffReport();
+            if (typeof window.renderAdminAllStaffReport === 'function') window.renderAdminAllStaffReport();
         } else {
             if (topProfileNav) topProfileNav.innerText = "My Workspace & Hub";
             if (sideProfileNav) sideProfileNav.innerText = "My Workspace & Hub";
@@ -42,12 +42,15 @@ function checkAuth() {
             
             document.getElementById('adminReportsSection')?.classList.add('hidden');
             document.getElementById('userStaffWorkspaceSection')?.classList.remove('hidden');
-            renderUserCurrentWeekWorkspace();
+            if (typeof window.renderUserCurrentWeekWorkspace === 'function') window.renderUserCurrentWeekWorkspace();
         }
 
-        renderDashboard();
-        renderEmployeesTable();
-        renderScheduleStaffRoster();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+        if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+        
+        // ⭐ ອັບເດດຈຳນວນແຈ້ງເຕືອນເທິງກະດິ່ງທັນທີ
+        if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
     }
 }
 
@@ -55,12 +58,8 @@ function doLogin() {
     var u = document.getElementById('loginUsername').value.trim();
     var p = document.getElementById('loginPassword').value.trim();
     
-    // ດຶງຖານຂໍ້ມູນພະນັກງານແບບປອດໄພ 100%
     var userPool = window.users || JSON.parse(localStorage.getItem('ot_users_master')) || window.MASTER_USERS_DEFAULT || [];
-    
-    if (!window.users || window.users.length === 0) {
-        window.users = userPool;
-    }
+    if (!window.users || window.users.length === 0) window.users = userPool;
 
     var found = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
@@ -82,3 +81,7 @@ function logout() {
     window.currentUser = null;
     location.reload();
 }
+
+window.checkAuth = checkAuth;
+window.doLogin = doLogin;
+window.logout = logout;
