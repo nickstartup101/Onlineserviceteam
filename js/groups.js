@@ -1,4 +1,3 @@
-javascript
 function renderGroupsTab() {
     var grid = document.getElementById('groupsListGrid');
     if (!grid) return;
