@@ -1,4 +1,3 @@
-javascript
 function renderAdminAllStaffReport() {
     if (!currentUser || currentUser.role !== 'SUPER_ADMIN') return;
 
