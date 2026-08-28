@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html class="light" lang="lo">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Workforce Logistics - ຕາຕະລາງປະຈຳການບໍລິການອອນໄລ</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    
+    <!-- Google Fonts: Inter & Noto Sans Lao -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#002547",
+                        "primary-container": "#1b3b5f",
+                        "surface": "#f8fafc",
+                        "surface-card": "#ffffff",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6"
+                    },
+                    fontFamily: {
+                        "sans": ["Inter", "Noto Sans Lao", "sans-serif"],
+                        "lao": ["Noto Sans Lao", "Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', 'Noto Sans Lao', sans-serif; }
+        .tab-view { display: none; }
+        .tab-view.active { display: flex; }
+        
+        /* ຕາຕະລາງ Excel ຄົມຊັດ */
+        .excel-table { border-collapse: collapse; width: 100%; border: 1.5px solid #000; }
+        .excel-table th, .excel-table td { border: 1px solid #000; padding: 2px 4px; font-size: 11px; text-align: center; }
+        .excel-subgrid { display: grid; width: 100%; height: 100%; }
+        .excel-cell { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 2px 2px; min-height: 23px; display: flex; align-items: center; justify-content: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+        .excel-cell:hover { background-color: #e2e8f0; }
+        
+        /* ໄຟກະພິບ Live Indicator */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .live-dot {
+            animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; }
+            #pdfExportArea { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
+
+    <!-- ================= 1. LOGIN MODAL ================= -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="bg-primary p-6 text-white text-center">
+                <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <span class="material-symbols-outlined text-3xl">domain</span>
+                </div>
+                <h2 class="text-xl font-bold font-lao">Workforce Logistics</h2>
+                <p class="text-xs text-slate-300 font-lao mt-1">ລະບົບຈັດການຕາຕະລາງປະຈຳການບໍລິການອອນໄລ</p>
+            </div>
+            
+            <form onsubmit="handleLogin(event)" class="p-6 space-y-4 font-lao">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ຊື່ຜູ້ໃຊ້ (Username / ລະຫັດພະນັກງານ)</label>
+                    <input type="text" id="loginUsername" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="ເຊັ່ນ: BCEL0277 ຫຼື admin"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານ (Password)</label>
+                    <input type="password" id="loginPassword" required class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="••••••••"/>
+                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-primary-container text-white py-2.5 rounded-lg text-sm font-semibold transition shadow-sm">
+                    ເຂົ້າສູ່ລະບົບ (Log In)
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= TOP NAVIGATION ================= -->
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30 shadow-sm">
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined text-lg">calendar_month</span>
+                </div>
+                <span class="text-lg font-bold text-primary tracking-tight">Workforce Logistics</span>
+            </div>
+            <nav class="hidden md:flex gap-1">
+                <button onclick="switchTab('dashboard')" id="top-btn-dashboard" class="top-nav-link text-primary font-bold border-b-2 border-primary pb-1 text-xs font-lao px-3 py-1.5">Dashboard</button>
+                <button onclick="switchTab('schedule')" id="top-btn-schedule" class="top-nav-link text-slate-600 hover:bg-slate-100 rounded px-3 py-1.5 text-xs font-lao admin-only">Monthly Schedule</button>
+                <button onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-100 rounded px-3 py-1.5 text-xs font-lao admin-only">Employees</button>
+                <button onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-100 rounded px-3 py-1.5 text-xs font-lao">My Profile & Swaps</button>
+            </nav>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2.5 pl-2">
+                <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border border-slate-300 bg-primary-container" src="" alt="Profile"/>
+                <div class="text-left font-lao">
+                    <p class="text-xs font-bold text-slate-800" id="topUserName">User</p>
+                    <p class="text-[10px] text-slate-500" id="topUserRole">Staff</p>
+                </div>
+            </div>
+            <button onclick="logout()" title="Sign Out" class="text-slate-500 hover:text-error ml-2 p-1.5 rounded-lg hover:bg-slate-100 transition">
+                <span class="material-symbols-outlined text-[20px]">logout</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ================= MAIN WRAPPER ================= -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- SIDEBAR -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col py-6 px-4 shrink-0 hidden md:flex">
+            <div class="mb-6 px-2">
+                <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Main Navigation</h2>
+            </div>
+            
+            <nav class="flex flex-col gap-1.5 flex-1 font-lao text-xs">
+                <button onclick="switchTab('dashboard')" id="side-dashboard" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 bg-slate-100 text-primary rounded-xl font-semibold transition text-left">
+                    <span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard (ຕິດຕາມປະຈຳວັນ)
+                </button>
+                <button onclick="switchTab('schedule')" id="side-schedule" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-[18px]">table_view</span> ສ້າງຕາຕະລາງປະຈຳການ
+                    </div>
+                    <span class="bg-primary text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+                </button>
+                <button onclick="switchTab('employees')" id="side-employees" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition text-left">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ
+                    </div>
+                    <span class="bg-primary text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span>
+                </button>
+                <button onclick="switchTab('profile')" id="side-profile" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition text-left">
+                    <span class="material-symbols-outlined text-[18px]">account_circle</span> ໂປຣໄຟລ໌ & ປ່ຽນກະ (P2P)
+                </button>
+            </nav>
+        </aside>
+
+        <!-- ================= 2. DASHBOARD VIEW (LIVE PULSING SHIFTS) ================= -->
+        <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto p-6 flex-col gap-6 bg-slate-50">
+            <div class="max-w-7xl mx-auto w-full flex flex-col gap-6">
+                
+                <!-- Dashboard Top Bar -->
+                <header class="flex justify-between items-center bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div>
+                        <div class="flex items-center gap-2 text-xs font-semibold mb-1 font-lao text-slate-500">
+                            <span class="material-symbols-outlined text-base">today</span>
+                            <span>ເລືອກວັນທີຕິດຕາມ:</span>
+                            <input type="date" id="dashDateInput" value="2026-09-01" onchange="renderDashboard()" class="bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-primary focus:ring-1 focus:ring-primary cursor-pointer"/>
+                        </div>
+                        <h2 class="text-xl font-bold text-primary tracking-tight font-lao">Daily Operational Monitor (ຕິດຕາມປະຈຳການ)</h2>
+                    </div>
+                    <div id="dayTypeBadge" class="px-3 py-1.5 rounded-full text-xs font-bold font-lao bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-600"></span> ວັນທຳມະດາ (Weekday)
+                    </div>
+                </header>
+
+                <!-- 🚨 IMBALANCE ALERT BANNER -->
+                <div id="imbalanceAlertBanner" class="hidden bg-error-container border border-error/40 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-full bg-error text-white flex items-center justify-center shrink-0 shadow">
+                            <span class="material-symbols-outlined text-[24px]">warning</span>
+                        </div>
+                        <div class="flex-1 font-lao">
+                            <h3 class="text-sm font-bold text-error uppercase">STAFFING IMBALANCE (ກະເຮັດວຽກບໍ່ສົມດຸນ)</h3>
+                            <p class="text-xs text-error/90" id="imbalanceAlertMessage">
+                                ພົບວ່າມີພະນັກງານລາພັກເກີນ 2 ຄົນໃນກະດຽວກັນ.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 Shifts Cards with Live Pulse -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    <!-- Shift 1 Card -->
+                    <div id="dashCard1" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold font-lao text-sm text-slate-800">ກະ 1 (Shift 1)</h4>
+                                    <span id="liveBadge1" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span> LIVE NOW
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 font-semibold" id="shift1TimeText">08:00 - 16:00</p>
+                            </div>
+                            <span id="shift1CountBadge" class="text-xs font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-700">0 ຄົນ</span>
+                        </div>
+                        <div class="space-y-1.5 font-lao pt-2 border-t border-slate-100" id="shift1Names"></div>
+                    </div>
+
+                    <!-- Shift 2 Card -->
+                    <div id="dashCard2" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold font-lao text-sm text-slate-800">ກະ 2 (Shift 2)</h4>
+                                    <span id="liveBadge2" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span> LIVE NOW
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 font-semibold" id="shift2TimeText">12:00 - 20:00</p>
+                            </div>
+                            <span id="shift2CountBadge" class="text-xs font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-700">0 ຄົນ</span>
+                        </div>
+                        <div class="space-y-1.5 font-lao pt-2 border-t border-slate-100" id="shift2Names"></div>
+                    </div>
+
+                    <!-- Shift 3 Card -->
+                    <div id="dashCard3" class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-bold font-lao text-sm text-slate-800">ກະ 3 (Shift 3)</h4>
+                                    <span id="liveBadge3" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500 live-dot"></span> LIVE NOW
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500 font-semibold" id="shift3TimeText">20:00 - 08:00</p>
+                            </div>
+                            <span id="shift3CountBadge" class="text-xs font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-700">0 ຄົນ</span>
+                        </div>
+                        <div class="space-y-1.5 font-lao pt-2 border-t border-slate-100" id="shift3Names"></div>
+                    </div>
+
+                </div>
+
+                <!-- On Leave Today Container -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm font-lao">
+                    <h3 class="text-sm font-bold text-primary mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-error text-[18px]">event_busy</span> ລາຍຊື່ພະນັກງານລາພັກມື້ນີ້
+                    </h3>
+                    <div id="dashLeavesContainer" class="space-y-2 text-xs"></div>
+                </div>
+
+            </div>
+        </main>
+
+        <!-- ================= 3. MONTHLY SCHEDULE BUILDER (WITH AUTO-GENERATE & HOLIDAY INSERT) ================= -->
+        <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100">
+            <!-- Toolbar -->
+            <div class="px-6 py-3 bg-white border-b border-slate-200 flex justify-between items-center shrink-0 font-lao shadow-sm">
+                <div class="flex items-center gap-3">
+                    <h1 class="text-sm font-bold text-primary">ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026</h1>
+                    <span id="scheduleBadgeState" class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                        ສະບັບຮ່າງ (Draft)
+                    </span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="autoGenerateSchedule()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">casino</span> ຈັດຕາຕະລາງອັດຕະໂນມັດ (Auto)
+                    </button>
+                    <button onclick="resetSchedule()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">refresh</span> ຣີເຊັດ (Reset)
+                    </button>
+                    <button onclick="openHolidayModal()" class="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">event</span> ເພີ່ມວັນພັກພິເສດ
+                    </button>
+                    <button onclick="saveDraft()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold hover:bg-slate-50 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ Draft
+                    </button>
+                    <button onclick="publishSchedule()" class="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-sm">publish</span> Publish
+                    </button>
+                    <button onclick="exportToA4PDF()" class="px-3.5 py-1.5 bg-primary hover:bg-primary-container text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm">
+                        <span class="material-symbols-outlined text-sm">print</span> Export A4 PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Workspace: Sidebar (Staff List with Red Leader Badges) + Excel Grid -->
+            <div class="flex flex-1 overflow-hidden">
+                <!-- Employee List Sidebar -->
+                <div class="w-60 bg-white border-r border-slate-200 p-3 overflow-y-auto space-y-1.5 shrink-0 font-lao">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">ລາຍຊື່ພະນັກງານ (ກົດໃສ່ຕາຕະລາງເພື່ອປ່ຽນ)</p>
+                    <div id="scheduleStaffRoster" class="space-y-1"></div>
+                </div>
+
+                <!-- Printable Table Container -->
+                <div class="flex-1 overflow-auto p-6 flex flex-col" id="scheduleTableWrapper">
+                    <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
+                        
+                        <!-- Table Title -->
+                        <div class="text-center font-bold text-sm py-1.5 font-lao border-b-2 border-black bg-slate-50">
+                            ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026
+                        </div>
+
+                        <!-- Schedule Excel Grid -->
+                        <table class="excel-table font-lao" id="mainScheduleTable">
+                            <tbody id="scheduleTableBody">
+                                <!-- Populated Dynamically with Weekend/Weekday Repeating Headers -->
+                            </tbody>
+                        </table>
+
+                        <!-- Official Notes & Signature Block -->
+                        <div class="mt-4 border-t-2 border-black pt-3 text-[11px] font-lao grid grid-cols-12 gap-4">
+                            <div class="col-span-8 space-y-0.5 leading-tight">
+                                <p class="font-bold">ໝາຍເຫດ:</p>
+                                <p>1, ການປະຈຳການມີ 3 ກະ</p>
+                                <p>2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ 08:00-13:30)</p>
+                                <p>3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ 13:30-19:00)</p>
+                                <p>4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ 19:00-08:00)</p>
+                                <p>5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ</p>
+                                <p>6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ</p>
+                                <p>7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ</p>
+                            </div>
+                            <div class="col-span-4 flex flex-col items-center justify-between text-center pt-2">
+                                <p class="font-bold">ຫົວໜ້າສູນບໍລິການ</p>
+                                <div class="h-12 flex items-center justify-center my-1 text-slate-300 italic">
+                                    (ເຊັນ & ຈໍ້າກາ)
+                                </div>
+                                <p class="font-bold">....................................</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ================= 4. EMPLOYEES MANAGEMENT ================= -->
+        <main id="view-employees" class="tab-view flex-1 overflow-y-auto p-6 flex-col gap-6 bg-slate-50 font-lao">
+            <div class="max-w-7xl mx-auto w-full space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-primary">ຈັດການຂໍ້ມູນພະນັກງານ</h2>
+                        <p class="text-xs text-slate-500">ເພີ່ມພະນັກງານໃໝ່, ແກ້ໄຂຂໍ້ມູນ ແລະ ກຳນົດຫົວໜ້າກະ</p>
+                    </div>
+                    <button onclick="openAddEmpModal()" class="px-4 py-2 bg-primary hover:bg-primary-container text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່
+                    </button>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-100 border-b border-slate-200 text-slate-700">
+                            <tr>
+                                <th class="p-3">Username / ລະຫັດ</th>
+                                <th class="p-3">ຊື່ເຕັມ (Full Name)</th>
+                                <th class="p-3">ຊື່ໃນຕາຕະລາງ</th>
+                                <th class="p-3">ຕຳແໜ່ງ / ສິດທິ</th>
+                                <th class="p-3 text-right">ຈັດການ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- ================= 5. MY PROFILE & P2P SHIFT SWAPS ================= -->
+        <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-6 flex-col bg-slate-50 font-lao">
+            <div class="max-w-7xl mx-auto w-full space-y-6">
+                <div class="border-b border-slate-200 pb-3">
+                    <h2 class="text-xl font-bold text-primary">My Profile & P2P Shift Swaps</h2>
+                    <p class="text-xs text-slate-500">ອັບໂຫຼດຮູບພາບ, ປ່ຽນລະຫັດຜ່ານ ແລະ ສົ່ງຄຳຮ້ອງປ່ຽນກະ</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Profile Card -->
+                    <div class="lg:col-span-4 bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col items-center text-center">
+                        <div class="relative mb-3">
+                            <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-2 border-primary shadow-sm bg-slate-100" src="" alt="Profile"/>
+                            <label for="photoUploadInput" class="absolute bottom-0 right-0 bg-primary text-white p-1.5 rounded-full cursor-pointer hover:bg-primary-container shadow">
+                                <span class="material-symbols-outlined text-sm">photo_camera</span>
+                            </label>
+                            <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden"/>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800" id="profNameDisplay">Name</h3>
+                        <p class="text-xs text-primary font-semibold" id="profCodeDisplay">BCEL0000</p>
+                        
+                        <form onsubmit="handleUpdateProfile(event)" class="w-full space-y-3 text-left border-t border-slate-200 pt-4 mt-4 text-xs">
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">ຊື່ເຕັມ (Full Name)</label>
+                                <input type="text" id="profNameInput" required class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-primary"/>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label>
+                                <input type="password" id="profPassInput" placeholder="ໃສ່ລະຫັດໃໝ່ຫາກຕ້ອງການປ່ຽນ..." class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-primary"/>
+                            </div>
+                            <button type="submit" class="w-full bg-primary hover:bg-primary-container text-white py-2 rounded-lg font-semibold transition">
+                                ບັນທຶກໂປຣໄຟລ໌
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Swap & Leave Forms -->
+                    <div class="lg:col-span-8 space-y-6">
+                        <!-- P2P Swap Request Form -->
+                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                            <h3 class="text-sm font-bold text-primary mb-3 flex items-center gap-2 border-b pb-2">
+                                <span class="material-symbols-outlined text-[18px]">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (P2P Swap)
+                            </h3>
+                            <form onsubmit="handleCreateSwap(event)" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ວັນທີຕ້ອງການປ່ຽນ</label>
+                                    <input type="date" id="swapDate" value="2026-09-01" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ເລືອກເພື່ອນຮ່ວມງານທີ່ຈະປ່ຽນນຳ</label>
+                                    <select id="swapTargetPeer" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"></select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ກະຂອງຕົນເອງ</label>
+                                    <select id="swapMyShift" class="w-full border border-slate-300 rounded-lg p-2 outline-none">
+                                        <option value="shift1">ກະ 1</option>
+                                        <option value="shift2">ກະ 2</option>
+                                        <option value="shift3">ກະ 3</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ກະທີ່ຕ້ອງການແລກ</label>
+                                    <select id="swapTargetShift" class="w-full border border-slate-300 rounded-lg p-2 outline-none">
+                                        <option value="shift2">ກະ 2</option>
+                                        <option value="shift1">ກະ 1</option>
+                                        <option value="shift3">ກະ 3</option>
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ</label>
+                                    <input type="text" id="swapReason" placeholder="ເຫດຜົນການຂໍປ່ຽນກະ..." class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end">
+                                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary-container text-white rounded-lg font-semibold shadow-sm transition">
+                                        ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Report Leave Form -->
+                        <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                            <h3 class="text-sm font-bold text-primary mb-3 flex items-center gap-2 border-b pb-2">
+                                <span class="material-symbols-outlined text-[18px]">event_busy</span> ແຈ້ງລາພັກ (Report Leave)
+                            </h3>
+                            <form onsubmit="handleCreateLeave(event)" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ວັນທີລາພັກ</label>
+                                    <input type="date" id="leaveDate" value="2026-09-01" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ກະທີ່ຈະລາພັກ</label>
+                                    <select id="leaveShift" class="w-full border border-slate-300 rounded-lg p-2 outline-none">
+                                        <option value="shift1">ກະ 1</option>
+                                        <option value="shift2">ກະ 2</option>
+                                        <option value="shift3">ກະ 3</option>
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ</label>
+                                    <input type="text" id="leaveReason" placeholder="ລະບຸເຫດຜົນ..." required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                                </div>
+                                <div class="md:col-span-2 flex justify-end">
+                                    <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold shadow-sm transition">
+                                        ສົ່ງໃບລາພັກ
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Swap Timeline & History -->
+                <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-primary mb-3 border-b pb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-600 text-[18px]">history</span> ປະຫວັດ ແລະ ລາຍການຂໍປ່ຽນກະ (P2P Swap History)
+                    </h3>
+                    <div id="incomingSwapsList" class="space-y-2.5 text-xs"></div>
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- ================= EDIT / ADD EMPLOYEE MODAL ================= -->
+    <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-xl overflow-hidden font-lao">
+            <div class="p-4 bg-primary text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3>
+                <button onclick="closeEmpModal()" class="text-white">✕</button>
+            </div>
+            <form onsubmit="handleSaveEmployee(event)" class="p-5 space-y-3 text-xs">
+                <input type="hidden" id="editEmpId"/>
+                <div>
+                    <label class="block font-semibold mb-1">Username / ລະຫັດພະນັກງານ</label>
+                    <input type="text" id="modalEmpUser" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ເຕັມ (Full Name)</label>
+                    <input type="text" id="modalEmpFullName" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label>
+                    <input type="text" id="modalEmpNameLao" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label>
+                    <input type="password" id="modalEmpPass" required class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                    <input type="checkbox" id="modalEmpIsLeader" class="rounded text-red-600 focus:ring-red-500 h-4 w-4"/>
+                    <label for="modalEmpIsLeader" class="font-bold text-red-600">ກຳນົດເປັນຫົວໜ້າກະ (Shift Leader - ສີແດງ)</label>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeEmpModal()" class="px-3 py-1.5 border rounded-lg">ຍົກເລີກ</button>
+                    <button type="submit" class="px-4 py-1.5 bg-primary text-white rounded-lg font-semibold">ບັນທຶກ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADD SPECIAL HOLIDAY MODAL ================= -->
+    <div id="holidayModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-xl shadow-xl overflow-hidden font-lao">
+            <div class="p-4 bg-amber-800 text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm">ກຳນົດວັນພັກພິເສດ (Special Holiday)</h3>
+                <button onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white">✕</button>
+            </div>
+            <div class="p-5 space-y-3 text-xs">
+                <label class="block font-semibold">ເລືອກວັນທີຕ້ອງການປ່ຽນເປັນຮູບແບບວັນພັກ:</label>
+                <input type="date" id="specialHolidayDateInput" value="2026-09-01" class="w-full border border-slate-300 rounded-lg p-2 outline-none"/>
+                <p class="text-[11px] text-slate-500">
+                    * ວັນພັກພິເສດຈະປ່ຽນເວລາເປັນ: 08-13:30, 13:30-19, 19-08 ຄືກັບວັນເສົາ-ອາທິດ.
+                </p>
+                <div class="flex justify-end gap-2 pt-2 border-t">
+                    <button onclick="document.getElementById('holidayModal').classList.add('hidden')" class="px-3 py-1.5 border rounded-lg">ຍົກເລີກ</button>
+                    <button onclick="handleToggleHoliday()" class="px-4 py-1.5 bg-amber-800 text-white rounded-lg font-semibold">ບັນທຶກ / ສະຫຼັບສະຖານະ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // 25 Seed Users (With 4 Leaders in Red)
+        const initialUsers = [
+            { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false, photo: '' },
+            { user: 'BCEL0765', pass: 'bcel2026', fullName: 'SENGDAO DOUANGSOMBATH', nameLao: 'ແສງດາວ', role: 'STAFF', isLeader: true, photo: '' },
+            { user: 'BCEL0272', pass: 'bcel2026', fullName: 'PHONESAVANH HEUANGVILAY', nameLao: 'ພອນສະຫວັນ', role: 'STAFF', isLeader: true, photo: '' },
+            { user: 'BCEL1055', pass: 'bcel2026', fullName: 'BOUNPRASEUTH SILIMANOTHAM', nameLao: 'ບຸນປະເສີດ', role: 'STAFF', isLeader: true, photo: '' },
+            { user: 'BCEL0872', pass: 'bcel2026', fullName: 'PHANNIKONE SAYAPHET', nameLao: 'ພັນນິກອນ', role: 'STAFF', isLeader: true, photo: '' },
+            { user: 'BCEL0277', pass: 'bcel2026', fullName: 'SONTHAYA MONLATHOM', nameLao: 'ສົນທະຍາ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL0707', pass: 'bcel2026', fullName: 'NICKEE KHAMKHOSY', nameLao: 'ນິກກີ້', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL1431', pass: 'bcel2026', fullName: 'NOUHACK SOULAIYAKHAM', nameLao: 'ນູຮັກ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL1532', pass: 'bcel2026', fullName: 'PAKKER VILAISANG', nameLao: 'ບັກກີ້', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2007', pass: 'bcel2026', fullName: 'AEKSAVANG PHOUVONGKHAMCHAN', nameLao: 'ເອກສະຫວ່າງ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2101', pass: 'bcel2026', fullName: 'BOUNHAK BOUTTHAVONG', nameLao: 'ບຸນຮັກ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2103', pass: 'bcel2026', fullName: 'PASONGSIN MANOTHAM', nameLao: 'ປະສົງສິນ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2104', pass: 'bcel2026', fullName: 'SAIYTHONG VONGDALA', nameLao: 'ສາຍທອງ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2105', pass: 'bcel2026', fullName: 'SOXAY SOULIYAVONG', nameLao: 'ສົມຊາຍ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2120', pass: 'bcel2026', fullName: 'TONICK BOUDDASIEN', nameLao: 'ສົມພະຍາ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2319', pass: 'bcel2026', fullName: 'XAYYASITH VONGDONEXAI', nameLao: 'ໄຊນິນຈາ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2321', pass: 'bcel2026', fullName: 'LITTASONE HUEANGKHAMSAEN', nameLao: 'ລິດຕາສອນ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2323', pass: 'bcel2026', fullName: 'SISOMPHOU INTHAVONG', nameLao: 'ສີຊົມພູ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2425', pass: 'bcel2026', fullName: 'THONGSAVANH VANNAXAY', nameLao: 'ທອງສະຫວັນ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2426', pass: 'bcel2026', fullName: 'SOULIYASACK KHAMPHAIVONG', nameLao: 'ສຸລິຍະສັກ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2515', pass: 'bcel2026', fullName: 'KAYSAVATH PHANLUANGKHAM', nameLao: 'ໄກສະຫວາດ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2516', pass: 'bcel2026', fullName: 'XAIYAPHONE SYLAVONG', nameLao: 'ໄຊຍະພອນ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2517', pass: 'bcel2026', fullName: 'KEOVILAY XAYYALATH', nameLao: 'ແກ້ວວິໄລ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2579', pass: 'bcel2026', fullName: 'CHITSADA CHANTHAVONG', nameLao: 'ຈິດສະດາ', role: 'STAFF', isLeader: false, photo: '' },
+            { user: 'BCEL2580', pass: 'bcel2026', fullName: 'NALONGSAK YASENG', nameLao: 'ນະລົງສັກ', role: 'STAFF', isLeader: false, photo: '' }
+        ];
+
+        let users = JSON.parse(localStorage.getItem('bcel_users_v3')) || initialUsers;
+        let currentUser = JSON.parse(localStorage.getItem('bcel_auth_v3')) || null;
+        let scheduleStatus = localStorage.getItem('bcel_schedule_status_v3') || 'DRAFT';
+        let specialHolidays = JSON.parse(localStorage.getItem('bcel_holidays_v3')) || [];
+        let swapHistory = JSON.parse(localStorage.getItem('bcel_swaps_v3')) || [];
+        let leavesList = JSON.parse(localStorage.getItem('bcel_leaves_v3')) || [
+            { id: 1, date: '2026-09-01', shift: 'shift1', empName: 'ບຸນຮັກ', reason: 'ລາປ່ວຍ' },
+            { id: 2, date: '2026-09-01', shift: 'shift1', empName: 'ປະສົງສິນ', reason: 'ຕິດທຸລະກິດຄອບຄົວ' }
+        ];
+
+        let monthlySchedule = JSON.parse(localStorage.getItem('bcel_schedule_09_2026_v3')) || generateDefaultSeptemberData();
+
+        function generateDefaultSeptemberData() {
+            const data = {};
+            for (let i = 1; i <= 30; i++) {
+                const dayNum = i < 10 ? '0' + i : '' + i;
+                const dStr = `2026-09-${dayNum}`;
+                const dateObj = new Date(2026, 8, i);
+                const dayOfWeek = dateObj.getDay(); // 0 = Sun, 6 = Sat
+
+                if (dayOfWeek === 6) { // Saturday
+                    data[dStr] = {
+                        isWeekend: true,
+                        shift1: ['ສາຍທອງ', 'ບຸນຮັກ', ''],
+                        shift2: ['ສົມຊາຍ', 'ບຸນຮັກ', ''],
+                        shift3: ['ສຸລິຍະສັກ', 'ໄກສະຫວາດ', '']
+                    };
+                } else if (dayOfWeek === 0) { // Sunday
+                    data[dStr] = {
+                        isWeekend: true,
+                        shift1: ['ບັກກີ້', '', ''],
+                        shift2: ['ສົມພະຍາ', 'ໄຊນິນຈາ', ''],
+                        shift3: ['ແພັດຕີ້', '', '']
+                    };
+                } else { // Mon - Fri
+                    data[dStr] = {
+                        isWeekend: false,
+                        shift1: ['ບຸນປະເສີດ', 'ບຸນຮັກ', 'ທະວີສັກ', 'ສົມຊາຍ', 'ປະສົງສິນ', 'ເອກສະຫວ່າງ'],
+                        shift2: ['ພອນສະຫວັນ', 'ແພັດຕີ້', 'ສີຊົມພູ', 'ໄກສະຫວາດ', 'ສຸລິຍະສັກ', 'ສາຍທອງ'],
+                        shift3: ['ແສງດາວ', 'ບັກກີ້', 'ສົມພະຍາ', 'ໄຊນິນຈາ']
+                    };
+                }
+            }
+            return data;
+        }
+
+        function saveAll() {
+            localStorage.setItem('bcel_users_v3', JSON.stringify(users));
+            localStorage.setItem('bcel_schedule_09_2026_v3', JSON.stringify(monthlySchedule));
+            localStorage.setItem('bcel_holidays_v3', JSON.stringify(specialHolidays));
+            localStorage.setItem('bcel_swaps_v3', JSON.stringify(swapHistory));
+            localStorage.setItem('bcel_leaves_v3', JSON.stringify(leavesList));
+            localStorage.setItem('bcel_schedule_status_v3', scheduleStatus);
+            if (currentUser) localStorage.setItem('bcel_auth_v3', JSON.stringify(currentUser));
+        }
+
+        // ================= AUTHENTICATION =================
+        function checkAuth() {
+            if (!currentUser) {
+                document.getElementById('loginModal').classList.remove('hidden');
+            } else {
+                document.getElementById('loginModal').classList.add('hidden');
+                
+                document.getElementById('topUserName').innerText = currentUser.nameLao;
+                document.getElementById('topUserRole').innerText = currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff';
+                
+                const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.nameLao)}&background=002547&color=fff`;
+                document.getElementById('topAvatar').src = currentUser.photo || defaultAvatar;
+                document.getElementById('profPhotoPreview').src = currentUser.photo || defaultAvatar;
+
+                document.getElementById('profNameDisplay').innerText = currentUser.fullName;
+                document.getElementById('profCodeDisplay').innerText = currentUser.user;
+                document.getElementById('profNameInput').value = currentUser.fullName;
+
+                const isAdmin = currentUser.role === 'SUPER_ADMIN';
+                document.querySelectorAll('.admin-only').forEach(el => {
+                    el.style.display = isAdmin ? 'flex' : 'none';
+                });
+
+                initViews();
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUsername').value.trim();
+            const p = document.getElementById('loginPassword').value.trim();
+
+            const found = users.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
+            if (found) {
+                currentUser = found;
+                saveAll();
+                checkAuth();
+            } else {
+                alert('Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('bcel_auth_v3');
+            currentUser = null;
+            location.reload();
+        }
+
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentUser.photo = e.target.result;
+                const idx = users.findIndex(u => u.user === currentUser.user);
+                if (idx !== -1) users[idx].photo = currentUser.photo;
+                saveAll();
+                checkAuth();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleUpdateProfile(e) {
+            e.preventDefault();
+            const newName = document.getElementById('profNameInput').value;
+            const newPass = document.getElementById('profPassInput').value;
+
+            currentUser.fullName = newName;
+            if (newPass) currentUser.pass = newPass;
+
+            const idx = users.findIndex(u => u.user === currentUser.user);
+            if (idx !== -1) users[idx] = { ...users[idx], ...currentUser };
+
+            saveAll();
+            alert('ອັບເດດຂໍ້ມູນໂປຣໄຟລ໌ສຳເລັດ!');
+            checkAuth();
+        }
+
+        // ================= TAB NAVIGATION =================
+        function switchTab(tabId) {
+            if ((tabId === 'schedule' || tabId === 'employees') && currentUser.role !== 'SUPER_ADMIN') {
+                alert('ສຳລັບ Super Admin ເທົ່ານັ້ນ');
+                return;
+            }
+
+            document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.side-nav-btn').forEach(b => {
+                b.classList.remove('bg-slate-100', 'font-semibold', 'text-primary');
+                b.classList.add('text-slate-600');
+            });
+            document.querySelectorAll('.top-nav-link').forEach(b => {
+                b.classList.remove('border-b-2', 'border-primary', 'font-bold', 'text-primary');
+                b.classList.add('text-slate-600');
+            });
+
+            document.getElementById(`view-${tabId}`).classList.add('active');
+            
+            const side = document.getElementById(`side-${tabId}`);
+            if (side) side.classList.add('bg-slate-100', 'font-semibold', 'text-primary');
+            
+            const top = document.getElementById(`top-btn-${tabId}`);
+            if (top) top.classList.add('border-b-2', 'border-primary', 'font-bold', 'text-primary');
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'schedule') renderScheduleTable();
+            if (tabId === 'employees') renderEmployeesTable();
+            if (tabId === 'profile') renderProfileTab();
+        }
+
+        // ================= DASHBOARD ENGINE (WITH LIVE STATUS & WEEKEND TIMING) =================
+        function renderDashboard() {
+            const date = document.getElementById('dashDateInput').value;
+            const dayData = monthlySchedule[date] || { isWeekend: false, shift1: [], shift2: [], shift3: [] };
+            const isWeekendOrHol = dayData.isWeekend || specialHolidays.includes(date);
+
+            // Day Type Indicator
+            const dayTypeBadge = document.getElementById('dayTypeBadge');
+            if (isWeekendOrHol) {
+                dayTypeBadge.className = "px-3 py-1.5 rounded-full text-xs font-bold font-lao bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5";
+                dayTypeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-600"></span> ວັນພັກທ້າຍອາທິດ / ພິເສດ (Weekend/Holiday)`;
+            } else {
+                dayTypeBadge.className = "px-3 py-1.5 rounded-full text-xs font-bold font-lao bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5";
+                dayTypeBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-600"></span> ວັນທຳມະດາ (Weekday)`;
+            }
+
+            // Set Shift Times
+            document.getElementById('shift1TimeText').innerText = isWeekendOrHol ? '08:00 - 13:30' : '08:00 - 16:00';
+            document.getElementById('shift2TimeText').innerText = isWeekendOrHol ? '13:30 - 19:00' : '12:00 - 20:00';
+            document.getElementById('shift3TimeText').innerText = isWeekendOrHol ? '19:00 - 08:00' : '20:00 - 08:00';
+
+            // Counts
+            const s1List = (dayData.shift1 || []).filter(n => n && n.trim() !== '');
+            const s2List = (dayData.shift2 || []).filter(n => n && n.trim() !== '');
+            const s3List = (dayData.shift3 || []).filter(n => n && n.trim() !== '');
+
+            document.getElementById('shift1CountBadge').innerText = `${s1List.length} ຄົນ`;
+            document.getElementById('shift2CountBadge').innerText = `${s2List.length} ຄົນ`;
+            document.getElementById('shift3CountBadge').innerText = `${s3List.length} ຄົນ`;
+
+            renderDashNames('shift1Names', s1List);
+            renderDashNames('shift2Names', s2List);
+            renderDashNames('shift3Names', s3List);
+
+            // Check Live Active Shift (Based on current real clock)
+            updateLiveShiftIndicators(isWeekendOrHol);
+
+            // Leaves Check & Imbalance Alert
+            const dayLeaves = leavesList.filter(l => l.date === date);
+            const leavesDiv = document.getElementById('dashLeavesContainer');
+            leavesDiv.innerHTML = '';
+
+            if (dayLeaves.length === 0) {
+                leavesDiv.innerHTML = `<p class="text-slate-400 text-xs">ບໍ່ມີພະນັກງານລາພັກໃນວັນນີ້</p>`;
+            } else {
+                dayLeaves.forEach(l => {
+                    leavesDiv.innerHTML += `
+                        <div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center font-lao">
+                            <div>
+                                <span class="font-bold text-slate-800">${l.empName}</span>
+                                <span class="text-[10px] text-slate-500">(${l.shift})</span>
+                            </div>
+                            <span class="text-error bg-error-container px-2 py-0.5 rounded text-[10px] font-bold">${l.reason}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            const s1Leaves = dayLeaves.filter(l => l.shift === 'shift1').length;
+            const s2Leaves = dayLeaves.filter(l => l.shift === 'shift2').length;
+            const s3Leaves = dayLeaves.filter(l => l.shift === 'shift3').length;
+
+            const alertBanner = document.getElementById('imbalanceAlertBanner');
+            const alertMsg = document.getElementById('imbalanceAlertMessage');
+
+            let defShifts = [];
+            if (s1Leaves >= 2) defShifts.push(`ກະ 1 (${s1Leaves} ຄົນ)`);
+            if (s2Leaves >= 2) defShifts.push(`ກະ 2 (${s2Leaves} ຄົນ)`);
+            if (s3Leaves >= 2) defShifts.push(`ກະ 3 (${s3Leaves} ຄົນ)`);
+
+            if (defShifts.length > 0) {
+                alertBanner.classList.remove('hidden');
+                alertMsg.innerHTML = `ພົບຄວາມບໍ່ສົມດຸນໃນ <strong>${defShifts.join(', ')}</strong> ມີຄົນລາພັກເກີນ 2 ຄົນຂຶ້ນໄປ.`;
+            } else {
+                alertBanner.classList.add('hidden');
+            }
+        }
+
+        function updateLiveShiftIndicators(isWeekend) {
+            const now = new Date();
+            const currentHour = now.getHours() + (now.getMinutes() / 60);
+
+            const b1 = document.getElementById('liveBadge1');
+            const b2 = document.getElementById('liveBadge2');
+            const b3 = document.getElementById('liveBadge3');
+
+            b1.classList.add('hidden'); b1.classList.remove('flex');
+            b2.classList.add('hidden'); b2.classList.remove('flex');
+            b3.classList.add('hidden'); b3.classList.remove('flex');
+
+            if (isWeekend) {
+                if (currentHour >= 8 && currentHour < 13.5) { b1.classList.remove('hidden'); b1.classList.add('flex'); }
+                else if (currentHour >= 13.5 && currentHour < 19) { b2.classList.remove('hidden'); b2.classList.add('flex'); }
+                else { b3.classList.remove('hidden'); b3.classList.add('flex'); }
+            } else {
+                if (currentHour >= 8 && currentHour < 16) { b1.classList.remove('hidden'); b1.classList.add('flex'); }
+                else if (currentHour >= 12 && currentHour < 20) { b2.classList.remove('hidden'); b2.classList.add('flex'); }
+                else { b3.classList.remove('hidden'); b3.classList.add('flex'); }
+            }
+        }
+
+        function renderDashNames(divId, arr) {
+            const el = document.getElementById(divId);
+            el.innerHTML = '';
+            if (arr.length === 0) {
+                el.innerHTML = `<span class="text-slate-400 text-xs">ບໍ່ມີຄົນປະຈຳການ</span>`;
+                return;
+            }
+            arr.forEach(n => {
+                const isLeader = users.find(u => u.nameLao === n && u.isLeader);
+                el.innerHTML += `<span class="inline-block px-2.5 py-1 rounded-lg text-xs border mr-1 mb-1 font-lao ${isLeader ? 'bg-red-50 border-red-300 text-red-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-800'}">${n}</span>`;
+            });
+        }
+
+        // ================= MONTHLY SCHEDULE TABLE ENGINE (EXACT PHOTO REPLICATION) =================
+        function renderScheduleTable() {
+            renderScheduleStaffRoster();
+
+            const badge = document.getElementById('scheduleBadgeState');
+            badge.innerText = scheduleStatus === 'PUBLISHED' ? 'ເຜີຍແຜ່ແລ້ວ (Published)' : 'ສະບັບຮ່າງ (Draft)';
+            badge.className = scheduleStatus === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full' : 'bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full';
+
+            const tbody = document.getElementById('scheduleTableBody');
+            tbody.innerHTML = '';
+
+            const dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+            for (let i = 1; i <= 30; i++) {
+                const dayNum = i < 10 ? '0' + i : '' + i;
+                const dStr = `2026-09-${dayNum}`;
+                const dateObj = new Date(2026, 8, i);
+                const dayOfWeek = dayNamesLao[dateObj.getDay()];
+                const dayData = monthlySchedule[dStr] || { isWeekend: false, shift1: [], shift2: [], shift3: [] };
+                const isWeekendOrHol = dayData.isWeekend || specialHolidays.includes(dStr);
+
+                // ⭐ 1. IF SATURDAY (OR SPECIAL HOLIDAY) -> RENDER WEEKEND HEADER
+                if (dayOfWeek === 'SAT' || (isWeekendOrHol && i === 1)) {
+                    tbody.innerHTML += `
+                        <tr class="bg-slate-100 font-bold border-t-2 border-b border-black">
+                            <td colspan="2" class="p-1 text-center font-bold"></td>
+                            <td class="p-1 text-center font-bold">08-13:30</td>
+                            <td class="p-1 text-center font-bold">13:30-19</td>
+                            <td class="p-1 text-center font-bold">19-08</td>
+                        </tr>
+                    `;
+                }
+                // ⭐ 2. IF MONDAY (TRANSITIONING BACK FROM WEEKEND) OR DAY 1 -> RENDER NORMAL WEEKDAY HEADER
+                else if (dayOfWeek === 'MON' || (i === 1 && !isWeekendOrHol)) {
+                    tbody.innerHTML += `
+                        <tr class="bg-slate-100 font-bold border-t-2 border-b border-black">
+                            <th style="width: 80px;" class="p-1">ວັນທີ</th>
+                            <th style="width: 50px;" class="p-1">ວັນ</th>
+                            <th style="width: 32%;" class="p-1">08-16</th>
+                            <th style="width: 32%;" class="p-1">12-20</th>
+                            <th style="width: 26%;" class="p-1">20-08</th>
+                        </tr>
+                    `;
+                }
+
+                // Table Row
+                tbody.innerHTML += `
+                    <tr class="${isWeekendOrHol ? 'bg-slate-50' : 'bg-white'}">
+                        <!-- Date -->
+                        <td class="font-bold whitespace-nowrap">${i}/09/2026</td>
+                        <!-- Day -->
+                        <td class="font-bold ${isWeekendOrHol ? 'text-blue-700' : ''}">${dayOfWeek}</td>
+                        <!-- Shift 1 -->
+                        <td class="p-0">
+                            <div class="excel-subgrid ${isWeekendOrHol ? 'grid-cols-3' : 'grid-cols-3'}">
+                                ${renderExcelCells(dStr, 'shift1', dayData.shift1, isWeekendOrHol ? 3 : 6)}
+                            </div>
+                        </td>
+                        <!-- Shift 2 -->
+                        <td class="p-0">
+                            <div class="excel-subgrid ${isWeekendOrHol ? 'grid-cols-3' : 'grid-cols-3'}">
+                                ${renderExcelCells(dStr, 'shift2', dayData.shift2, isWeekendOrHol ? 3 : 6)}
+                            </div>
+                        </td>
+                        <!-- Shift 3 -->
+                        <td class="p-0">
+                            <div class="excel-subgrid ${isWeekendOrHol ? 'grid-cols-3' : 'grid-cols-4'}">
+                                ${renderExcelCells(dStr, 'shift3', dayData.shift3, isWeekendOrHol ? 3 : 4)}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderExcelCells(date, shift, list, totalSlots) {
+            let html = '';
+            for (let idx = 0; idx < totalSlots; idx++) {
+                const name = (list && list[idx]) ? list[idx] : '';
+                const isLeader = users.find(u => u.nameLao === name && u.isLeader);
+                html += `
+                    <div class="excel-cell ${isLeader ? 'text-red-600 font-bold' : ''}" onclick="promptEditCell('${date}', '${shift}', ${idx}, '${name}')">
+                        ${name}
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+        function promptEditCell(date, shift, index, currentName) {
+            if (currentUser.role !== 'SUPER_ADMIN') return;
+            
+            const staffNames = users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
+            const newName = prompt(`ປ່ຽນພະນັກງານວັນທີ ${date} [${shift}]:\n(ໃສ່ຊື່ ຫຼື ປະວ່າງເພື່ອລຶບ)\nລາຍຊື່: ${staffNames.join(', ')}`, currentName);
+            
+            if (newName !== null) {
+                if (!monthlySchedule[date]) monthlySchedule[date] = { shift1: [], shift2: [], shift3: [] };
+                if (!monthlySchedule[date][shift]) monthlySchedule[date][shift] = [];
+                monthlySchedule[date][shift][index] = newName.trim();
+                saveAll();
+                renderScheduleTable();
+            }
+        }
+
+        function renderScheduleStaffRoster() {
+            const container = document.getElementById('scheduleStaffRoster');
+            container.innerHTML = '';
+            users.filter(u => u.role !== 'SUPER_ADMIN').forEach(u => {
+                container.innerHTML += `
+                    <div class="p-1.5 border rounded bg-slate-50 flex items-center justify-between text-xs font-lao ${u.isLeader ? 'border-red-300 bg-red-50 text-red-700 font-bold' : 'border-slate-200'}">
+                        <span>${u.nameLao}</span>
+                        ${u.isLeader ? '<span class="text-[10px] bg-red-600 text-white px-1 rounded">ຫົວໜ້າກະ</span>' : ''}
+                    </div>
+                `;
+            });
+        }
+
+        // ================= AUTO-SCHEDULE GENERATOR & RESET =================
+        function autoGenerateSchedule() {
+            if (!confirm("ທ່ານຕ້ອງການໃຫ້ລະບົບຈັດຕາຕະລາງອັດຕະໂນມັດ (Auto Generate) ສຳລັບເດືອນ 09/2026 ແທ້ບໍ່?")) return;
+
+            const leaders = users.filter(u => u.isLeader).map(u => u.nameLao);
+            const normalStaff = users.filter(u => !u.isLeader && u.role !== 'SUPER_ADMIN').map(u => u.nameLao);
+
+            function shuffle(arr) {
+                return [...arr].sort(() => Math.random() - 0.5);
+            }
+
+            for (let i = 1; i <= 30; i++) {
+                const dayNum = i < 10 ? '0' + i : '' + i;
+                const dStr = `2026-09-${dayNum}`;
+                const dateObj = new Date(2026, 8, i);
+                const dayOfWeek = dateObj.getDay();
+                const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || specialHolidays.includes(dStr));
+
+                const shufLeaders = shuffle(leaders);
+                const shufStaff = shuffle(normalStaff);
+
+                if (isWeekend) {
+                    monthlySchedule[dStr] = {
+                        isWeekend: true,
+                        shift1: [shufStaff[0] || '', shufStaff[1] || '', ''],
+                        shift2: [shufStaff[2] || '', shufStaff[3] || '', ''],
+                        shift3: [shufLeaders[0] || '', shufStaff[4] || '', '']
+                    };
+                } else {
+                    monthlySchedule[dStr] = {
+                        isWeekend: false,
+                        shift1: [shufLeaders[0] || 'ບຸນປະເສີດ', shufStaff[0], shufStaff[1], shufStaff[2], shufStaff[3], shufStaff[4]],
+                        shift2: [shufLeaders[1] || 'ພອນສະຫວັນ', shufStaff[5], shufStaff[6], shufStaff[7], shufStaff[8], shufStaff[9]],
+                        shift3: [shufLeaders[2] || 'ແສງດາວ', shufStaff[10], shufStaff[11], shufStaff[12]]
+                    };
+                }
+            }
+
+            saveAll();
+            renderScheduleTable();
+            alert('ຈັດຕາຕະລາງອັດຕະໂນມັດສຳເລັດແລ້ວ!');
+        }
+
+        function resetSchedule() {
+            if (!confirm("ທ່ານຕ້ອງການລຶບຂໍ້ມູນຕາຕະລາງທັງໝົດເພື່ອເລີ່ມໃໝ່ແທ້ບໍ່?")) return;
+
+            for (let i = 1; i <= 30; i++) {
+                const dayNum = i < 10 ? '0' + i : '' + i;
+                const dStr = `2026-09-${dayNum}`;
+                const dateObj = new Date(2026, 8, i);
+                const dayOfWeek = dateObj.getDay();
+                const isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+
+                monthlySchedule[dStr] = {
+                    isWeekend: isWeekend,
+                    shift1: isWeekend ? ['', '', ''] : ['', '', '', '', '', ''],
+                    shift2: isWeekend ? ['', '', ''] : ['', '', '', '', '', ''],
+                    shift3: isWeekend ? ['', '', ''] : ['', '', '', '']
+                };
+            }
+
+            saveAll();
+            renderScheduleTable();
+            alert('ຣີເຊັດຕາຕະລາງຮຽບຮ້ອຍແລ້ວ!');
+        }
+
+        // ================= SPECIAL HOLIDAY INSERTER =================
+        function openHolidayModal() {
+            document.getElementById('holidayModal').classList.remove('hidden');
+        }
+
+        function handleToggleHoliday() {
+            const date = document.getElementById('specialHolidayDateInput').value;
+            if (!date) return;
+
+            if (specialHolidays.includes(date)) {
+                specialHolidays = specialHolidays.filter(d => d !== date);
+                if (monthlySchedule[date]) monthlySchedule[date].isWeekend = false;
+                alert(`ຍົກເລີກວັນພັກພິເສດວັນທີ ${date} ແລ້ວ`);
+            } else {
+                specialHolidays.push(date);
+                if (monthlySchedule[date]) monthlySchedule[date].isWeekend = true;
+                alert(`ກຳນົດວັນທີ ${date} ເປັນວັນພັກພິເສດ (08-13:30 | 13:30-19 | 19-08) ແລ້ວ`);
+            }
+
+            saveAll();
+            document.getElementById('holidayModal').classList.add('hidden');
+            renderScheduleTable();
+            renderDashboard();
+        }
+
+        function saveDraft() {
+            scheduleStatus = 'DRAFT';
+            saveAll();
+            renderScheduleTable();
+            alert('ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດແລ້ວ!');
+        }
+
+        function publishSchedule() {
+            scheduleStatus = 'PUBLISHED';
+            saveAll();
+            renderScheduleTable();
+            alert('ເຜີຍແຜ່ຕາຕະລາງ (Published) ສຳເລັດແລ້ວ!');
+        }
+
+        function exportToA4PDF() {
+            const element = document.getElementById('pdfExportArea');
+            const opt = {
+                margin:       [3, 3, 3, 3],
+                filename:     'ຕາຕະລາງປະຈຳການບໍລິການອອນໄລ_09_2026.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // ================= EMPLOYEE MANAGEMENT =================
+        function renderEmployeesTable() {
+            const tbody = document.getElementById('employeesTableBody');
+            tbody.innerHTML = '';
+            users.forEach((u, idx) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-bold text-primary">${u.user}</td>
+                        <td class="p-3">${u.fullName}</td>
+                        <td class="p-3 font-lao ${u.isLeader ? 'text-red-600 font-bold' : ''}">
+                            ${u.nameLao} ${u.isLeader ? '<span class="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded border border-red-200 ml-1">ຫົວໜ້າກະ</span>' : ''}
+                        </td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.role === 'SUPER_ADMIN' ? 'bg-primary text-white' : 'bg-slate-200 text-slate-700'}">${u.role}</span></td>
+                        <td class="p-3 text-right">
+                            <button onclick="openEditEmpModal(${idx})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-300 font-semibold text-[11px] inline-flex items-center gap-1">
+                                <span class="material-symbols-outlined text-xs">edit</span> ແກ້ໄຂ
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function openAddEmpModal() {
+            document.getElementById('empModalTitle').innerText = 'ເພີ່ມພະນັກງານໃໝ່';
+            document.getElementById('editEmpId').value = '';
+            document.getElementById('modalEmpUser').value = '';
+            document.getElementById('modalEmpFullName').value = '';
+            document.getElementById('modalEmpNameLao').value = '';
+            document.getElementById('modalEmpPass').value = 'bcel2026';
+            document.getElementById('modalEmpIsLeader').checked = false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function openEditEmpModal(index) {
+            const emp = users[index];
+            document.getElementById('empModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນພະນັກງານ';
+            document.getElementById('editEmpId').value = index;
+            document.getElementById('modalEmpUser').value = emp.user;
+            document.getElementById('modalEmpFullName').value = emp.fullName;
+            document.getElementById('modalEmpNameLao').value = emp.nameLao;
+            document.getElementById('modalEmpPass').value = emp.pass;
+            document.getElementById('modalEmpIsLeader').checked = emp.isLeader || false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function closeEmpModal() {
+            document.getElementById('empModal').classList.add('hidden');
+        }
+
+        function handleSaveEmployee(e) {
+            e.preventDefault();
+            const editId = document.getElementById('editEmpId').value;
+            const u = document.getElementById('modalEmpUser').value.trim();
+            const full = document.getElementById('modalEmpFullName').value.trim();
+            const lao = document.getElementById('modalEmpNameLao').value.trim();
+            const p = document.getElementById('modalEmpPass').value.trim();
+            const leader = document.getElementById('modalEmpIsLeader').checked;
+
+            if (editId !== '') {
+                users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
+                alert('ແກ້ໄຂຂໍ້ມູນພະນັກງານສຳເລັດ!');
+            } else {
+                if (users.find(usr => usr.user.toLowerCase() === u.toLowerCase())) {
+                    alert('Username ນີ້ມີໃນລະບົບແລ້ວ!');
+                    return;
+                }
+                users.push({ user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '' });
+                alert('ເພີ່ມພະນັກງານໃໝ່ສຳເລັດ!');
+            }
+
+            saveAll();
+            closeEmpModal();
+            renderEmployeesTable();
+            renderScheduleTable();
+        }
+
+        // ================= P2P SHIFT SWAPS =================
+        function renderProfileTab() {
+            const targetPeer = document.getElementById('swapTargetPeer');
+            targetPeer.innerHTML = '';
+            users.filter(u => u.user !== currentUser.user && u.role !== 'SUPER_ADMIN').forEach(u => {
+                targetPeer.innerHTML += `<option value="${u.nameLao}">${u.nameLao} (${u.fullName})</option>`;
+            });
+
+            const container = document.getElementById('incomingSwapsList');
+            container.innerHTML = '';
+
+            if (swapHistory.length === 0) {
+                container.innerHTML = `<p class="text-slate-400 text-xs">ຍັງບໍ່ມີປະຫວັດການປ່ຽນກະ</p>`;
+                return;
+            }
+
+            swapHistory.forEach(req => {
+                const isForMe = req.toName === currentUser.nameLao && req.status === 'PENDING';
+                container.innerHTML += `
+                    <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center font-lao">
+                        <div>
+                            <p class="font-bold text-slate-800">${req.fromName} ຂໍປ່ຽນກະກັບ ${req.toName}</p>
+                            <p class="text-slate-500 text-[11px]">ວັນທີ: ${req.date} | ${req.fromShift} ↔ ${req.toShift} | ເຫດຜົນ: ${req.reason || '-'}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${isForMe ? `
+                                <button onclick="acceptSwap(${req.id})" class="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold">Accept (Swap ທັນທີ)</button>
+                                <button onclick="declineSwap(${req.id})" class="px-2.5 py-1 border rounded-lg text-xs">Decline</button>
+                            ` : `
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${req.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${req.status}</span>
+                            `}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function handleCreateSwap(e) {
+            e.preventDefault();
+            const date = document.getElementById('swapDate').value;
+            const toName = document.getElementById('swapTargetPeer').value;
+            const fromShift = document.getElementById('swapMyShift').value;
+            const toShift = document.getElementById('swapTargetShift').value;
+            const reason = document.getElementById('swapReason').value;
+
+            swapHistory.unshift({
+                id: Date.now(),
+                date,
+                fromName: currentUser.nameLao,
+                toName,
+                fromShift,
+                toShift,
+                reason,
+                status: 'PENDING'
+            });
+
+            saveAll();
+            alert(`ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ ${toName} ສຳເລັດແລ້ວ!`);
+            renderProfileTab();
+        }
+
+        function acceptSwap(id) {
+            const req = swapHistory.find(r => r.id === id);
+            if (!req) return;
+
+            req.status = 'COMPLETED';
+
+            if (monthlySchedule[req.date]) {
+                const sFrom = monthlySchedule[req.date][req.fromShift] || [];
+                const sTo = monthlySchedule[req.date][req.toShift] || [];
+
+                const idxFrom = sFrom.indexOf(req.fromName);
+                const idxTo = sTo.indexOf(req.toName);
+
+                if (idxFrom !== -1) sFrom[idxFrom] = req.toName;
+                if (idxTo !== -1) sTo[idxTo] = req.fromName;
+            }
+
+            saveAll();
+            alert('ຍອມຮັບຄຳຮ້ອງແລ້ວ! ຕາຕະລາງຖືກປ່ຽນໃຫ້ທັນທີ.');
+            renderProfileTab();
+            renderDashboard();
+            renderScheduleTable();
+        }
+
+        function declineSwap(id) {
+            const req = swapHistory.find(r => r.id === id);
+            if (req) req.status = 'DECLINED';
+            saveAll();
+            alert('ປະຕິເສດຄຳຮ້ອງແລ້ວ.');
+            renderProfileTab();
+        }
+
+        function handleCreateLeave(e) {
+            e.preventDefault();
+            const date = document.getElementById('leaveDate').value;
+            const shift = document.getElementById('leaveShift').value;
+            const reason = document.getElementById('leaveReason').value;
+
+            leavesList.push({
+                id: Date.now(),
+                date,
+                shift,
+                empName: currentUser.nameLao,
+                reason
+            });
+
+            saveAll();
+            alert('ສົ່ງໃບລາພັກສຳເລັດແລ້ວ!');
+            renderDashboard();
+        }
+
+        function initViews() {
+            renderDashboard();
+            renderScheduleTable();
+            renderEmployeesTable();
+            renderProfileTab();
+        }
+
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>
