@@ -81,6 +81,13 @@
         .grid-cell-box.editable { cursor: pointer; }
         .grid-cell-box.editable:hover { background-color: #fee2e2; }
 
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(192, 30, 46, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(192, 30, 46, 0); }
+        }
+        .live-dot-red { animation: pulse-ring 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+
         @media print {
             .no-print { display: none !important; }
             body { background: white !important; }
@@ -241,6 +248,30 @@
         </div>
         
         <div class="flex items-center gap-2 md:gap-3">
+            <!-- Notification Bell -->
+            <div class="relative flex items-center">
+                <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 transition relative cursor-pointer flex items-center justify-center shadow-sm" title="ການແຈ້ງເຕືອນ">
+                    <span class="material-symbols-outlined text-[22px]">notifications</span>
+                    <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
+                </button>
+                
+                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border-2 border-red-100 z-50 p-4 font-lao">
+                    <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
+                        <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-brand-red text-base">notifications_active</span>
+                            ການແຈ້ງເຕືອນ (Notifications)
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold cursor-pointer">
+                                ໝາຍວ່າອ່ານແລ້ວ
+                            </button>
+                            <span id="notifCountText" class="text-[10px] bg-red-100 text-brand-red font-bold px-2 py-0.5 rounded-full">0</span>
+                        </div>
+                    </div>
+                    <div id="notifDropdownList" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                </div>
+            </div>
+
             <div class="flex items-center gap-2 pl-1 border-l border-slate-200">
                 <img id="topAvatar" class="h-8 w-8 rounded-full object-cover border-2 border-brand-red/30 bg-red-50" src="" alt="Profile"/>
                 <div class="text-left font-lao hidden sm:block">
@@ -397,6 +428,14 @@
                     <button type="button" onclick="openBatchMonthModal()" class="admin-only px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer" title="ສ້າງຕາຕະລາງລ່ວງໜ້າ 3-12 ເດືອນແບບຕໍ່ເນື່ອງ">
                         <span class="material-symbols-outlined text-sm">date_range</span> 📅 ສ້າງລ່ວງໜ້າຫຼາຍເດືອນ
                     </button>
+
+                    <button type="button" onclick="openDuplicateSheetModal()" class="admin-only px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer" title="ຄັດລອກຮູບແບບຕາຕະລາງນີ້">
+                        <span class="material-symbols-outlined text-sm">content_copy</span> 📋 ຄັດລອກ Template
+                    </button>
+
+                    <button type="button" onclick="openEditSheetInfoModal()" class="admin-only px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">edit_note</span> ແກ້ໄຂຫົວຂໍ້ & ໝາຍເຫດ
+                    </button>
                 </div>
 
                 <div class="flex flex-wrap gap-1.5">
@@ -408,6 +447,12 @@
                     </button>
                     <button type="button" onclick="promptResetSchedule()" class="admin-only px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">delete_sweep</span> Reset
+                    </button>
+                    <button type="button" onclick="openHolidayModal()" class="admin-only px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">event</span> ວັນພັກພິເສດ & Undo
+                    </button>
+                    <button type="button" onclick="saveDraft()" class="admin-only px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-1 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ Draft
                     </button>
                     <button type="button" onclick="publishSchedule()" class="admin-only px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-900/10 cursor-pointer">
                         <span class="material-symbols-outlined text-sm">publish</span> Publish
@@ -590,7 +635,7 @@
                                         <th class="p-3 text-center font-bold text-slate-800">ລວມຍາມປະຈຳການ</th>
                                         <th class="p-3 text-amber-700 font-bold text-center">ພັກປະຈຳປີ (ໃຊ້/15)</th>
                                         <th class="p-3 text-brand-red font-bold text-center">ຍັງເຫຼືອ</th>
-                                        <th class="p-3 text-center text-slate-500">ລວມມື້ລາພັກທັງໝົດ</th>
+                                        <th class="p-3 text-center text-slate-600">ລວມມື້ລາພັກທັງໝົດ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminAllStaffMatrixReportBody" class="divide-y divide-slate-100"></tbody>
@@ -964,6 +1009,54 @@
         </div>
     </div>
 
+    <!-- ================= EDIT SHEET INFO MODAL ================= -->
+    <div id="editSheetInfoModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden font-lao">
+            <div class="p-5 bg-red-gradient text-white flex justify-between items-center">
+                <h3 class="font-bold text-sm">ແກ້ໄຂຫົວຂໍ້ຕາຕະລາງ & ໝາຍເຫດ</h3>
+                <button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-semibold mb-1">ຊື່ຫົວຂໍ້ຕາຕະລາງ (Title)</label>
+                    <input type="text" id="editSheetTitleInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red font-bold"/>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">ຂໍ້ຄວາມໝາຍເຫດ</label>
+                    <textarea id="editSheetNotesInput" rows="7" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red leading-relaxed"></textarea>
+                </div>
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
+                    <button type="button" onclick="handleSaveSheetInfo()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= HOLIDAY MODAL ================= -->
+    <div id="holidayModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden font-lao max-h-[90vh] flex flex-col">
+            <div class="p-5 bg-red-gradient text-white flex justify-between items-center shrink-0">
+                <h3 class="font-bold text-sm">ກຳນົດວັນພັກພິເສດ & Undo</h3>
+                <button type="button" onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <p class="font-bold text-slate-800 text-xs">+ ເພີ່ມຊ່ວງວັນພັກພິເສດໃໝ່:</p>
+                    <input type="text" id="holidayTitleInput" placeholder="ເຊັ່ນ: ບຸນປີໃໝ່ລາວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white"/>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="date" id="holidayStartDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white"/>
+                        <input type="date" id="holidayEndDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white"/>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" onclick="handleSaveHolidayRange()" class="px-4 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກວັນພັກ</button>
+                    </div>
+                </div>
+                <div id="activeHolidaysListContainer" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- ================= JAVASCRIPT STATE & ENGINE ================= -->
     <script>
         var MASTER_USERS_DEFAULT = [
@@ -1001,6 +1094,7 @@
 
         var currentUser = JSON.parse(localStorage.getItem('ot_auth_live')) || null;
         var activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
+        var specialHolidayRanges = JSON.parse(localStorage.getItem('ot_holidays_trial2')) || [];
         
         var employeeGroups = JSON.parse(localStorage.getItem('ot_emp_groups_trial2')) || [
             {
@@ -1050,8 +1144,13 @@
             localStorage.setItem('ot_users_master', JSON.stringify(users));
             localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(scheduleSheets));
             localStorage.setItem('ot_active_sheet_id_trial2', activeSheetId);
+            localStorage.setItem('ot_holidays_trial2', JSON.stringify(specialHolidayRanges));
             localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(employeeGroups));
             localStorage.setItem('ot_swaps_trial2', JSON.stringify(swapHistory));
+        }
+
+        function isDateInHolidayRange(dStr) {
+            return specialHolidayRanges.some(h => dStr >= h.start && dStr <= h.end);
         }
 
         // ================= ⭐ ZIGZAG SCHEDULE GENERATION ALGORITHM =================
@@ -1076,7 +1175,7 @@
                 var dStr = `${year}-${mNum}-${dayNum}`;
                 var dateObj = new Date(Date.UTC(year, month - 1, i));
                 var dayOfWeek = dateObj.getUTCDay();
-                var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0);
+                var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
                 var W = getGlobalWeekIndex(dateObj);
 
@@ -1176,7 +1275,7 @@
             showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
         }
 
-        // ================= ⭐ GROUPS MANAGEMENT (FIXED) =================
+        // ================= ⭐ GROUPS MANAGEMENT =================
         function renderGroupsTab() {
             var grid = document.getElementById('groupsListGrid');
             if (!grid) return;
@@ -1228,8 +1327,9 @@
             if (!container) return;
             container.innerHTML = '';
 
-            users.filter(u => u.role !== 'SUPER_ADMIN').forEach(u => {
-                var isChecked = selectedMembers.includes(u.nameLao) ? 'checked' : '';
+            var staffList = users.filter(u => u.role !== 'SUPER_ADMIN');
+            staffList.forEach(u => {
+                var isChecked = selectedMembers && selectedMembers.includes(u.nameLao) ? 'checked' : '';
                 container.innerHTML += `
                     <label class="flex items-center gap-2 text-xs p-1.5 hover:bg-white rounded-xl cursor-pointer border border-transparent hover:border-slate-200 transition">
                         <input type="checkbox" value="${u.nameLao}" class="group-member-checkbox rounded text-brand-red focus:ring-brand-red h-4 w-4" ${isChecked}/>
@@ -1294,7 +1394,6 @@
             var totalLeavesCount = 0;
             var totalDutyCount = 0;
 
-            // Calculate duty matrix from active sheet
             var stats = {};
             staffList.forEach(u => {
                 var usedL = u.usedAnnual || 0;
@@ -1360,6 +1459,96 @@
                     });
                 }
             }
+        }
+
+        // ================= FAIRNESS & SUMMARY MODAL =================
+        function openFairnessSummaryModal() {
+            var groupSelect = document.getElementById('fairnessGroupFilterSelect');
+            if (groupSelect) {
+                groupSelect.innerHTML = `<option value="ALL">⭐ ພະນັກງານທັງໝົດ (All Staff)</option>`;
+                employeeGroups.forEach(grp => {
+                    groupSelect.innerHTML += `<option value="${grp.id}">👥 ${grp.name}</option>`;
+                });
+            }
+            renderFairnessSummaryData();
+            document.getElementById('fairnessModal').classList.remove('hidden');
+        }
+
+        function renderFairnessSummaryData() {
+            var sheet = getActiveSheet();
+            var tbody = document.getElementById('fairnessSummaryTableBody');
+            var filterId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            document.getElementById('fairnessModalSub').innerText = `ຕາຕະລາງ: ${sheet.title}`;
+
+            var targetMembers = null;
+            if (filterId !== 'ALL') {
+                var foundGrp = employeeGroups.find(g => g.id === filterId);
+                if (foundGrp) targetMembers = foundGrp.members;
+            }
+
+            var staffStats = {};
+            users.filter(u => u.role !== 'SUPER_ADMIN' && (!targetMembers || targetMembers.includes(u.nameLao))).forEach(u => {
+                staffStats[u.nameLao] = { nameLao: u.nameLao, isLeader: u.isLeader, s1: 0, s2: 0, s3: 0, weekendOff: 0, total: 0 };
+            });
+
+            var [year, month] = sheet.monthKey.split('-').map(Number);
+            var daysCount = new Date(year, month, 0).getDate();
+
+            var weekendDays = [];
+            for (var d = 1; d <= daysCount; d++) {
+                var dateObj = new Date(year, month - 1, d);
+                if (dateObj.getDay() === 0 || dateObj.getDay() === 6) {
+                    var dNum = d < 10 ? '0' + d : '' + d;
+                    var mNum = month < 10 ? '0' + month : '' + month;
+                    weekendDays.push(`${year}-${mNum}-${dNum}`);
+                }
+            }
+
+            for (var d = 1; d <= daysCount; d++) {
+                var dNum = d < 10 ? '0' + d : '' + d;
+                var mNum = month < 10 ? '0' + month : '' + month;
+                var dStr = `${year}-${mNum}-${dNum}`;
+                var dayInfo = sheet.data[dStr];
+                if (dayInfo) {
+                    (dayInfo.shift1 || []).forEach(name => { if (staffStats[name]) { staffStats[name].s1++; staffStats[name].total++; } });
+                    (dayInfo.shift2 || []).forEach(name => { if (staffStats[name]) { staffStats[name].s2++; staffStats[name].total++; } });
+                    (dayInfo.shift3 || []).forEach(name => { if (staffStats[name]) { staffStats[name].s3++; staffStats[name].total++; } });
+                }
+            }
+
+            weekendDays.forEach(wDate => {
+                var dayInfo = sheet.data[wDate] || { shift1: [], shift2: [], shift3: [] };
+                var workingToday = [...(dayInfo.shift1 || []), ...(dayInfo.shift2 || []), ...(dayInfo.shift3 || [])];
+                Object.keys(staffStats).forEach(name => {
+                    if (!workingToday.includes(name)) {
+                        staffStats[name].weekendOff++;
+                    }
+                });
+            });
+
+            var index = 1;
+            Object.values(staffStats).forEach(stat => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-semibold text-slate-400">${index++}</td>
+                        <td class="p-3 font-bold ${stat.isLeader ? 'text-brand-red' : 'text-slate-800'}">
+                            ${stat.nameLao} ${stat.isLeader ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded ml-1 border border-red-200">ຫົວໜ້າ</span>' : ''}
+                        </td>
+                        <td class="p-3 text-center">${stat.s1}</td>
+                        <td class="p-3 text-center">${stat.s2}</td>
+                        <td class="p-3 text-center font-bold text-brand-red bg-red-50/40">${stat.s3}</td>
+                        <td class="p-3 text-center font-bold text-emerald-700 bg-emerald-50/40">${stat.weekendOff} ວັນ</td>
+                        <td class="p-3 text-right font-bold text-slate-800">${stat.total} ກະ</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function closeFairnessSummaryModal() {
+            document.getElementById('fairnessModal').classList.add('hidden');
         }
 
         // ================= GENERAL UI CONTROLLERS =================
@@ -1478,14 +1667,14 @@
             for (var i = 1; i <= 7; i++) {
                 var dNum = i < 10 ? '0' + i : '' + i;
                 var mNum = m < 10 ? '0' + m : '' + m;
-                var dStr = `${y}-${mNum}-${dayNum}`;
+                var dStr = `${y}-${mNum}-${dNum}`;
                 var dInfo = sheet.data?.[dStr] || {};
                 var shift = 'ພັກ (OFF)';
                 var pillClass = 'bg-slate-100 text-slate-500';
 
-                if (dInfo.shift1?.includes(myName)) { shift = 'ກະ 1'; pillClass = 'bg-red-50 text-brand-red font-bold border-red-200'; myShifts.push('ກະ 1'); }
-                else if (dInfo.shift2?.includes(myName)) { shift = 'ກະ 2'; pillClass = 'bg-purple-50 text-purple-800 font-bold border-purple-200'; myShifts.push('ກະ 2'); }
-                else if (dInfo.shift3?.includes(myName)) { shift = 'ກະ 3'; pillClass = 'bg-slate-800 text-white font-bold'; myShifts.push('ກະ 3'); }
+                if (dInfo.shift1?.includes(myName)) { shift = 'ກະ 1'; pillClass = 'bg-red-50 text-brand-red font-bold border-red-200'; myShifts.push('ກະ 1 (08:00 - 16:00)'); }
+                else if (dInfo.shift2?.includes(myName)) { shift = 'ກະ 2'; pillClass = 'bg-purple-50 text-purple-800 font-bold border-purple-200'; myShifts.push('ກະ 2 (12:00 - 20:00)'); }
+                else if (dInfo.shift3?.includes(myName)) { shift = 'ກະ 3'; pillClass = 'bg-slate-800 text-white font-bold'; myShifts.push('ກະ 3 (20:00 - 08:00)'); }
 
                 pillsContainer.innerHTML += `
                     <div class="px-2.5 py-1 border rounded-lg text-center text-[10px] ${pillClass}">
@@ -1725,6 +1914,113 @@
             }, 'restart_alt', 'ກູ້ຄືນຂໍ້ມູນ');
         }
 
+        function openAddEmpModal() {
+            document.getElementById('empModalTitle').innerText = 'ເພີ່ມພະນັກງານໃໝ່';
+            document.getElementById('editEmpId').value = '';
+            document.getElementById('modalEmpUser').value = '';
+            document.getElementById('modalEmpFullName').value = '';
+            document.getElementById('modalEmpNameLao').value = '';
+            document.getElementById('modalEmpPass').value = 'bcel2026';
+            document.getElementById('modalEmpIsLeader').checked = false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function openEditEmpModal(index) {
+            var emp = users[index];
+            document.getElementById('empModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນພະນັກງານ';
+            document.getElementById('editEmpId').value = index;
+            document.getElementById('modalEmpUser').value = emp.user;
+            document.getElementById('modalEmpFullName').value = emp.fullName;
+            document.getElementById('modalEmpNameLao').value = emp.nameLao;
+            document.getElementById('modalEmpPass').value = emp.pass;
+            document.getElementById('modalEmpIsLeader').checked = emp.isLeader || false;
+            document.getElementById('empModal').classList.remove('hidden');
+        }
+
+        function closeEmpModal() { document.getElementById('empModal').classList.add('hidden'); }
+
+        function handleSaveEmployee() {
+            var editId = document.getElementById('editEmpId').value;
+            var u = document.getElementById('modalEmpUser').value.trim();
+            var full = document.getElementById('modalEmpFullName').value.trim();
+            var lao = document.getElementById('modalEmpNameLao').value.trim();
+            var p = document.getElementById('modalEmpPass').value.trim();
+            var leader = document.getElementById('modalEmpIsLeader').checked;
+
+            if (!u || !full || !lao || !p) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ', 'error'); return; }
+
+            if (editId !== '') {
+                users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
+            } else {
+                users.push({ user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 });
+            }
+
+            closeEmpModal();
+            renderEmployeesTable();
+            renderScheduleStaffRoster();
+            saveAll();
+            showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນພະນັກງານແລ້ວ', 'success');
+        }
+
+        function openNewSheetModal() {
+            document.getElementById('newSheetTitleInput').value = '';
+            document.getElementById('newSheetModal').classList.remove('hidden');
+        }
+
+        function handleCreateNewSheet() {
+            var month = document.getElementById('newSheetMonthInput').value;
+            var title = document.getElementById('newSheetTitleInput').value.trim() || `ຕາຕະລາງປະຈຳການ ${month}`;
+            var [y, m] = month.split('-').map(Number);
+            var newId = 'sheet-' + Date.now();
+            var generated = generateMonthDataZigzag(y, m, null);
+
+            scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: defaultNotesTemplate, status: 'DRAFT', data: generated });
+            activeSheetId = newId;
+            saveAll();
+            document.getElementById('newSheetModal').classList.add('hidden');
+            renderScheduleTable();
+            showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
+        }
+
+        function openEditSheetInfoModal() {
+            var sheet = getActiveSheet();
+            document.getElementById('editSheetTitleInput').value = sheet.title;
+            document.getElementById('editSheetNotesInput').value = sheet.notes || defaultNotesTemplate;
+            document.getElementById('editSheetInfoModal').classList.remove('hidden');
+        }
+
+        function handleSaveSheetInfo() {
+            var sheet = getActiveSheet();
+            sheet.title = document.getElementById('editSheetTitleInput').value.trim();
+            sheet.notes = document.getElementById('editSheetNotesInput').value.trim();
+            saveAll();
+            document.getElementById('editSheetInfoModal').classList.add('hidden');
+            renderScheduleTable();
+            showToast('ສຳເລັດ', 'ບັນທຶກການແກ້ໄຂແລ້ວ', 'success');
+        }
+
+        function promptResetSchedule() {
+            askConfirm('ຣີເຊັດຕາຕະລາງ', 'ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?', () => {
+                var sheet = getActiveSheet();
+                sheet.data = {};
+                saveAll();
+                renderScheduleTable();
+                showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງແລ້ວ', 'success');
+            }, 'delete_sweep', 'Reset');
+        }
+
+        function saveDraft() {
+            getActiveSheet().status = 'DRAFT';
+            saveAll();
+            showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success');
+        }
+
+        function publishSchedule() {
+            getActiveSheet().status = 'PUBLISHED';
+            saveAll();
+            showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ຮຽບຮ້ອຍແລ້ວ', 'success');
+        }
+
         function exportToA4PDF() {
             var sheet = getActiveSheet();
             html2pdf().set({
@@ -1735,6 +2031,79 @@
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             }).from(document.getElementById('pdfExportArea')).save();
         }
+
+        function openHolidayModal() { document.getElementById('holidayModal').classList.remove('hidden'); }
+        function handleSaveHolidayRange() {
+            var title = document.getElementById('holidayTitleInput').value.trim();
+            var start = document.getElementById('holidayStartDateInput').value;
+            var end = document.getElementById('holidayEndDateInput').value;
+            if (!title || !start || !end) return;
+            specialHolidayRanges.push({ title, start, end });
+            saveAll();
+            document.getElementById('holidayModal').classList.add('hidden');
+            renderScheduleTable();
+            renderDashboard();
+            showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
+        }
+
+        function openCellModal(date, shift, index, currentName) {
+            if (!currentUser || currentUser.role !== 'SUPER_ADMIN') return;
+            activeEditCell = { date, shift, index, currentName };
+            document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift}]`;
+            renderCellStaffList('');
+            document.getElementById('cellSelectModal').classList.remove('hidden');
+        }
+
+        function closeCellModal() { document.getElementById('cellSelectModal').classList.add('hidden'); activeEditCell = null; }
+
+        function renderCellStaffList(q) {
+            var container = document.getElementById('cellStaffListContainer');
+            container.innerHTML = '';
+            users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
+                container.innerHTML += `
+                    <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">
+                        <span>${u.nameLao} (${u.fullName})</span>
+                        ${u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function filterCellStaffList() { renderCellStaffList(document.getElementById('searchCellStaffInput').value.trim()); }
+
+        function selectStaffForCell(nameLao) {
+            if (!activeEditCell) return;
+            var { date, shift, index } = activeEditCell;
+            var sheet = getActiveSheet();
+            if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
+            if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
+            sheet.data[date][shift][index] = nameLao;
+            saveAll();
+            closeCellModal();
+            renderScheduleTable();
+        }
+
+        function clearCurrentCell() {
+            if (!activeEditCell) return;
+            var { date, shift, index } = activeEditCell;
+            var sheet = getActiveSheet();
+            if (sheet.data[date]?.[shift]) {
+                sheet.data[date][shift][index] = '';
+                saveAll();
+                closeCellModal();
+                renderScheduleTable();
+            }
+        }
+
+        function toggleMobileDrawer() {
+            var d = document.getElementById('mobileDrawer');
+            var b = document.getElementById('mobileDrawerBackdrop');
+            if (d.classList.contains('-translate-x-full')) { d.classList.remove('-translate-x-full'); b.classList.remove('hidden'); }
+            else { d.classList.add('-translate-x-full'); b.classList.add('hidden'); }
+        }
+
+        function toggleNotificationDropdown() { document.getElementById('notifDropdown')?.classList.toggle('hidden'); }
+        function markAllNotificationsAsRead() { showToast('ສຳເລັດ', 'ໝາຍວ່າອ່ານແລ້ວທັງໝົດ', 'success'); }
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', () => {
