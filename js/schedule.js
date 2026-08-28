@@ -1,85 +1,46 @@
-// ================= ⭐ FAIR ZIGZAG SCHEDULE GENERATOR =================
+// ================= ⭐ MATHEMATICALLY PERFECT 7-PERSON ZIGZAG ENGINE =================
 
-// 1. ສູດຄຳນວນທີມ 7 ຄົນ (ລັອກໂຄຕ້າກະ 3 ໃຫ້ເທົ່າກັນ 100% ພ້ອມ Zigzag 3 -> 2 -> 1)
+// 1. ສູດຄຳນວນ 7 ຄົນ (7-Day Deterministic Cyclic Permutation: ກະ3=1, ກະ2=1, ກະ1=3, ພັກ=2)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
-    var N = staffList.length; // 7 ຄົນ
+    var N = 7;
 
-    // ແຕ່ລະມື້ມີຄົນພັກ 2 ຄົນແບບໝູນວຽນ (0=Mon, ..., 6=Sun)
-    var offSchedule = [
-        [0, 1], // ຄົນທີ 0: ພັກ ຈັນ-ອັງຄານ
-        [1, 2], // ຄົນທີ 1: ພັກ ອັງຄານ-ພຸດ
-        [2, 3], // ຄົນທີ 2: ພັກ ພຸດ-ພະຫັດ
-        [3, 4], // ຄົນທີ 3: ພັກ ພະຫັດ-ສຸກ
-        [4, 5], // ຄົນທີ 4: ພັກ ສຸກ-ເສົາ
-        [5, 6], // ຄົນທີ 5: ພັກ ເສົາ-ອາທິດ
-        [6, 0]  // ຄົນທີ 6: ພັກ ອາທິດ-ຈັນ
-    ];
+    // ວັນທີເລີ່ມຕົ້ນສົມບູນ (Global Anchor)
+    var epochDate = new Date(Date.UTC(2026, 0, 1));
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dayNum}`;
-        var dateObj = new Date(Date.UTC(year, month - 1, i));
-        var dayOfWeek = (dateObj.getUTCDay() + 6) % 7; // 0=Mon, ..., 6=Sun
-        var W = getGlobalWeekIndex(dateObj); // ອາທິດສົມບູນ
+        var currentDate = new Date(Date.UTC(year, month - 1, i));
 
-        // ກຳນົດບົດບາດຫຼັກປະຈຳອາທິດແບບ Zigzag (3 -> 2 -> 1)
-        // ໃນອາທິດ W:
-        // ຄົນທີ່ (0 - W + 700) % 7 ຈະໄດ້ກະ 3 ຕະຫຼອດອາທິດ
-        // ຄົນທີ່ (1 - W + 700) % 7 ຈະໄດ້ກະ 2 ຕະຫຼອດອາທິດ
-        // ຄົນທີ່ເຫຼືອອີກ 5 ຄົນ ຈະໄດ້ກະ 1 (ເຊິ່ງແຕ່ລະມື້ຈະມີ 2 ຄົນພັກ, 3 ຄົນມາເຮັດກະ 1)
-        var s3PersonIndex = (0 - W % 7 + 7) % 7;
-        var s2PersonIndex = (1 - W % 7 + 7) % 7;
+        // ຈຳນວນວັນສົມບູນຕັ້ງແຕ່ເລີ່ມຕົ້ນ
+        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24));
+        var dayOfWeek = (currentDate.getUTCDay() + 6) % 7; // 0=Mon, ..., 6=Sun
 
-        var s3Person = staffList[s3PersonIndex];
-        var s2Person = staffList[s2PersonIndex];
-
-        // ຫາກມື້ນີ້ກົງກັບມື້ພັກຂອງຄົນກະ 3 ຫຼື ກະ 2 ຈະໃຫ້ຄົນໃນກະ 1 ມາສັບປ່ຽນແທນ
-        var activeS3 = s3Person;
-        var activeS2 = s2Person;
-        var activeS1 = [];
-
-        for (var idx = 0; idx < N; idx++) {
-            var person = staffList[idx];
-            var myOff = offSchedule[idx];
-
-            // ຖ້າມື້ນີ້ແມ່ນມື້ພັກຂອງຕົນເອງ
-            if (myOff.includes(dayOfWeek)) {
-                continue; // ພັກຜ່ອນ
-            }
-
-            if (idx === s3PersonIndex) {
-                activeS3 = person;
-            } else if (idx === s2PersonIndex) {
-                activeS2 = person;
-            } else {
-                activeS1.push(person);
-            }
+        // ຈັດສັນ 7 ຄົນເຂົ້າ 7 ຕຳແໜ່ງປະຈຳວັນ:
+        // Slot 0 -> ກະ 3 (Night: 1 ຄົນ)
+        // Slot 1 -> ກະ 2 (Afternoon: 1 ຄົນ)
+        // Slot 2, 3, 4 -> ກະ 1 (Morning: 3 ຄົນ)
+        // Slot 5, 6 -> ພັກຜ່ອນ 2 ວັນ (Off: 2 ຄົນ)
+        var dailySlots = [];
+        for (var p = 0; p < N; p++) {
+            var assignedSlot = (p + totalDays) % N;
+            dailySlots[assignedSlot] = staffList[p];
         }
 
-        // ຖ້າຄົນກະ 3 ພັກມື້ນີ້ ໃຫ້ດຶງຄົນກະ 1 ມາແທນ 1 ຄົນ
-        if (offSchedule[s3PersonIndex].includes(dayOfWeek)) {
-            activeS3 = activeS1.pop() || s3Person;
-        }
-        // ຖ້າຄົນກະ 2 ພັກມື້ນີ້ ໃຫ້ດຶງຄົນກະ 1 ມາແທນ 1 ຄົນ
-        if (offSchedule[s2PersonIndex].includes(dayOfWeek)) {
-            activeS2 = activeS1.pop() || s2Person;
-        }
-
-        // ຮັບປະກັນວ່າ ກະ 1 ມີ 3 ຄົນ, ກະ 2 ມີ 1 ຄົນ, ກະ 3 ມີ 1 ຄົນ
         data[dStr] = {
             isWeekend: (dayOfWeek === 5 || dayOfWeek === 6),
-            shift1: [activeS1[0] || '', activeS1[1] || '', activeS1[2] || ''],
-            shift2: [activeS2 || ''],
-            shift3: [activeS3 || '']
+            shift1: [dailySlots[2] || '', dailySlots[3] || '', dailySlots[4] || ''],
+            shift2: [dailySlots[1] || ''],
+            shift3: [dailySlots[0] || '']
         };
     }
     return data;
 }
 
-// 2. ສູດສຳລັບທີມໃຫຍ່ທົ່ວໄປ (24 ຄົນ)
+// 2. ສູດສຳລັບທີມໃຫຍ່ 24 ຄົນ
 function generateStandardMonthDataZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -141,7 +102,7 @@ function generateStandardMonthDataZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. Dispatcher (ກັ່ນຕອງສະເພາະຄົນໃນກຸ່ມເທົ່ານັ້ນ)
+// 3. Dispatcher
 function generateMonthDataZigzag(year, month, targetGroupMembers) {
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
