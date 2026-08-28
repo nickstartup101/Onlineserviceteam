@@ -1,12 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
-* {
-    font-family: 'Noto Sans Lao', 'Inter', sans-serif !important;
+/* ຕັ້ງ Font ພາສາລາວເປັນ Noto Sans Lao ທຸກ Element ຍົກເວັ້ນ Icon */
+body, input, button, select, textarea, table, th, td, div, p, h1, h2, h3, h4, h5, h6, span:not(.material-symbols-outlined), a { 
+    font-family: 'Noto Sans Lao', 'Inter', sans-serif !important; 
 }
 
 body { 
-    font-family: 'Noto Sans Lao', 'Inter', sans-serif !important; 
     -webkit-tap-highlight-color: transparent; 
+    background-color: #f8fafc;
+}
+
+/* ແກ້ໄຂ Google Material Symbols ໃຫ້ສະແດງເປັນ Icon ທີ່ຖືກຕ້ອງ 100% */
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-size: 20px;
+    line-height: 1;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    vertical-align: middle;
 }
 
 .tab-view { display: none; }
