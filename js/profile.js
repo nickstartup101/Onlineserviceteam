@@ -175,12 +175,12 @@ function handleBookAnnualLeave() {
     renderUserCurrentWeekWorkspace();
 }
 
-// ================= ⭐ FAIRNESS MODAL CONTROLLERS =================
+// ================= ⭐ FAIRNESS SUMMARY MODAL CONTROLLERS (FIXED) =================
 window.openFairnessSummaryModal = function() {
     var groupSelect = document.getElementById('fairnessGroupFilterSelect');
     if (groupSelect) {
         groupSelect.innerHTML = `<option value="ALL">⭐ ພະນັກງານທັງໝົດ (All Staff)</option>`;
-        window.employeeGroups.forEach(grp => {
+        (window.employeeGroups || []).forEach(grp => {
             groupSelect.innerHTML += `<option value="${grp.id}">👥 ${grp.name}</option>`;
         });
     }
@@ -211,7 +211,7 @@ function renderFairnessSummaryData() {
 
     var targetMembers = null;
     if (filterId !== 'ALL') {
-        var foundGrp = window.employeeGroups.find(g => g.id === filterId);
+        var foundGrp = (window.employeeGroups || []).find(g => g.id === filterId);
         if (foundGrp) targetMembers = foundGrp.members;
     } else {
         var activeWorkers = new Set();
@@ -236,7 +236,7 @@ function renderFairnessSummaryData() {
     for (var d = 1; d <= daysCount; d++) {
         var dNum = d < 10 ? '0' + d : '' + d;
         var mNum = month < 10 ? '0' + month : '' + month;
-        var dStr = `${year}-${mNum}-${dayNum}`;
+        var dStr = `${year}-${mNum}-${dNum}`; // ແກ້ໄຂ dNum ຖືກຕ້ອງແລ້ວ
         var dayInfo = sheet.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
 
         Object.keys(staffStats).forEach(name => {
