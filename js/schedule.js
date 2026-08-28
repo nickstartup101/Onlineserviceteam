@@ -292,6 +292,30 @@ function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
 }
 
+// ⭐ PUBLISH SCHEDULE ພ້ອມ BROADCAST NOTIFICATION ຫາ USER ທຸກຄົນ
+function publishSchedule() {
+    var sheet = getActiveSheet();
+    sheet.status = 'PUBLISHED';
+
+    // ສ້າງຂໍ້ຄວາມແຈ້ງເຕືອນລົງລະບົບສູນກາງ
+    if (!window.systemNotifications) window.systemNotifications = [];
+    window.systemNotifications.unshift({
+        id: Date.now(),
+        title: `ຕາຕະລາງປະຈຳການໃໝ່ຖືກເຜີຍແຜ່ແລ້ວ!`,
+        message: `ຕາຕະລາງ "${sheet.title}" ໄດ້ຮັບການ Publish ເປັນທາງການແລ້ວ. ກະລຸນາກວດສອບກະປະຈຳການຂອງທ່ານ.`,
+        tag: 'Publish ທາງການ',
+        sheetId: sheet.id,
+        date: new Date().toLocaleString('lo-LA'),
+        readBy: [window.currentUser?.user] // Admin ອ່ານແລ້ວ, User ອື່ນໆຈະເຫັນເປັນຂໍ້ຄວາມໃໝ່
+    });
+
+    saveAll();
+    renderSheetDropdown();
+    renderScheduleTable();
+    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
+    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ແລະ ແຈ້ງເຕືອນຫາພະນັກງານທຸກຄົນແລ້ວ!', 'success');
+}
+
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -460,6 +484,7 @@ function confirmApplyPublishedCellUpdate() {
     var reason = document.getElementById('editPublishedRemarkInput').value.trim() || 'ດັດແກ້ຕາມຄວາມຈຳເປັນ';
     var sheet = getActiveSheet();
 
+    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
     window.scheduleAuditLogs.unshift({
         id: Date.now(),
         sheetId: sheet.id,
@@ -473,6 +498,7 @@ function confirmApplyPublishedCellUpdate() {
         timestamp: new Date().toLocaleString('lo-LA')
     });
 
+    if (!window.systemNotifications) window.systemNotifications = [];
     window.systemNotifications.unshift({
         id: Date.now(),
         title: `ມີການປັບປ່ຽນຕາຕະລາງ: ${sheet.title}`,
@@ -533,6 +559,24 @@ function handleCreateNewSheet() {
     renderSheetDropdown();
     renderScheduleTable();
     showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
+}
+
+function openDuplicateSheetModal() {
+    var sheet = getActiveSheet();
+    var month = prompt('ກະລຸນາໃສ່ເດືອນທີ່ຕ້ອງການ Clone (ເຊັ່ນ: 2026-11):', '2026-11');
+    if (!month) return;
+    var [y, m] = month.split('-').map(Number);
+    var newId = 'sheet-' + Date.now();
+    var title = `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${m < 10 ? '0' + m : m}/${y}`;
+    var clonedData = JSON.parse(JSON.stringify(sheet.data));
+
+    window.scheduleSheets.push({ id: newId, monthKey: month, title: title, notes: sheet.notes || window.defaultNotesTemplate, status: 'DRAFT', data: clonedData });
+    window.activeSheetId = newId;
+    saveAll();
+    renderSheetDropdown();
+    renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', `ຄັດລອກ Template ໄປເດືອນ ${month} ແລ້ວ!`, 'success');
 }
 
 function openEditSheetInfoModal() {
@@ -609,7 +653,6 @@ function deleteAllDraftSheets() {
 }
 
 function saveDraft() { getActiveSheet().status = 'DRAFT'; saveAll(); renderSheetDropdown(); renderScheduleTable(); showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); }
-function publishSchedule() { getActiveSheet().status = 'PUBLISHED'; saveAll(); renderSheetDropdown(); renderScheduleTable(); showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ', 'success'); }
 
 function exportToA4PDF() {
     var sheet = getActiveSheet();
@@ -695,6 +738,7 @@ window.handleAddFixedShift = handleAddFixedShift;
 window.removeFixedShift = removeFixedShift;
 window.openNewSheetModal = openNewSheetModal;
 window.handleCreateNewSheet = handleCreateNewSheet;
+window.openDuplicateSheetModal = openDuplicateSheetModal;
 window.openEditSheetInfoModal = openEditSheetInfoModal;
 window.handleSaveSheetInfo = handleSaveSheetInfo;
 window.promptResetSchedule = promptResetSchedule;
