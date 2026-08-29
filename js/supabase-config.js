@@ -2,7 +2,7 @@
 
 // ⚠️ ປ່ຽນແທນ URL ແລະ ANON_KEY ຂອງ Project ຂອງທ່ານທີ່ນີ້:
 var SUPABASE_URL = "https://xnpixluzdvwoabejblgh.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.A3WqJo5p0_-qhyfdu33fmd2YG6MjM5nle84iTy8sQXM";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhucGl4bHV6ZHZ3b2FiZWpibGdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc4MjA1MTAsImV4cCI6MjEwMzM5NjUxMH0.A3WqJo5p0_-qhyfdu33fmd2YG6MjM5nle84iTy8sQXM";
 
 // ສ້າງ Supabase Client
 window.supabaseClient = null;
