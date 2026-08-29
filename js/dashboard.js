@@ -1,4 +1,4 @@
-// ================= ⭐ DASHBOARD REAL-TIME MULTI-TEAM MONITOR =================
+// ================= ⭐ DASHBOARD REAL-TIME MULTI-TEAM MONITOR & STAFF POPOVER =================
 
 function getStaffAvatarUrl(name) {
     var u = (window.users || []).find(usr => usr.nameLao === name);
@@ -7,13 +7,14 @@ function getStaffAvatarUrl(name) {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bg}&color=fff&size=64&bold=true`;
 }
 
-function renderStaffPill(name) {
+// ⭐ ສ້າງ Pill Card ພ້ອມ Event Onclick ເປີດ Popup Profile
+function renderStaffPill(name, currentShift) {
     var u = (window.users || []).find(usr => usr.nameLao === name);
     var isLeader = u && u.isLeader;
     var avatarUrl = getStaffAvatarUrl(name);
 
     return `
-        <div class="inline-flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full border shadow-sm transition hover:scale-105 ${isLeader ? 'bg-red-50 border-red-200 text-brand-red font-bold' : 'bg-white border-slate-200 text-slate-700 font-medium'}">
+        <div onclick="openStaffInfoModal('${name}', '${currentShift || ''}')" class="inline-flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full border shadow-sm transition hover:scale-105 cursor-pointer active:scale-95 ${isLeader ? 'bg-red-50 border-red-200 text-brand-red font-bold' : 'bg-white border-slate-200 text-slate-700 font-medium'}" title="ກົດເພື່ອເບິ່ງຂໍ້ມູນພະນັກງານ">
             <img src="${avatarUrl}" class="w-5 h-5 rounded-full object-cover border ${isLeader ? 'border-brand-red' : 'border-slate-200'}" alt="${name}"/>
             <span class="text-xs leading-none">${name}</span>
             ${isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : ''}
@@ -21,8 +22,49 @@ function renderStaffPill(name) {
     `;
 }
 
-// ⭐ Render ລາຍຊື່ທີມ (ຈັດໃຫ້ທີມທີ່ມີຫົວໜ້າຂຶ້ນເທິງສຸດ)
-function renderDashMultiTeamStaff(containerId, teamGroups) {
+// ⭐ ຟັງຊັນເປີດ Modal Staff Profile
+function openStaffInfoModal(name, currentShift) {
+    var u = (window.users || []).find(usr => usr.nameLao === name);
+    if (!u) return;
+
+    var avatarUrl = getStaffAvatarUrl(name);
+    var photoEl = document.getElementById('staffInfoModalPhoto');
+    var leaderBadge = document.getElementById('staffInfoModalLeaderBadge');
+    var callBtn = document.getElementById('staffInfoModalCallBtn');
+
+    if (photoEl) photoEl.src = avatarUrl;
+    if (leaderBadge) {
+        if (u.isLeader) leaderBadge.classList.remove('hidden');
+        else leaderBadge.classList.add('hidden');
+    }
+
+    document.getElementById('staffInfoModalName').innerText = `${u.nameLao} (${u.role === 'SUPER_ADMIN' ? 'Admin' : (u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ')})`;
+    document.getElementById('staffInfoModalFullName').innerText = u.fullName || '-';
+    document.getElementById('staffInfoModalCode').innerText = u.user || 'BCEL0000';
+    document.getElementById('staffInfoModalDept').innerText = u.dept || 'ຂະແໜງບໍລິການອອນລາຍ (Online Service Team)';
+    document.getElementById('staffInfoModalPos').innerText = u.position || (u.isLeader ? 'ຫົວໜ້າກະປະຈຳການ (Shift Leader)' : 'ພະນັກງານບໍລິການລູກຄ້າ');
+    
+    var phone = u.phone || '020 5599 8877';
+    document.getElementById('staffInfoModalPhone').innerText = phone;
+    if (callBtn) callBtn.href = `tel:${phone.replace(/\s+/g, '')}`;
+
+    var modal = document.getElementById('staffInfoModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+    }
+}
+
+function closeStaffInfoModal() {
+    var modal = document.getElementById('staffInfoModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+}
+
+// Render ລາຍຊື່ທີມ
+function renderDashMultiTeamStaff(containerId, teamGroups, shiftLabel) {
     var el = document.getElementById(containerId);
     if (!el) return;
     el.innerHTML = '';
@@ -32,18 +74,16 @@ function renderDashMultiTeamStaff(containerId, teamGroups) {
         return;
     }
 
-    // ຈັດລຳດັບ: ທີມທີ່ມີຫົວໜ້າກະ (hasLeader: true) ຈະຂຶ້ນມາຢູ່ເທິງສະເໝີ
     teamGroups.sort((a, b) => (b.hasLeader ? 1 : 0) - (a.hasLeader ? 1 : 0));
 
     teamGroups.forEach((tg, idx) => {
-        // ພາຍໃນທີມ: ຈັດໃຫ້ຫົວໜ້າກະຢູ່ຊ່ອງທຳອິດ
         tg.staff.sort((a, b) => {
             var la = window.users.find(u => u.nameLao === a)?.isLeader ? 1 : 0;
             var lb = window.users.find(u => u.nameLao === b)?.isLeader ? 1 : 0;
             return lb - la;
         });
 
-        var pillsHtml = tg.staff.map(name => renderStaffPill(name)).join(' ');
+        var pillsHtml = tg.staff.map(name => renderStaffPill(name, shiftLabel)).join(' ');
         
         el.innerHTML += `
             <div class="space-y-1.5 ${idx > 0 ? 'pt-2.5 border-t border-slate-100' : ''}">
@@ -139,7 +179,6 @@ function renderDashboard() {
 
             var cleanTeamName = sheet.title.replace('ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ', 'ຕາຕະລາງ');
 
-            // ກວດສອບວ່າທີມນີ້ມີຫົວໜ້າກະບໍ່
             var hasLeaderS1 = s1.some(name => window.users.find(u => u.nameLao === name)?.isLeader);
             var hasLeaderS2 = s2.some(name => window.users.find(u => u.nameLao === name)?.isLeader);
             var hasLeaderS3 = s3.some(name => window.users.find(u => u.nameLao === name)?.isLeader);
@@ -154,12 +193,13 @@ function renderDashboard() {
     document.getElementById('shift2CountBadge').innerText = `${totalS2} ຄົນ`;
     document.getElementById('shift3CountBadge').innerText = `${totalS3} ຄົນ`;
 
-    renderDashMultiTeamStaff('shift1Names', allS1ByTeam);
-    renderDashMultiTeamStaff('shift2Names', allS2ByTeam);
-    renderDashMultiTeamStaff('shift3Names', allS3ByTeam);
+    renderDashMultiTeamStaff('shift1Names', allS1ByTeam, 'ກະ 1 (08:00 - 16:00)');
+    renderDashMultiTeamStaff('shift2Names', allS2ByTeam, 'ກະ 2 (12:00 - 20:00)');
+    renderDashMultiTeamStaff('shift3Names', allS3ByTeam, 'ກະ 3 (20:00 - 08:00)');
 
     updateLiveShiftBadge(isWeekendOrHol);
 
+    // ລາຍການລາພັກ (ພ້ອມບອກກະ)
     document.getElementById('dashActivityDateLabel').innerText = `ວັນທີ ${date}`;
     var dayLeaves = (window.leavesList || []).filter(l => l.date === date);
     var leavesDiv = document.getElementById('dashLeavesContainer');
@@ -171,7 +211,10 @@ function renderDashboard() {
             dayLeaves.forEach(l => {
                 leavesDiv.innerHTML += `
                     <div class="p-2 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
-                        <div class="flex items-center gap-1.5">${renderStaffPill(l.empName)} <span class="text-[10px] text-slate-500">(${l.shift})</span></div>
+                        <div class="flex items-center gap-1.5">
+                            ${renderStaffPill(l.empName)}
+                            <span class="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">${l.shift || 'ກະ 1'}</span>
+                        </div>
                         <span class="text-brand-red bg-red-100 px-2 py-0.5 rounded text-[10px] font-bold">${l.reason}</span>
                     </div>
                 `;
@@ -199,3 +242,5 @@ function renderDashboard() {
 }
 
 window.renderDashboard = renderDashboard;
+window.openStaffInfoModal = openStaffInfoModal;
+window.closeStaffInfoModal = closeStaffInfoModal;
