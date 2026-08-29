@@ -2,9 +2,9 @@ function renderEmployeesTable() {
     var tbody = document.getElementById('employeesTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
-    document.getElementById('empCountHeader').innerText = users.length;
+    document.getElementById('empCountHeader').innerText = window.users.length;
 
-    users.forEach((u, idx) => {
+    window.users.forEach((u, idx) => {
         tbody.innerHTML += `
             <tr class="hover:bg-slate-50 font-lao">
                 <td class="p-3.5 font-bold text-brand-red">${u.user}</td>
@@ -25,7 +25,7 @@ function renderEmployeesTable() {
 
 function promptRestoreDefaultUsers() {
     askConfirm('ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ', 'ທ່ານຕ້ອງການຣີເຊັດລາຍຊື່ພະນັກງານທັງໝົດ 25 ທ່ານໃຫ້ເປັນຄ່າເລີ່ມຕົ້ນແທ້ບໍ່?', () => {
-        users = MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
+        window.users = window.MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
         saveAll();
         renderEmployeesTable();
         renderScheduleStaffRoster();
@@ -39,18 +39,22 @@ function openAddEmpModal() {
     document.getElementById('modalEmpUser').value = '';
     document.getElementById('modalEmpFullName').value = '';
     document.getElementById('modalEmpNameLao').value = '';
+    document.getElementById('modalEmpDept').value = 'ຂະແໜງບໍລິການອອນລາຍ';
+    document.getElementById('modalEmpPhone').value = '020 5599 8877';
     document.getElementById('modalEmpPass').value = 'bcel2026';
     document.getElementById('modalEmpIsLeader').checked = false;
     document.getElementById('empModal').classList.remove('hidden');
 }
 
 function openEditEmpModal(index) {
-    var emp = users[index];
+    var emp = window.users[index];
     document.getElementById('empModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນພະນັກງານ';
     document.getElementById('editEmpId').value = index;
     document.getElementById('modalEmpUser').value = emp.user;
     document.getElementById('modalEmpFullName').value = emp.fullName;
     document.getElementById('modalEmpNameLao').value = emp.nameLao;
+    document.getElementById('modalEmpDept').value = emp.dept || 'ຂະແໜງບໍລິການອອນລາຍ';
+    document.getElementById('modalEmpPhone').value = emp.phone || '020 5599 8877';
     document.getElementById('modalEmpPass').value = emp.pass;
     document.getElementById('modalEmpIsLeader').checked = emp.isLeader || false;
     document.getElementById('empModal').classList.remove('hidden');
@@ -63,15 +67,32 @@ function handleSaveEmployee() {
     var u = document.getElementById('modalEmpUser').value.trim();
     var full = document.getElementById('modalEmpFullName').value.trim();
     var lao = document.getElementById('modalEmpNameLao').value.trim();
+    var dept = document.getElementById('modalEmpDept').value.trim() || 'ຂະແໜງບໍລິການອອນລາຍ';
+    var phone = document.getElementById('modalEmpPhone').value.trim() || '020 5599 8877';
     var p = document.getElementById('modalEmpPass').value.trim();
     var leader = document.getElementById('modalEmpIsLeader').checked;
 
     if (!u || !full || !lao || !p) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ', 'error'); return; }
 
+    if (!window.securityAuditLogs) window.securityAuditLogs = [];
+
     if (editId !== '') {
-        users[editId] = { ...users[editId], user: u, fullName: full, nameLao: lao, pass: p, isLeader: leader };
+        var oldPass = window.users[editId].pass;
+        window.users[editId] = { ...window.users[editId], user: u, fullName: full, nameLao: lao, dept: dept, phone: phone, pass: p, isLeader: leader };
+
+        if (oldPass !== p) {
+            window.securityAuditLogs.unshift({
+                id: Date.now(),
+                type: 'ADMIN_PASSWORD_RESET',
+                user: u,
+                fullName: full,
+                details: `Admin Reset ລະຫັດຜ່ານຂອງ ${lao} ເປັນ: "${p}"`,
+                status: 'ADMIN_RESET',
+                timestamp: new Date().toLocaleString('lo-LA')
+            });
+        }
     } else {
-        users.push({ user: u, pass: p, fullName: full, nameLao: lao, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 });
+        window.users.push({ user: u, pass: p, fullName: full, nameLao: lao, dept: dept, phone: phone, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 });
     }
 
     closeEmpModal();
@@ -85,7 +106,7 @@ function renderScheduleStaffRoster() {
     var container = document.getElementById('scheduleStaffRoster');
     if (!container) return;
     container.innerHTML = '';
-    var staffOnly = users.filter(u => u.role !== 'SUPER_ADMIN');
+    var staffOnly = window.users.filter(u => u.role !== 'SUPER_ADMIN');
     document.getElementById('rosterCountText').innerText = staffOnly.length;
     var q = (document.getElementById('rosterSearchInput')?.value || '').toLowerCase().trim();
     var filtered = staffOnly.filter(u => u.nameLao.toLowerCase().includes(q) || u.fullName.toLowerCase().includes(q));
@@ -101,3 +122,12 @@ function renderScheduleStaffRoster() {
 }
 
 function filterRosterSidebar() { renderScheduleStaffRoster(); }
+
+window.renderEmployeesTable = renderEmployeesTable;
+window.promptRestoreDefaultUsers = promptRestoreDefaultUsers;
+window.openAddEmpModal = openAddEmpModal;
+window.openEditEmpModal = openEditEmpModal;
+window.closeEmpModal = closeEmpModal;
+window.handleSaveEmployee = handleSaveEmployee;
+window.renderScheduleStaffRoster = renderScheduleStaffRoster;
+window.filterRosterSidebar = filterRosterSidebar;
