@@ -157,58 +157,54 @@ function renderUserCurrentWeekWorkspace() {
     renderAnnualLeaveBookings();
     renderSwapHistory();
 }
-
+// ⭐ ລະບົບອັບໂຫຼດຮູບພາບ, ບີບອັດຂະໜາດ (Compress) ແລະ Sync ໄປ Dashboard ອັດຕະໂນມັດ
 function handlePhotoUploadAndCompress(event) {
     var file = event.target.files[0];
     if (!file) return;
+
     var reader = new FileReader();
     reader.onload = function(e) {
         var img = new Image();
         img.onload = function() {
             var canvas = document.createElement('canvas');
-            var max = 200;
+            var max = 200; // ບີບອັດຂະໜາດຮູບໃຫ້ເບົາ ບໍ່ໜັກ Database
             var w = img.width, h = img.height;
             if (w > h) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
             else { if (h > max) { w = Math.round((w * max) / h); h = max; } }
             canvas.width = w; canvas.height = h;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, w, h);
-            window.currentUser.photo = canvas.toDataURL('image/jpeg', 0.75);
+
+            var photoBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+            // 1. ອັບເດດຮູບໃຫ້ currentUser
+            window.currentUser.photo = photoBase64;
+
+            // 2. ⭐ Sync ຮູບເຂົ້າຖານຂໍ້ມູນຫຼັກ (window.users) ເພື່ອໃຫ້ Dashboard ດຶງໄປໃຊ້
+            var userIdx = window.users.findIndex(u => u.user === window.currentUser.user || u.nameLao === window.currentUser.nameLao);
+            if (userIdx !== -1) {
+                window.users[userIdx].photo = photoBase64;
+            }
+
+            // 3. ບັນທຶກລົງ LocalStorage
             saveAll();
-            checkAuth();
-            showToast('ສຳເລັດ', 'ອັບເດດຮູບໂປຣໄຟລ໌ຮຽບຮ້ອຍ', 'success');
+            localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
+
+            // 4. ອັບເດດການສະແດງຜົນທັນທີ
+            var topAvatar = document.getElementById('topAvatar');
+            var profPreview = document.getElementById('profPhotoPreview');
+            if (topAvatar) topAvatar.src = photoBase64;
+            if (profPreview) profPreview.src = photoBase64;
+
+            // 5. Re-render Dashboard ໃຫ້ຮູບປ່ຽນທັນທີ
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+
+            showToast('ສຳເລັດ', 'ອັບເດດຮູບໂປຣໄຟລ໌ ແລະ Sync ໄປ Dashboard ແລ້ວ!', 'success');
         };
         img.src = e.target.result;
     };
     reader.readAsDataURL(file);
-}
-
-function handleUpdateProfile() {
-    var name = document.getElementById('profNameInput').value.trim();
-    var pass = document.getElementById('profPassInput').value.trim();
-    if (!name) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ເຕັມ', 'error'); return; }
-
-    if (pass) {
-        if (!window.securityAuditLogs) window.securityAuditLogs = [];
-        window.securityAuditLogs.unshift({
-            id: Date.now(),
-            type: 'PASSWORD_CHANGE',
-            user: window.currentUser.user,
-            fullName: name,
-            details: `ພະນັກງານປ່ຽນລະຫັດຜ່ານໃໝ່ເປັນ: "${pass}"`,
-            status: 'UPDATED',
-            timestamp: new Date().toLocaleString('lo-LA')
-        });
-        window.currentUser.pass = pass;
-    }
-
-    window.currentUser.fullName = name;
-    var idx = window.users.findIndex(u => u.user === window.currentUser.user);
-    if (idx !== -1) window.users[idx] = { ...window.users[idx], fullName: name, pass: pass || window.users[idx].pass };
-
-    saveAll();
-    checkAuth();
-    showToast('ສຳເລັດ', 'ອັບເດດໂປຣໄຟລ໌ ແລະ ບັນທຶກ Log ແລ້ວ', 'success');
 }
 
 // ⭐ ຈອງມື້ພັກ ພ້ອມບັນທຶກ "ກະປະຈຳການທີ່ລາພັກ"
