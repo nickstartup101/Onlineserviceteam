@@ -29,11 +29,11 @@
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col">
 
-    <!-- Toast Notification Popup -->
+    <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
-        <div class="bg-white border-2 border-slate-100 shadow-2xl rounded-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-md">
-            <div id="toastIconBox" class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
-                <span class="material-symbols-outlined text-2xl" id="toastIcon">check_circle</span>
+        <div class="bg-white border border-slate-200 shadow-xl rounded-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-md">
+            <div id="toastIconBox" class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-xl" id="toastIcon">check_circle</span>
             </div>
             <div class="flex-1">
                 <h4 class="font-bold text-xs text-slate-800" id="toastTitle">ສຳເລັດ</h4>
@@ -46,8 +46,8 @@
     <!-- Confirm Modal -->
     <div id="appConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-            <div class="p-5 bg-red-50 flex items-center gap-3 border-b border-red-100">
-                <div class="w-10 h-10 rounded-2xl bg-brand-red text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div class="p-5 bg-slate-50 flex items-center gap-3 border-b border-slate-100">
+                <div class="w-10 h-10 rounded-2xl bg-brand-red text-white flex items-center justify-center shrink-0">
                     <span class="material-symbols-outlined text-xl" id="confirmModalIcon">help</span>
                 </div>
                 <div>
@@ -59,7 +59,7 @@
                 <p class="text-xs text-slate-700 leading-relaxed font-medium" id="confirmModalMessage">ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການດຳເນີນການນີ້?</p>
                 <div class="flex gap-2.5 pt-5 border-t border-slate-100 mt-4">
                     <button type="button" onclick="closeConfirmModal(false)" class="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-600 transition cursor-pointer">ຍົກເລີກ</button>
-                    <button type="button" onclick="closeConfirmModal(true)" id="btnConfirmAction" class="flex-1 py-2.5 bg-red-gradient bg-red-gradient-hover text-white rounded-xl text-xs font-bold shadow-md shadow-red-900/20 transition cursor-pointer">ຢືນຢັນ</button>
+                    <button type="button" onclick="closeConfirmModal(true)" id="btnConfirmAction" class="flex-1 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl text-xs font-bold shadow-md transition cursor-pointer">ຢືນຢັນ</button>
                 </div>
             </div>
         </div>
@@ -85,7 +85,7 @@
                     <label class="block text-xs font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານ (Password)</label>
                     <input type="text" id="loginPassword" onkeydown="if(event.key==='Enter') doLogin()" class="password-mask w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
                 </div>
-                <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-red-gradient bg-red-gradient-hover text-white py-3.5 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 active:scale-[0.99] cursor-pointer">ເຂົ້າສູ່ລະບົບ (Log In)</button>
+                <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-brand-red hover:bg-brand-red-dark text-white py-3.5 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 cursor-pointer">ເຂົ້າສູ່ລະບົບ (Log In)</button>
             </div>
         </div>
     </div>
@@ -108,7 +108,7 @@
             <button type="button" onclick="switchTab('profile'); toggleMobileDrawer();" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
         </nav>
         <div class="pt-4 border-t border-slate-100">
-            <button type="button" onclick="logout()" class="w-full py-2.5 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl font-bold text-xs flex items-center justify-center gap-2"><span class="material-symbols-outlined text-sm">logout</span> ອອກຈາກລະບົບ</button>
+            <button type="button" onclick="logout()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2"><span class="material-symbols-outlined text-sm">logout</span> ອອກຈາກລະບົບ</button>
         </div>
     </aside>
 
@@ -132,11 +132,11 @@
         </div>
         <div class="flex items-center gap-2 md:gap-3">
             <div class="relative flex items-center">
-                <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 transition relative cursor-pointer flex items-center justify-center shadow-sm">
+                <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition relative cursor-pointer flex items-center justify-center">
                     <span class="material-symbols-outlined text-[22px]">notifications</span>
                     <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
                 </button>
-                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border-2 border-red-100 z-50 p-4">
+                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-4">
                     <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
                         <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5"><span class="material-symbols-outlined text-brand-red text-base">notifications_active</span> ການແຈ້ງເຕືອນ</span>
                         <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold">ໝາຍວ່າອ່ານແລ້ວ</button>
@@ -151,7 +151,7 @@
                     <p class="text-[10px] text-brand-red font-semibold" id="topUserRole">Staff</p>
                 </div>
             </div>
-            <button type="button" onclick="logout()" title="Sign Out" class="text-slate-400 hover:text-brand-red p-1.5 rounded-lg hover:bg-red-50 transition"><span class="material-symbols-outlined text-[20px]">logout</span></button>
+            <button type="button" onclick="logout()" title="Sign Out" class="text-slate-400 hover:text-brand-red p-1.5 rounded-lg hover:bg-slate-100 transition"><span class="material-symbols-outlined text-[20px]">logout</span></button>
         </div>
     </header>
 
@@ -226,58 +226,76 @@
 
         <!-- VIEW 2: MONTHLY SCHEDULE BUILDER -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100 pb-20 md:pb-0">
-            <!-- Professional Clean Toolbar -->
-            <div class="px-4 md:px-6 py-3.5 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0 shadow-sm">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="material-symbols-outlined text-brand-red text-xl">table_view</span>
-                    <select id="scheduleSheetSelect" onchange="changeActiveSheet()" class="border border-slate-300 rounded-xl text-xs font-bold p-2 outline-none bg-slate-50"></select>
+            <!-- ⭐ MINIMAL & PROFESSIONAL CORPORATE TOOLBAR -->
+            <div class="px-4 md:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2.5 shrink-0 shadow-sm">
+                
+                <!-- Left Group: Sheet Operations -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <div class="flex items-center border border-slate-300 rounded-xl bg-slate-50 p-0.5">
+                        <span class="material-symbols-outlined text-slate-500 text-lg px-2">calendar_today</span>
+                        <select id="scheduleSheetSelect" onchange="changeActiveSheet()" class="border-0 bg-transparent text-xs font-bold text-slate-800 outline-none focus:ring-0 pr-8 py-1.5"></select>
+                    </div>
+
+                    <button type="button" onclick="openNewSheetModal()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">add_box</span> ສ້າງຕາຕະລາງໃໝ່
+                    </button>
                     
-                    <button type="button" onclick="openNewSheetModal()" class="admin-only px-2.5 py-2 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">add_box</span> ສ້າງຕາຕະລາງໃໝ່
+                    <button type="button" onclick="openBatchMonthModal()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">calendar_month</span> ສ້າງລ່ວງໜ້າ
                     </button>
-                    <button type="button" onclick="openBatchMonthModal()" class="admin-only px-2.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">calendar_month</span> ສ້າງລ່ວງໜ້າຫຼາຍເດືອນ
+
+                    <button type="button" onclick="openFixedShiftModal()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">lock_clock</span> Fix Shift
                     </button>
-                    <button type="button" onclick="openFixedShiftModal()" class="admin-only px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">lock_clock</span> Fix Shift (ລັອກກະ)
+
+                    <button type="button" onclick="openEditSheetInfoModal()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">edit_note</span> ຫົວຂໍ້ & ໝາຍເຫດ
                     </button>
-                    <button type="button" onclick="openEditPublishedScheduleGuide()" class="admin-only px-2.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">edit_calendar</span> ດັດແກ້ຕາຕະລາງທາງການ
-                    </button>
-                    <button type="button" onclick="openEditSheetInfoModal()" class="admin-only px-2.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">edit_note</span> ແກ້ໄຂຫົວຂໍ້
-                    </button>
-                    <button type="button" onclick="promptDeleteCurrentSheet()" class="admin-only px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer" title="ລຶບຕາຕະລາງນີ້">
-                        <span class="material-symbols-outlined text-sm">delete</span> ລຶບຕາຕະລາງນີ້
+
+                    <button type="button" onclick="promptDeleteCurrentSheet()" class="admin-only px-2.5 py-2 bg-white hover:bg-red-50 text-slate-500 hover:text-brand-red border border-slate-200 hover:border-red-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition" title="ລຶບຕາຕະລາງນີ້">
+                        <span class="material-symbols-outlined text-base">delete</span>
                     </button>
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                    <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm text-indigo-700">autorenew</span> Random Zigzag
+
+                <!-- Right Group: Actions & Balancing -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base">autorenew</span> Random Zigzag
                     </button>
-                    <button type="button" onclick="openFairnessSummaryModal()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm text-emerald-700">balance</span> ສະຫຼຸບຄວາມເທົ່າທຽມ
+
+                    <!-- ⭐ ປຸ່ມ Rebalance ກະ 3 ອັດສະລິຍະ -->
+                    <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="ດຶງກະດຶກເສົາ-ອາທິດ ໄປສະເລ່ຍໃຫ້ຄົນທີ່ໄດ້ໜ້ອຍ">
+                        <span class="material-symbols-outlined text-base text-slate-700">balance</span> Rebalance ກະ 3
                     </button>
-                    <button type="button" onclick="promptResetSchedule()" class="admin-only px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">restart_alt</span> Reset
+
+                    <button type="button" onclick="openFairnessSummaryModal()" class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">analytics</span> ສະຫຼຸບຄວາມເທົ່າທຽມ
                     </button>
-                    <button type="button" onclick="openHolidayModal()" class="admin-only px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">event_busy</span> ວັນພັກພິເສດ
+
+                    <button type="button" onclick="promptResetSchedule()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                        <span class="material-symbols-outlined text-base text-slate-500">restart_alt</span> Reset
                     </button>
-                    <button type="button" onclick="saveDraft()" class="admin-only px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ Draft
+
+                    <button type="button" onclick="openHolidayModal()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                        <span class="material-symbols-outlined text-base text-slate-500">event_busy</span> ວັນພັກພິເສດ
                     </button>
-                    <button type="button" onclick="publishSchedule()" class="admin-only px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-emerald-900/10 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">verified</span> Publish
+
+                    <button type="button" onclick="saveDraft()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition">
+                        <span class="material-symbols-outlined text-base text-slate-600">save</span> Draft
                     </button>
-                    <button type="button" onclick="exportToA4PDF()" class="px-4 py-2 bg-red-gradient text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-md shadow-red-900/20 cursor-pointer">
-                        <span class="material-symbols-outlined text-sm">print</span> A4 PDF
+
+                    <button type="button" onclick="publishSchedule()" class="admin-only px-4 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-900/15 transition">
+                        <span class="material-symbols-outlined text-base">verified</span> Publish
+                    </button>
+
+                    <button type="button" onclick="exportToA4PDF()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+                        <span class="material-symbols-outlined text-base text-slate-700">print</span> A4 PDF
                     </button>
                 </div>
             </div>
 
-            <!-- Professional Clean Status Banner -->
-            <div id="scheduleStatusBanner" class="px-6 py-2.5 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs">
+            <!-- Professional Status Banner -->
+            <div id="scheduleStatusBanner" class="px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs">
                 <span id="scheduleStatusBadge" class="font-bold text-emerald-800 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)
                 </span>
@@ -316,7 +334,7 @@
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div><h2 class="text-xl font-bold text-slate-800">ຕັ້ງຄ່າໝວດ/ກຸ່ມພະນັກງານສຳລັບ Zigzag Auto-Schedule</h2><p class="text-xs text-slate-500">ກຳນົດກຸ່ມເພື່ອໃຫ້ລະບົບ Random ແບບ Zigzag ຕໍ່ເນື່ອງທຸກເດືອນ</p></div>
-                    <button type="button" onclick="openAddGroupModal()" class="px-4 py-2.5 bg-red-gradient text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">add_circle</span> ສ້າງກຸ່ມໃໝ່</button>
+                    <button type="button" onclick="openAddGroupModal()" class="px-4 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">add_circle</span> ສ້າງກຸ່ມໃໝ່</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="groupsListGrid"></div>
             </div>
@@ -328,8 +346,8 @@
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
                     <div><h2 class="text-xl font-bold text-slate-800">ຈັດການຂໍ້ມູນພະນັກງານ (<span id="empCountHeader">25</span> ທ່ານ)</h2><p class="text-xs text-slate-500">ເພີ່ມພະນັກງານໃໝ່, ແກ້ໄຂຂໍ້ມູນ ແລະ ກຳນົດຫົວໜ້າກະ</p></div>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="promptRestoreDefaultUsers()" class="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">restart_alt</span> ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ</button>
-                        <button type="button" onclick="openAddEmpModal()" class="px-4 py-2.5 bg-red-gradient text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່</button>
+                        <button type="button" onclick="promptRestoreDefaultUsers()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">restart_alt</span> ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ</button>
+                        <button type="button" onclick="openAddEmpModal()" class="px-4 py-2 bg-brand-red hover:bg-brand-red-dark text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">person_add</span> ເພີ່ມພະນັກງານໃໝ່</button>
                     </div>
                 </div>
                 <div class="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
@@ -361,16 +379,16 @@
                             <div class="w-11 h-11 rounded-2xl bg-red-50 text-brand-red flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">group</span></div>
                         </div>
                         <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-sm flex items-center justify-between">
-                            <div><p class="text-xs text-slate-400 font-bold">ລວມກະປະຈຳການ</p><h3 class="text-2xl font-bold text-emerald-600 mt-1" id="adminMetricDutyCount">0 ກະ</h3></div>
-                            <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">schedule</span></div>
+                            <div><p class="text-xs text-slate-400 font-bold">ລວມກະປະຈຳການ</p><h3 class="text-2xl font-bold text-slate-800 mt-1" id="adminMetricDutyCount">0 ກະ</h3></div>
+                            <div class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">schedule</span></div>
                         </div>
                         <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-sm flex items-center justify-between">
-                            <div><p class="text-xs text-slate-400 font-bold">ມື້ພັກປະຈຳປີທີ່ໃຊ້ໄປ</p><h3 class="text-2xl font-bold text-amber-600 mt-1" id="adminMetricLeaveCount">0 ມື້</h3></div>
-                            <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">flight_takeoff</span></div>
+                            <div><p class="text-xs text-slate-400 font-bold">ມື້ພັກປະຈຳປີທີ່ໃຊ້ໄປ</p><h3 class="text-2xl font-bold text-amber-700 mt-1" id="adminMetricLeaveCount">0 ມື້</h3></div>
+                            <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">flight_takeoff</span></div>
                         </div>
                         <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-sm flex items-center justify-between">
-                            <div><p class="text-xs text-slate-400 font-bold">ການຂໍປ່ຽນກະ (Swaps)</p><h3 class="text-2xl font-bold text-purple-600 mt-1" id="adminMetricSwapCount">0 ລາຍການ</h3></div>
-                            <div class="w-11 h-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">swap_horiz</span></div>
+                            <div><p class="text-xs text-slate-400 font-bold">ການຂໍປ່ຽນກະ (Swaps)</p><h3 class="text-2xl font-bold text-slate-800 mt-1" id="adminMetricSwapCount">0 ລາຍການ</h3></div>
+                            <div class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-2xl">swap_horiz</span></div>
                         </div>
                     </div>
 
@@ -393,7 +411,7 @@
                     <!-- Post-Publish Modifications Audit Trail -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h4 class="font-bold text-slate-800 text-sm mb-3 border-b pb-2 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-amber-600 text-base">history_edu</span>
+                            <span class="material-symbols-outlined text-slate-700 text-base">history_edu</span>
                             ປະຫວັດການແກ້ໄຂຕາຕະລາງຫຼັງ Publish (Post-Publish Modification Audit Trail)
                         </h4>
                         <div class="overflow-x-auto max-h-60">
@@ -434,7 +452,7 @@
                         <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
                             <div class="relative mb-3">
                                 <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-4 border-red-50 shadow-md bg-slate-50" src="" alt="Profile"/>
-                                <label for="photoUploadInput" class="absolute bottom-0 right-0 bg-red-gradient text-white p-1.5 rounded-full cursor-pointer hover:scale-105 shadow transition"><span class="material-symbols-outlined text-sm">photo_camera</span></label>
+                                <label for="photoUploadInput" class="absolute bottom-0 right-0 bg-brand-red text-white p-1.5 rounded-full cursor-pointer hover:scale-105 shadow transition"><span class="material-symbols-outlined text-sm">photo_camera</span></label>
                                 <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUploadAndCompress(event)" class="hidden"/>
                             </div>
                             <h3 class="text-sm font-bold text-slate-800" id="profNameDisplay">Name</h3>
@@ -442,7 +460,7 @@
                             <div class="w-full space-y-3 text-left border-t border-slate-100 pt-4 mt-4 text-xs">
                                 <div><label class="block font-semibold text-slate-600 mb-1">ຊື່ເຕັມ (Full Name)</label><input type="text" id="profNameInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red"/></div>
                                 <div><label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label><input type="text" id="profPassInput" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ໃສ່ລະຫັດໃໝ່..."/></div>
-                                <button type="button" onclick="handleUpdateProfile()" class="w-full bg-red-gradient text-white py-2.5 rounded-xl font-bold transition shadow-md">ບັນທຶກໂປຣໄຟລ໌</button>
+                                <button type="button" onclick="handleUpdateProfile()" class="w-full bg-brand-red hover:bg-brand-red-dark text-white py-2.5 rounded-xl font-bold transition shadow-md">ບັນທຶກໂປຣໄຟລ໌</button>
                             </div>
                         </div>
 
@@ -453,7 +471,7 @@
                                     <div><label class="block font-semibold text-slate-600 mb-1">ເລີ່ມພັກແຕ່ວັນທີ</label><input type="date" id="bookLeaveStart" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ</label><input type="date" id="bookLeaveEnd" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div class="sm:col-span-2"><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ</label><input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
-                                    <div class="sm:col-span-2 flex justify-end"><button type="button" onclick="handleBookAnnualLeave()" class="px-5 py-2.5 bg-red-gradient text-white rounded-xl font-bold shadow-md">ຢືນຢັນການຈອງມື້ພັກ</button></div>
+                                    <div class="sm:col-span-2 flex justify-end"><button type="button" onclick="handleBookAnnualLeave()" class="px-5 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold shadow-md">ຢືນຢັນການຈອງມື້ພັກ</button></div>
                                 </div>
                             </div>
                         </div>
@@ -467,28 +485,28 @@
     <!-- Modal ດັດແກ້ຕາຕະລາງ Published -->
     <div id="editPublishedRemarkModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden font-lao">
-            <div class="p-5 bg-blue-700 text-white flex justify-between items-center">
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-2xl">edit_calendar</span>
+                    <span class="material-symbols-outlined text-2xl text-amber-400">edit_calendar</span>
                     <div>
                         <h3 class="font-bold text-sm">ດັດແກ້ຕາຕະລາງທາງການ (Published)</h3>
-                        <p class="text-[10px] text-blue-100">ລະບົບຈະບັນທຶກເຫດຜົນ, Highlight ຊ່ອງ ແລະ ແຈ້ງເຕືອນ</p>
+                        <p class="text-[10px] text-slate-300">ລະບົບຈະບັນທຶກເຫດຜົນ, Highlight ຊ່ອງ ແລະ ແຈ້ງເຕືອນ</p>
                     </div>
                 </div>
                 <button type="button" onclick="closeEditPublishedRemarkModal()" class="text-white/80 hover:text-white">✕</button>
             </div>
             <div class="p-6 space-y-4 text-xs">
-                <div class="bg-blue-50 border border-blue-200 p-3.5 rounded-2xl space-y-1.5">
-                    <p class="font-bold text-blue-900" id="remarkModalTargetInfo">ວັນທີ: ... [ກະ ...]</p>
+                <div class="bg-slate-50 border border-slate-200 p-3.5 rounded-2xl space-y-1.5">
+                    <p class="font-bold text-slate-800" id="remarkModalTargetInfo">ວັນທີ: ... [ກະ ...]</p>
                     <p class="text-slate-700">ການປ່ຽນແປງ: <span class="font-bold text-slate-500" id="remarkOldName"></span> ➔ <span class="font-bold text-brand-red" id="remarkNewName"></span></p>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700">ກະລຸນາໃສ່ເຫດຜົນ / ໝາຍເຫດການປັບປ່ຽນ (Remark):</label>
-                    <textarea id="editPublishedRemarkInput" rows="3" placeholder="ເຊັ່ນ: ພະນັກງານເຈັບເປັນກະທັນຫັນ, ສັບປ່ຽນກະຕາມຄຳຮ້ອງຂໍ..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-blue-600 bg-slate-50 focus:bg-white"></textarea>
+                    <textarea id="editPublishedRemarkInput" rows="3" placeholder="ເຊັ່ນ: ພະນັກງານເຈັບເປັນກະທັນຫັນ, ສັບປ່ຽນກະຕາມຄຳຮ້ອງຂໍ..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-slate-800 bg-white"></textarea>
                 </div>
                 <div class="flex justify-end gap-2 pt-2 border-t">
                     <button type="button" onclick="closeEditPublishedRemarkModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
-                    <button type="button" onclick="confirmApplyPublishedCellUpdate()" class="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl font-bold shadow cursor-pointer">ຢືນຢັນ & ອັບເດດ</button>
+                    <button type="button" onclick="confirmApplyPublishedCellUpdate()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow cursor-pointer">ຢືນຢັນ & ອັບເດດ</button>
                 </div>
             </div>
         </div>
@@ -497,16 +515,16 @@
     <!-- Fixed Shift Modal -->
     <div id="fixedShiftModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-amber-900 text-white flex justify-between items-center">
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-2xl">lock_clock</span>
+                    <span class="material-symbols-outlined text-2xl text-amber-400">lock_clock</span>
                     <h3 class="font-bold text-sm">ຈັດການລັອກກະປະຈຳ (Fixed Shift)</h3>
                 </div>
                 <button type="button" onclick="document.getElementById('fixedShiftModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
             </div>
             <div class="p-6 space-y-4 text-xs">
-                <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-3">
-                    <p class="font-bold text-amber-900">+ ເພີ່ມການລັອກກະ:</p>
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <p class="font-bold text-slate-800">+ ເພີ່ມການລັອກກະ:</p>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block font-semibold mb-1 text-slate-700">ເລືອກພະນັກງານ:</label>
@@ -522,7 +540,7 @@
                         </div>
                     </div>
                     <div class="flex justify-end">
-                        <button type="button" onclick="handleAddFixedShift()" class="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl font-bold shadow">+ ບັນທຶກການລັອກກະ</button>
+                        <button type="button" onclick="handleAddFixedShift()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow">+ ບັນທຶກການລັອກກະ</button>
                     </div>
                 </div>
 
@@ -541,9 +559,9 @@
     <!-- Batch Month Modal -->
     <div id="batchMonthModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
-            <div class="p-5 bg-purple-900 text-white flex justify-between items-center">
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-2xl">calendar_month</span>
+                    <span class="material-symbols-outlined text-2xl text-amber-400">calendar_month</span>
                     <h3 class="font-bold text-sm">ສ້າງຕາຕະລາງລ່ວງໜ້າຫຼາຍເດືອນ</h3>
                 </div>
                 <button type="button" onclick="document.getElementById('batchMonthModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button>
@@ -551,7 +569,7 @@
             <div class="p-6 space-y-4 text-xs">
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700">ເລືອກກຸ່ມພະນັກງານ:</label>
-                    <select id="batchTargetGroupSelect" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none bg-slate-50 font-bold text-purple-950"></select>
+                    <select id="batchTargetGroupSelect" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none bg-slate-50 font-bold text-slate-800"></select>
                 </div>
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700">ເລືອກເດືອນເລີ່ມຕົ້ນ:</label>
@@ -566,12 +584,12 @@
                     </select>
                 </div>
                 <div class="flex justify-between items-center pt-3 border-t">
-                    <button type="button" onclick="deleteAllDraftSheets()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-bold flex items-center gap-1 cursor-pointer">
+                    <button type="button" onclick="deleteAllDraftSheets()" class="px-3 py-2 bg-white hover:bg-red-50 text-slate-600 hover:text-brand-red border border-slate-200 rounded-xl font-bold flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-xs">delete_sweep</span> ລຶບ Draft ທັງໝົດ
                     </button>
                     <div class="flex gap-2">
                         <button type="button" onclick="document.getElementById('batchMonthModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button>
-                        <button type="button" onclick="executeBatchMonthGenerate()" class="px-5 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-xl font-bold shadow">ສ້າງຕາຕະລາງ</button>
+                        <button type="button" onclick="executeBatchMonthGenerate()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow">ສ້າງຕາຕະລາງ</button>
                     </div>
                 </div>
             </div>
@@ -581,7 +599,7 @@
     <!-- Group Modal -->
     <div id="groupModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="groupModalTitle">ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeGroupModal()" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="groupModalTitle">ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeGroupModal()" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-4 text-xs">
                 <input type="hidden" id="editGroupId"/>
                 <div><label class="block font-semibold mb-1 text-slate-700">ຊື່ໝວດ / ກຸ່ມ (Group Name)</label><input type="text" id="groupNameInput" placeholder="ເຊັ່ນ: ກຸ່ມ A: ທີມບໍລິການຫຼັກ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
@@ -589,7 +607,7 @@
                     <div class="flex justify-between items-center mb-1.5"><label class="font-semibold text-slate-700">ເລືອກສະມາຊິກພະນັກງານ:</label><div class="flex gap-2"><button type="button" onclick="toggleSelectAllGroupMembers(true)" class="text-[10px] text-brand-red hover:underline font-bold">ເລືອກທັງໝົດ</button><span class="text-slate-300">|</span><button type="button" onclick="toggleSelectAllGroupMembers(false)" class="text-[10px] text-slate-500 hover:underline">ຍົກເລີກທັງໝົດ</button></div></div>
                     <div class="border border-slate-200 rounded-2xl p-3 max-h-56 overflow-y-auto space-y-1.5 bg-slate-50" id="groupMemberCheckboxList"></div>
                 </div>
-                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeGroupModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveGroup()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກກຸ່ມ</button></div>
+                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeGroupModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveGroup()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold">ບັນທຶກກຸ່ມ</button></div>
             </div>
         </div>
     </div>
@@ -597,7 +615,7 @@
     <!-- Fairness Summary Modal -->
     <div id="fairnessModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center shrink-0"><div><h3 class="font-bold text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-base">balance</span> ບົດສະຫຼຸບຄວາມເທົ່າທຽມການຈັດຕາຕະລາງ (Fairness Summary)</h3><p class="text-[11px] text-red-100" id="fairnessModalSub">ກວດສອບຄວາມສົມດຸນຂອງກະ 1, 2, 3 ແລະ ມື້ພັກເສົາ-ອາທິດ</p></div><button type="button" onclick="closeFairnessSummaryModal()" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center shrink-0"><div><h3 class="font-bold text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-amber-400">balance</span> ບົດສະຫຼຸບຄວາມເທົ່າທຽມການຈັດຕາຕະລາງ (Fairness Summary)</h3><p class="text-[11px] text-slate-300" id="fairnessModalSub">ກວດສອບຄວາມສົມດຸນຂອງກະ 1, 2, 3 ແລະ ມື້ພັກເສົາ-ອາທິດ</p></div><button type="button" onclick="closeFairnessSummaryModal()" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                     <div class="flex items-center gap-2"><span class="font-bold text-slate-700">ກັ່ນຕອງສະແດງຜົນຕາມກຸ່ມ:</span><select id="fairnessGroupFilterSelect" onchange="renderFairnessSummaryData()" class="border border-slate-300 rounded-xl text-xs font-bold p-2 outline-none bg-white"><option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option></select></div>
@@ -617,7 +635,7 @@
     <!-- Employee Modal -->
     <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeEmpModal()" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeEmpModal()" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-3.5 text-xs">
                 <input type="hidden" id="editEmpId"/>
                 <div><label class="block font-semibold mb-1">Username / ລະຫັດພະນັກງານ</label><input type="text" id="modalEmpUser" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
@@ -625,7 +643,7 @@
                 <div><label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label><input type="text" id="modalEmpNameLao" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div><label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label><input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div class="flex items-center gap-2 pt-1"><input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/><label for="modalEmpIsLeader" class="font-bold text-brand-red">ກຳນົດເປັນຫົວໜ້າກະ (ສີແດງ)</label></div>
-                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold cursor-pointer">ບັນທຶກ</button></div>
+                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold cursor-pointer">ບັນທຶກ</button></div>
             </div>
         </div>
     </div>
@@ -633,10 +651,10 @@
     <!-- Random Modal -->
     <div id="randomGroupSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-indigo-900 text-white flex justify-between items-center"><h3 class="font-bold text-sm">ສຸ່ມຈັດຕາຕະລາງ Zigzag Continuous</h3><button type="button" onclick="document.getElementById('randomGroupSelectModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm">ສຸ່ມຈັດຕາຕະລາງ Zigzag Continuous</h3><button type="button" onclick="document.getElementById('randomGroupSelectModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-4 text-xs">
                 <div><label class="block font-semibold mb-1 text-slate-700">ເລືອກກຸ່ມພະນັກງານ:</label><select id="randomSelectedGroupId" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none bg-slate-50 font-bold"></select></div>
-                <div class="flex justify-end gap-2 pt-2 border-t"><button type="button" onclick="document.getElementById('randomGroupSelectModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="executeGroupRandomSchedule()" class="px-5 py-2 bg-indigo-800 hover:bg-indigo-900 text-white rounded-xl font-bold shadow">ເລີ່ມສຸ່ມຈັດຕາຕະລາງ</button></div>
+                <div class="flex justify-end gap-2 pt-2 border-t"><button type="button" onclick="document.getElementById('randomGroupSelectModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="executeGroupRandomSchedule()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow">ເລີ່ມສຸ່ມຈັດຕາຕະລາງ</button></div>
             </div>
         </div>
     </div>
@@ -644,7 +662,7 @@
     <!-- Cell Modal -->
     <div id="cellSelectModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center"><div><h3 class="font-bold text-sm">ເລືອກພະນັກງານໃສ່ກະ</h3><p class="text-[10px] text-red-100" id="cellModalSubtitle">ວັນທີ ...</p></div><button type="button" onclick="closeCellModal()" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><div><h3 class="font-bold text-sm">ເລືອກພະນັກງານໃສ່ກະ</h3><p class="text-[10px] text-slate-300" id="cellModalSubtitle">ວັນທີ ...</p></div><button type="button" onclick="closeCellModal()" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-5 space-y-3">
                 <input type="text" id="searchCellStaffInput" oninput="filterCellStaffList()" placeholder="ຄົ້ນຫາຊື່ພະນັກງານ..." class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none"/>
                 <div class="max-h-60 overflow-y-auto space-y-1" id="cellStaffListContainer"></div>
@@ -656,11 +674,11 @@
     <!-- Create Sheet Modal -->
     <div id="newSheetModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center"><h3 class="font-bold text-sm">ສ້າງຕາຕະລາງປະຈຳການໃໝ່</h3><button type="button" onclick="document.getElementById('newSheetModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm">ສ້າງຕາຕະລາງປະຈຳການໃໝ່</h3><button type="button" onclick="document.getElementById('newSheetModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-3.5 text-xs">
                 <div><label class="block font-semibold mb-1">ເລືອກເດືອນ & ປີ</label><input type="month" id="newSheetMonthInput" value="2026-10" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div><label class="block font-semibold mb-1">ຊື່ຕາຕະລາງ / ຫົວຂໍ້</label><input type="text" id="newSheetTitleInput" placeholder="ເຊັ່ນ: ຕາຕະລາງປະຈຳການ ທີມ 1 ປະຈຳເດືອນ 10/2026" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
-                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="document.getElementById('newSheetModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleCreateNewSheet()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ສ້າງຕາຕະລາງ</button></div>
+                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="document.getElementById('newSheetModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleCreateNewSheet()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold">ສ້າງຕາຕະລາງ</button></div>
             </div>
         </div>
     </div>
@@ -668,11 +686,11 @@
     <!-- Edit Sheet Info Modal -->
     <div id="editSheetInfoModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center"><h3 class="font-bold text-sm">ແກ້ໄຂຫົວຂໍ້ຕາຕະລາງ & ໝາຍເຫດ</h3><button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm">ແກ້ໄຂຫົວຂໍ້ຕາຕະລາງ & ໝາຍເຫດ</h3><button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-3.5 text-xs">
                 <div><label class="block font-semibold mb-1">ຊື່ຫົວຂໍ້ຕາຕະລາງ (Title)</label><input type="text" id="editSheetTitleInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none font-bold"/></div>
                 <div><label class="block font-semibold mb-1">ຂໍ້ຄວາມໝາຍເຫດ</label><textarea id="editSheetNotesInput" rows="7" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none leading-relaxed"></textarea></div>
-                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveSheetInfo()" class="px-5 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກ</button></div>
+                <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="document.getElementById('editSheetInfoModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveSheetInfo()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold">ບັນທຶກ</button></div>
             </div>
         </div>
     </div>
@@ -680,7 +698,7 @@
     <!-- Holiday Modal -->
     <div id="holidayModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div class="p-5 bg-red-gradient text-white flex justify-between items-center shrink-0"><h3 class="font-bold text-sm">ກຳນົດວັນພັກພິເສດ & Undo</h3><button type="button" onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
+            <div class="p-5 bg-slate-800 text-white flex justify-between items-center shrink-0"><h3 class="font-bold text-sm">ກຳນົດວັນພັກພິເສດ & Undo</h3><button type="button" onclick="document.getElementById('holidayModal').classList.add('hidden')" class="text-white/80 hover:text-white">✕</button></div>
             <div class="p-6 space-y-4 text-xs overflow-y-auto flex-1">
                 <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                     <p class="font-bold text-slate-800 text-xs">+ ເພີ່ມຊ່ວງວັນພັກພິເສດໃໝ່:</p>
@@ -689,7 +707,7 @@
                         <input type="date" id="holidayStartDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none bg-white"/>
                         <input type="date" id="holidayEndDateInput" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none bg-white"/>
                     </div>
-                    <div class="flex justify-end"><button type="button" onclick="handleSaveHolidayRange()" class="px-4 py-2 bg-red-gradient text-white rounded-xl font-bold">ບັນທຶກວັນພັກ</button></div>
+                    <div class="flex justify-end"><button type="button" onclick="handleSaveHolidayRange()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold">ບັນທຶກວັນພັກ</button></div>
                 </div>
                 <div id="activeHolidaysListContainer" class="space-y-2"></div>
             </div>
