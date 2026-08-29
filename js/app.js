@@ -234,3 +234,94 @@ window.addEventListener('DOMContentLoaded', () => {
         window.executeGroupRandomSchedule();
     }
 });
+// ⭐ ຟັງຊັນດຶງຂໍ້ມູນທັງໝົດຈາກ Supabase ເມື່ອເປີດເວັບໄຊ
+async function loadAllFromSupabase() {
+    if (!window.supabaseClient) return;
+
+    try {
+        // 1. ດຶງຂໍ້ມູນພະນັກງານ (Users)
+        const { data: usersData } = await window.supabaseClient.from('users').select('*');
+        if (usersData && usersData.length > 0) {
+            window.users = usersData;
+            localStorage.setItem('ot_users_master', JSON.stringify(window.users));
+        }
+
+        // 2. ດຶງຕາຕະລາງປະຈຳການ (Schedule Sheets)
+        const { data: sheetsData } = await window.supabaseClient.from('schedule_sheets').select('*');
+        if (sheetsData && sheetsData.length > 0) {
+            window.scheduleSheets = sheetsData;
+            localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
+        }
+
+        // 3. ດຶງກຸ່ມພະນັກງານ (Employee Groups)
+        const { data: groupsData } = await window.supabaseClient.from('employee_groups').select('*');
+        if (groupsData && groupsData.length > 0) {
+            window.employeeGroups = groupsData;
+            localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(window.employeeGroups));
+        }
+
+        // 4. ດຶງປະຫວັດການຂໍປ່ຽນກະ (Swap History)
+        const { data: swapsData } = await window.supabaseClient.from('swap_history').select('*');
+        if (swapsData) window.swapHistory = swapsData;
+
+        // 5. ດຶງ Security Logs
+        const { data: secData } = await window.supabaseClient.from('security_audit_logs').select('*');
+        if (secData) window.securityAuditLogs = secData;
+
+        // Re-render UI ໃຫ້ຕົງກັບ Cloud Database
+        if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+        if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
+        console.log("✅ Data Synchronized from Supabase Cloud!");
+    } catch (err) {
+        console.error("Supabase Sync Error:", err);
+    }
+}
+
+// ⭐ ຟັງຊັນບັນທຶກລົງທັງ LocalStorage ແລະ Supabase Database
+async function saveAll() {
+    // 1. ບັນທຶກລົງ LocalStorage (Offline Fast Cache)
+    localStorage.setItem('ot_users_master', JSON.stringify(window.users));
+    localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
+    localStorage.setItem('ot_active_sheet_id_trial2', window.activeSheetId);
+    localStorage.setItem('ot_holidays_trial2', JSON.stringify(window.specialHolidayRanges));
+    localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(window.employeeGroups));
+    localStorage.setItem('ot_swaps_trial2', JSON.stringify(window.swapHistory));
+    localStorage.setItem('ot_fixed_shifts_cfg', JSON.stringify(window.fixedShiftsConfig));
+    localStorage.setItem('ot_schedule_audit_logs', JSON.stringify(window.scheduleAuditLogs));
+    localStorage.setItem('ot_sys_notifs_trial2', JSON.stringify(window.systemNotifications));
+    localStorage.setItem('ot_security_audit_logs', JSON.stringify(window.securityAuditLogs));
+
+    // 2. ⭐ Auto-Sync ຂຶ້ນ Supabase Cloud Database
+    if (window.supabaseClient) {
+        try {
+            // Upsert Schedule Sheets
+            for (let s of window.scheduleSheets) {
+                await window.supabaseClient.from('schedule_sheets').upsert({
+                    id: s.id,
+                    monthKey: s.monthKey,
+                    title: s.title,
+                    notes: s.notes,
+                    status: s.status,
+                    data: s.data,
+                    updated_at: new Date()
+                });
+            }
+
+            // Sync Security Audit Logs
+            if (window.securityAuditLogs && window.securityAuditLogs.length > 0) {
+                await window.supabaseClient.from('security_audit_logs').upsert(window.securityAuditLogs.slice(0, 50));
+            }
+        } catch (e) {
+            console.error("Cloud Save Error:", e);
+        }
+    }
+}
+
+// ໂຫຼດຂໍ້ມູນຈາກ Supabase ທັນທີເມື່ອເປີດໜ້າເວັບ
+window.addEventListener('DOMContentLoaded', () => {
+    saveAll();
+    if (typeof loadAllFromSupabase === 'function') loadAllFromSupabase();
+    if (typeof window.checkAuth === 'function') window.checkAuth();
+});
