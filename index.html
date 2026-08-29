@@ -27,7 +27,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="css/style.css"/>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col">
+<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col font-lao">
 
     <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <!-- ⭐ Login Modal (ສະອາດ ຮາບລຽບ ບໍ່ມີປຸ່ມລືມລະຫັດ) -->
+    <!-- Login Modal -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
             <div class="bg-red-gradient p-6 text-white text-center relative">
@@ -333,7 +333,7 @@
                 <span id="modifiedCellCountText" class="text-[11px] text-slate-600 font-semibold flex items-center gap-1"></span>
             </div>
 
-            <div class="flex flex-1 overflow-hidden">
+            <div class="flex flex-1 overflow-hidden" id="scheduleTableWrapper">
                 <div class="admin-only w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-3 shrink-0 hidden md:flex flex-col shadow-sm">
                     <div><p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ (<span id="rosterCountText">0</span> ທ່ານ)</p><p class="text-[10px] text-slate-400">ກົດໃສ່ຊ່ອງໃນຕາຕະລາງເພື່ອເລືອກໃສ່ກະ</p></div>
                     <div class="relative">
@@ -343,7 +343,7 @@
                     <div id="scheduleStaffRoster" class="space-y-1.5 flex-1 overflow-y-auto pr-1"></div>
                 </div>
 
-                <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col" id="scheduleTableWrapper">
+                <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
                         <div class="text-center font-bold text-sm py-1.5 border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
                             ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026
@@ -392,7 +392,7 @@
             </div>
         </main>
 
-        <!-- VIEW 5: PROFILE & WORKSPACE HUB (COMPREHENSIVE) -->
+        <!-- VIEW 5: PROFILE & WORKSPACE HUB -->
         <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="border-b border-slate-200 pb-3 flex justify-between items-center">
@@ -423,7 +423,7 @@
                         </div>
                     </div>
 
-                    <!-- 1. Matrix Report -->
+                    <!-- Matrix Report -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <div><h4 class="font-bold text-slate-800 text-sm flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-base">summarize</span> ລາຍງານສະຫຼຸບການປະຈຳການ & ການລາພັກຂອງພະນັກງານທຸກຄົນ</h4><p class="text-xs text-slate-500 mt-0.5">ສະແດງຈຳນວນກະ 1, 2, 3, ວຽກທັງໝົດ, ການນຳໃຊ້ມື້ພັກ 15 ມື້ ແລະ ວັນພັກທັງໝົດ</p></div>
@@ -439,7 +439,7 @@
                         </div>
                     </div>
 
-                    <!-- 2. Post-Publish Schedule Modifications Audit Trail -->
+                    <!-- Post-Publish Schedule Modifications Audit Trail -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h4 class="font-bold text-slate-800 text-sm mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-slate-700 text-base">history_edu</span>
@@ -462,7 +462,7 @@
                         </div>
                     </div>
 
-                    <!-- 3. Security & Authentication Audit Logs Table -->
+                    <!-- Security Audit Logs Table -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-3 border-b pb-2">
                             <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
@@ -522,6 +522,7 @@
                         </div>
 
                         <div id="staffBookingFormsContainer" class="lg:col-span-8 space-y-6">
+                            <!-- Book Annual Leave Form with Shift Tag -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (15 ມື້/ປີ)
@@ -529,11 +530,21 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                     <div><label class="block font-semibold text-slate-600 mb-1">ເລີ່ມພັກແຕ່ວັນທີ</label><input type="date" id="bookLeaveStart" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ</label><input type="date" id="bookLeaveEnd" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
-                                    <div class="sm:col-span-2"><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ / ໝາຍເຫດ</label><input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີກັບຄອບຄົວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-600 mb-1">ກະປະຈຳການທີ່ລາພັກ (Shift)</label>
+                                        <select id="bookLeaveShiftSelect" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none bg-white">
+                                            <option value="ກະ 1 (08:00 - 16:00)">ກະ 1 (08:00 - 16:00)</option>
+                                            <option value="ກະ 2 (12:00 - 20:00)">ກະ 2 (12:00 - 20:00)</option>
+                                            <option value="ກະ 3 (20:00 - 08:00)">ກະ 3 (20:00 - 08:00)</option>
+                                            <option value="ທຸກກະ (All Shifts)">ທຸກກະ (ໝູນວຽນ)</option>
+                                        </select>
+                                    </div>
+                                    <div><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ / ໝາຍເຫດ</label><input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີກັບຄອບຄົວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div class="sm:col-span-2 flex justify-end"><button type="button" onclick="handleBookAnnualLeave()" class="px-5 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold shadow-md">ຢືນຢັນການຈອງມື້ພັກ</button></div>
                                 </div>
                             </div>
 
+                            <!-- P2P Shift Swap Form -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-[18px] text-brand-red">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (P2P Shift Swap)
@@ -567,6 +578,7 @@
                         </div>
                     </div>
 
+                    <!-- Team Annual Leave Calendar (Shows Shift Column) -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານ (Team Annual Leave Calendar)
@@ -577,6 +589,7 @@
                                     <tr>
                                         <th class="p-3">ພະນັກງານ</th>
                                         <th class="p-3">ຊ່ວງວັນທີພັກ</th>
+                                        <th class="p-3">ກະປະຈຳການທີ່ລາພັກ</th>
                                         <th class="p-3">ຈຳນວນມື້</th>
                                         <th class="p-3">ເຫດຜົນ / ໝາຍເຫດ</th>
                                         <th class="p-3 text-right">ສະຖານະ</th>
@@ -598,7 +611,64 @@
         </main>
     </div>
 
-    <!-- Modals -->
+    <!-- ⭐ STAFF QUICK INFO POPOVER MODAL (ເມື່ອກົດໃສ່ຊື່ໃນ Dashboard) -->
+    <div id="staffInfoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-100 font-lao animate-in fade-in zoom-in-95 duration-150">
+            <div class="p-5 bg-slate-900 text-white flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-400 text-xl">badge</span>
+                    <h3 class="font-bold text-sm">ຂໍ້ມູນພະນັກງານ (Staff Profile)</h3>
+                </div>
+                <button type="button" onclick="closeStaffInfoModal()" class="text-white/80 hover:text-white">✕</button>
+            </div>
+            <div class="p-6 flex flex-col items-center text-center space-y-4">
+                <div class="relative">
+                    <img id="staffInfoModalPhoto" class="w-20 h-20 rounded-full object-cover border-4 border-slate-100 shadow-md bg-slate-100" src="" alt="Avatar"/>
+                    <span id="staffInfoModalLeaderBadge" class="hidden absolute bottom-0 right-0 bg-brand-red text-white p-1 rounded-full shadow" title="ຫົວໜ້າກະ">
+                        <span class="material-symbols-outlined text-xs block">star</span>
+                    </span>
+                </div>
+                <div>
+                    <h4 class="font-bold text-base text-slate-800" id="staffInfoModalName">Name</h4>
+                    <p class="text-xs text-slate-500 font-medium" id="staffInfoModalFullName">Full Name</p>
+                    <p class="text-[11px] font-bold text-brand-red mt-0.5" id="staffInfoModalCode">BCEL0000</p>
+                </div>
+
+                <div class="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2 text-xs">
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-sm text-slate-400 mt-0.5">apartment</span>
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold">ພາກສ່ວນ / ຝ່າຍ (Department):</p>
+                            <p class="font-semibold text-slate-700" id="staffInfoModalDept">ຂະແໜງບໍລິການອອນລາຍ</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-sm text-slate-400 mt-0.5">work</span>
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold">ຕຳແໜ່ງ (Position):</p>
+                            <p class="font-semibold text-slate-700" id="staffInfoModalPos">ພະນັກງານວິຊາການ</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-sm text-slate-400 mt-0.5">call</span>
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold">ເບີໂທຕິດຕໍ່ (Phone):</p>
+                            <p class="font-bold text-emerald-700" id="staffInfoModalPhone">020 5599 8877</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full flex gap-2">
+                    <a id="staffInfoModalCallBtn" href="tel:" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1.5 transition">
+                        <span class="material-symbols-outlined text-sm">call</span> ໂທອອກທັນທີ
+                    </a>
+                    <button type="button" onclick="closeStaffInfoModal()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold">ປິດ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Batch, Groups, Fixed Shifts, Edit Published, Holidays, Cells) -->
     <div id="editPublishedRemarkModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden font-lao">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
@@ -744,7 +814,7 @@
         </div>
     </div>
 
-    <!-- Employee Modal -->
+    <!-- Employee Modal with Dept, Pos & Phone -->
     <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeEmpModal()" class="text-white/80 hover:text-white">✕</button></div>
@@ -753,6 +823,10 @@
                 <div><label class="block font-semibold mb-1">Username / ລະຫັດພະນັກງານ</label><input type="text" id="modalEmpUser" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div><label class="block font-semibold mb-1">ຊື່ເຕັມ (Full Name)</label><input type="text" id="modalEmpFullName" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div><label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label><input type="text" id="modalEmpNameLao" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="block font-semibold mb-1">ພາກສ່ວນ / ຝ່າຍ</label><input type="text" id="modalEmpDept" value="ຂະແໜງບໍລິການອອນລາຍ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                    <div><label class="block font-semibold mb-1">ເບີໂທຕິດຕໍ່</label><input type="text" id="modalEmpPhone" placeholder="020 55XX XXXX" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                </div>
                 <div><label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label><input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div class="flex items-center gap-2 pt-1"><input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/><label for="modalEmpIsLeader" class="font-bold text-brand-red">ກຳນົດເປັນຫົວໜ້າກະ (ສີແດງ)</label></div>
                 <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl">ຍົກເລີກ</button><button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold cursor-pointer">ບັນທຶກ</button></div>
