@@ -79,3 +79,27 @@ body {
     body { background: white !important; }
     #pdfExportArea { border: none !important; box-shadow: none !important; }
 }
+/* ================= ⭐ MOBILE DESKTOP-VIEW WRAPPER ================= */
+#scheduleTableWrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 2rem;
+}
+
+#pdfExportArea {
+    min-width: 820px !important; /* ລັອກຂະໜາດຕາຕະລາງໃຫ້ຄືໃນຄອມ ບໍ່ໃຫ້ບີບຕົວໜັງສື */
+    margin: 0 auto;
+    transition: transform 0.2s ease;
+}
+
+/* ສຳລັບໜ້າຈໍມືຖື (Smartphones) */
+@media (max-width: 768px) {
+    .excel-table th, .excel-table td {
+        height: 44px !important;
+        font-size: 10.5px !important;
+    }
+    .grid-cell-box {
+        font-size: 10px !important;
+        min-height: 21px !important;
+    }
+}
