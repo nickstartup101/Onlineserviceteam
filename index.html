@@ -136,7 +136,7 @@
                     <span class="material-symbols-outlined text-[22px]">notifications</span>
                     <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
                 </button>
-                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-4">
+                <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-4 font-lao">
                     <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
                         <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5"><span class="material-symbols-outlined text-brand-red text-base">notifications_active</span> ການແຈ້ງເຕືອນ</span>
                         <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold">ໝາຍວ່າອ່ານແລ້ວ</button>
@@ -188,23 +188,58 @@
                 </header>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                    <div id="dashCard1" class="bg-white border-2 border-slate-200/80 rounded-3xl p-5 shadow-sm">
+                    <div id="dashCard1" class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm transition">
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-xl bg-red-50 text-brand-red flex items-center justify-center font-bold text-xs">01</div><div><h4 class="font-bold text-sm text-slate-800">ກະ 1 (Shift 1)</h4><p class="text-[11px] text-slate-500 font-semibold" id="shift1TimeText">08:00 - 16:00</p></div></div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-red-50 text-brand-red flex items-center justify-center font-bold text-xs">01</div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h4 class="font-bold text-sm text-slate-800">ກະ 1 (Shift 1)</h4>
+                                        <span id="liveBadge1" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-brand-red border border-red-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-red live-dot-red"></span> LIVE
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-semibold" id="shift1TimeText">08:00 - 16:00</p>
+                                </div>
+                            </div>
                             <span id="shift1CountBadge" class="text-xs font-bold px-3 py-1 rounded-xl bg-red-50 text-brand-red border border-red-100">0 ຄົນ</span>
                         </div>
                         <div class="space-y-2 pt-3 border-t border-slate-100" id="shift1Names"></div>
                     </div>
-                    <div id="dashCard2" class="bg-white border-2 border-slate-200/80 rounded-3xl p-5 shadow-sm">
+
+                    <div id="dashCard2" class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm transition">
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-800 flex items-center justify-center font-bold text-xs">02</div><div><h4 class="font-bold text-sm text-slate-800">ກະ 2 (Shift 2)</h4><p class="text-[11px] text-slate-500 font-semibold" id="shift2TimeText">12:00 - 20:00</p></div></div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-800 flex items-center justify-center font-bold text-xs">02</div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h4 class="font-bold text-sm text-slate-800">ກະ 2 (Shift 2)</h4>
+                                        <span id="liveBadge2" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-brand-red border border-red-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-red live-dot-red"></span> LIVE
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-semibold" id="shift2TimeText">12:00 - 20:00</p>
+                                </div>
+                            </div>
                             <span id="shift2CountBadge" class="text-xs font-bold px-3 py-1 rounded-xl bg-purple-50 text-purple-800 border border-purple-100">0 ຄົນ</span>
                         </div>
                         <div class="space-y-2 pt-3 border-t border-slate-100" id="shift2Names"></div>
                     </div>
-                    <div id="dashCard3" class="bg-white border-2 border-slate-200/80 rounded-3xl p-5 shadow-sm">
+
+                    <div id="dashCard3" class="bg-white border-2 border-slate-200 rounded-3xl p-5 shadow-sm transition">
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2"><div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center font-bold text-xs">03</div><div><h4 class="font-bold text-sm text-slate-800">ກະ 3 (Shift 3)</h4><p class="text-[11px] text-slate-500 font-semibold" id="shift3TimeText">20:00 - 08:00</p></div></div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center font-bold text-xs">03</div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <h4 class="font-bold text-sm text-slate-800">ກະ 3 (Shift 3)</h4>
+                                        <span id="liveBadge3" class="hidden items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-brand-red border border-red-200">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-brand-red live-dot-red"></span> LIVE
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 font-semibold" id="shift3TimeText">20:00 - 08:00</p>
+                                </div>
+                            </div>
                             <span id="shift3CountBadge" class="text-xs font-bold px-3 py-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200">0 ຄົນ</span>
                         </div>
                         <div class="space-y-2 pt-3 border-t border-slate-100" id="shift3Names"></div>
@@ -226,10 +261,8 @@
 
         <!-- VIEW 2: MONTHLY SCHEDULE BUILDER -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100 pb-20 md:pb-0">
-            <!-- ⭐ MINIMAL & PROFESSIONAL CORPORATE TOOLBAR -->
             <div class="px-4 md:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2.5 shrink-0 shadow-sm">
                 
-                <!-- Left Group: Sheet Operations -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <div class="flex items-center border border-slate-300 rounded-xl bg-slate-50 p-0.5">
                         <span class="material-symbols-outlined text-slate-500 text-lg px-2">calendar_today</span>
@@ -257,13 +290,11 @@
                     </button>
                 </div>
 
-                <!-- Right Group: Actions & Balancing -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
                         <span class="material-symbols-outlined text-base">autorenew</span> Random Zigzag
                     </button>
 
-                    <!-- ⭐ ປຸ່ມ Rebalance ກະ 3 ອັດສະລິຍະ -->
                     <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition" title="ດຶງກະດຶກເສົາ-ອາທິດ ໄປສະເລ່ຍໃຫ້ຄົນທີ່ໄດ້ໜ້ອຍ">
                         <span class="material-symbols-outlined text-base text-slate-700">balance</span> Rebalance ກະ 3
                     </button>
@@ -294,7 +325,7 @@
                 </div>
             </div>
 
-            <!-- Professional Status Banner -->
+            <!-- Status Banner -->
             <div id="scheduleStatusBanner" class="px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs">
                 <span id="scheduleStatusBadge" class="font-bold text-emerald-800 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)
@@ -361,8 +392,8 @@
             </div>
         </main>
 
-        <!-- VIEW 5: PROFILE & ADMIN HUB -->
-        <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col bg-slate-50">
+        <!-- VIEW 5: PROFILE & WORKSPACE HUB (COMPREHENSIVE) -->
+        <main id="view-profile" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="border-b border-slate-200 pb-3 flex justify-between items-center">
                     <div>
@@ -432,7 +463,7 @@
                     </div>
                 </div>
 
-                <!-- Staff Personal Workspace -->
+                <!-- ⭐ Staff Personal Workspace (Includes P2P Swap, Leave & Timeline) -->
                 <div id="userStaffWorkspaceSection" class="space-y-6">
                     <div id="userCurrentWeekCard" class="bg-white border-2 border-brand-red/30 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -448,7 +479,9 @@
                         </div>
                     </div>
 
+                    <!-- Forms & Profile Management -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- Profile Card -->
                         <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
                             <div class="relative mb-3">
                                 <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-4 border-red-50 shadow-md bg-slate-50" src="" alt="Profile"/>
@@ -464,17 +497,82 @@
                             </div>
                         </div>
 
+                        <!-- Staff Booking & Swap Forms -->
                         <div id="staffBookingFormsContainer" class="lg:col-span-8 space-y-6">
+                            <!-- 1. Book Annual Leave Form -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                                <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2"><span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (15 ມື້/ປີ)</h3>
+                                <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2">
+                                    <span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (15 ມື້/ປີ)
+                                </h3>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                     <div><label class="block font-semibold text-slate-600 mb-1">ເລີ່ມພັກແຕ່ວັນທີ</label><input type="date" id="bookLeaveStart" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ</label><input type="date" id="bookLeaveEnd" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
-                                    <div class="sm:col-span-2"><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ</label><input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                                    <div class="sm:col-span-2"><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນ / ໝາຍເຫດ</label><input type="text" id="bookLeaveReason" placeholder="ເຊັ່ນ: ພັກຜ່ອນປະຈຳປີກັບຄອບຄົວ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                                     <div class="sm:col-span-2 flex justify-end"><button type="button" onclick="handleBookAnnualLeave()" class="px-5 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold shadow-md">ຢືນຢັນການຈອງມື້ພັກ</button></div>
                                 </div>
                             </div>
+
+                            <!-- 2. ⭐ P2P Shift Swap Form (ຟອມຮ້ອງຂໍປ່ຽນກະ) -->
+                            <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                                <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b pb-2">
+                                    <span class="material-symbols-outlined text-[18px] text-brand-red">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (P2P Shift Swap)
+                                </h3>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                    <div><label class="block font-semibold text-slate-600 mb-1">ແຕ່ວັນທີ (From Date)</label><input type="date" id="swapDateStart" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
+                                    <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ (To Date)</label><input type="date" id="swapDateEnd" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-600 mb-1">ເລືອກເພື່ອນຮ່ວມງານທີ່ຈະປ່ຽນນຳ</label>
+                                        <select id="swapTargetPeer" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white"></select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-slate-600 mb-1">ກະຂອງຕົນເອງ ↔ ກະທີ່ຕ້ອງການແລກ</label>
+                                        <div class="flex gap-2">
+                                            <select id="swapMyShift" class="w-1/2 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white">
+                                                <option value="shift1">ກະ 1</option>
+                                                <option value="shift2">ກະ 2</option>
+                                                <option value="shift3">ກະ 3</option>
+                                            </select>
+                                            <select id="swapTargetShift" class="w-1/2 border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white">
+                                                <option value="shift2">ກະ 2</option>
+                                                <option value="shift1">ກະ 1</option>
+                                                <option value="shift3">ກະ 3</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-2"><label class="block font-semibold text-slate-600 mb-1">ເຫດຜົນການຂໍປ່ຽນກະ</label><input type="text" id="swapReason" placeholder="ເຫດຜົນການຂໍປ່ຽນກະ..." class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
+                                    <div class="sm:col-span-2 flex justify-end"><button type="button" onclick="handleCreateSwap()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow transition cursor-pointer">ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ</button></div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- 3. ⭐ Team Annual Leave Calendar -->
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານ (Team Annual Leave Calendar)
+                        </h3>
+                        <div class="overflow-x-auto max-h-64">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 border-b text-slate-700 sticky top-0">
+                                    <tr>
+                                        <th class="p-3">ພະນັກງານ</th>
+                                        <th class="p-3">ຊ່ວງວັນທີພັກ</th>
+                                        <th class="p-3">ຈຳນວນມື້</th>
+                                        <th class="p-3">ເຫດຜົນ / ໝາຍເຫດ</th>
+                                        <th class="p-3 text-right">ສະຖານະ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="annualLeaveBookingsTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 4. ⭐ Swap History & Incoming Requests Timeline -->
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-700 text-[18px]">history</span> ປະຫວັດ ແລະ ລາຍການຂໍປ່ຽນກະ (P2P Swap Requests & Timeline)
+                        </h3>
+                        <div id="incomingSwapsList" class="space-y-2.5 text-xs"></div>
                     </div>
                 </div>
             </div>
