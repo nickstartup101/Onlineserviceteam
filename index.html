@@ -65,7 +65,7 @@
         </div>
     </div>
 
-    <!-- Login Modal -->
+    <!-- ⭐ Login Modal (ສະອາດ ຮາບລຽບ ບໍ່ມີປຸ່ມລືມລະຫັດ) -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
             <div class="bg-red-gradient p-6 text-white text-center relative">
@@ -423,7 +423,7 @@
                         </div>
                     </div>
 
-                    <!-- Matrix Report -->
+                    <!-- 1. Matrix Report -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <div><h4 class="font-bold text-slate-800 text-sm flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-base">summarize</span> ລາຍງານສະຫຼຸບການປະຈຳການ & ການລາພັກຂອງພະນັກງານທຸກຄົນ</h4><p class="text-xs text-slate-500 mt-0.5">ສະແດງຈຳນວນກະ 1, 2, 3, ວຽກທັງໝົດ, ການນຳໃຊ້ມື້ພັກ 15 ມື້ ແລະ ວັນພັກທັງໝົດ</p></div>
@@ -439,7 +439,7 @@
                         </div>
                     </div>
 
-                    <!-- Post-Publish Modifications Audit Trail -->
+                    <!-- 2. Post-Publish Schedule Modifications Audit Trail -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h4 class="font-bold text-slate-800 text-sm mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-slate-700 text-base">history_edu</span>
@@ -461,9 +461,35 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- 3. Security & Authentication Audit Logs Table -->
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-3 border-b pb-2">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="material-symbols-outlined text-brand-red text-base">security</span>
+                                ປະຫວັດຄວາມປອດໄພ, ການເຂົ້າລະຫັດ & ການປ່ຽນລະຫັດຜ່ານ (Security & Auth Audit Logs)
+                            </h4>
+                            <span class="text-xs text-slate-400">ບັນທຶກຄວາມພະຍາຍາມເຂົ້າລະຫັດ ແລະ ປ່ຽນລະຫັດຜ່ານ</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-72">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-50 text-slate-700 sticky top-0 border-b">
+                                    <tr>
+                                        <th class="p-3">ປະເພດເຫດການ</th>
+                                        <th class="p-3">Username / ລະຫັດ</th>
+                                        <th class="p-3">ຊື່ພະນັກງານ</th>
+                                        <th class="p-3">ລາຍລະອຽດ / ລະຫັດທີ່ບັນທຶກ</th>
+                                        <th class="p-3 text-center">ສະຖານະ</th>
+                                        <th class="p-3 text-right">ເວລາບັນທຶກ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminSecurityAuditTableBody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- ⭐ Staff Personal Workspace (Includes P2P Swap, Leave & Timeline) -->
+                <!-- Staff Personal Workspace -->
                 <div id="userStaffWorkspaceSection" class="space-y-6">
                     <div id="userCurrentWeekCard" class="bg-white border-2 border-brand-red/30 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -479,9 +505,7 @@
                         </div>
                     </div>
 
-                    <!-- Forms & Profile Management -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        <!-- Profile Card -->
                         <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
                             <div class="relative mb-3">
                                 <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-4 border-red-50 shadow-md bg-slate-50" src="" alt="Profile"/>
@@ -497,9 +521,7 @@
                             </div>
                         </div>
 
-                        <!-- Staff Booking & Swap Forms -->
                         <div id="staffBookingFormsContainer" class="lg:col-span-8 space-y-6">
-                            <!-- 1. Book Annual Leave Form -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (15 ມື້/ປີ)
@@ -512,7 +534,6 @@
                                 </div>
                             </div>
 
-                            <!-- 2. ⭐ P2P Shift Swap Form (ຟອມຮ້ອງຂໍປ່ຽນກະ) -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-[18px] text-brand-red">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (P2P Shift Swap)
@@ -546,7 +567,6 @@
                         </div>
                     </div>
 
-                    <!-- 3. ⭐ Team Annual Leave Calendar -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານ (Team Annual Leave Calendar)
@@ -567,7 +587,6 @@
                         </div>
                     </div>
 
-                    <!-- 4. ⭐ Swap History & Incoming Requests Timeline -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-amber-700 text-[18px]">history</span> ປະຫວັດ ແລະ ລາຍການຂໍປ່ຽນກະ (P2P Swap Requests & Timeline)
@@ -580,7 +599,6 @@
     </div>
 
     <!-- Modals -->
-    <!-- Modal ດັດແກ້ຕາຕະລາງ Published -->
     <div id="editPublishedRemarkModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden font-lao">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
@@ -610,7 +628,6 @@
         </div>
     </div>
 
-    <!-- Fixed Shift Modal -->
     <div id="fixedShiftModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
@@ -654,7 +671,6 @@
         </div>
     </div>
 
-    <!-- Batch Month Modal -->
     <div id="batchMonthModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden font-lao">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center">
@@ -694,7 +710,6 @@
         </div>
     </div>
 
-    <!-- Group Modal -->
     <div id="groupModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-lg rounded-3xl shadow-xl overflow-hidden">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="groupModalTitle">ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeGroupModal()" class="text-white/80 hover:text-white">✕</button></div>
@@ -710,7 +725,6 @@
         </div>
     </div>
 
-    <!-- Fairness Summary Modal -->
     <div id="fairnessModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center shrink-0"><div><h3 class="font-bold text-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-amber-400">balance</span> ບົດສະຫຼຸບຄວາມເທົ່າທຽມການຈັດຕາຕະລາງ (Fairness Summary)</h3><p class="text-[11px] text-slate-300" id="fairnessModalSub">ກວດສອບຄວາມສົມດຸນຂອງກະ 1, 2, 3 ແລະ ມື້ພັກເສົາ-ອາທິດ</p></div><button type="button" onclick="closeFairnessSummaryModal()" class="text-white/80 hover:text-white">✕</button></div>
