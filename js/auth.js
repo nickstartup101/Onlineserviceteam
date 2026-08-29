@@ -52,7 +52,6 @@ function checkAuth() {
     }
 }
 
-// ⭐ ລະບົບ Login ພ້ອມບັນທຶກ Security Log ໃນ Database
 function doLogin() {
     var u = document.getElementById('loginUsername').value.trim();
     var p = document.getElementById('loginPassword').value.trim();
@@ -66,7 +65,7 @@ function doLogin() {
     var found = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
     if (found) {
-        // ບັນທຶກ Log: ເຂົ້າລະຫັດຖືກຕ້ອງ
+        // ບັນທຶກ Log: Login ສຳເລັດ
         window.securityAuditLogs.unshift({
             id: Date.now(),
             type: 'SUCCESS_LOGIN',
@@ -84,7 +83,7 @@ function doLogin() {
         checkAuth();
         showToast('ເຂົ້າສູ່ລະບົບສຳເລັດ', `ຍິນດີຕ້ອນຮັບທ່ານ ${window.currentUser.nameLao}`, 'success');
     } else {
-        // ⭐ ບັນທຶກ Log: ປ້ອນລະຫັດຜິດ (Failed Login)
+        // ບັນທຶກ Log: ປ້ອນລະຫັດຜິດ (Failed Attempt)
         window.securityAuditLogs.unshift({
             id: Date.now(),
             type: 'FAILED_LOGIN',
@@ -97,39 +96,9 @@ function doLogin() {
         saveAll();
 
         var err = document.getElementById('loginErrMsg');
-        err.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ! (ລະບົບໄດ້ບັນທຶກ Log ຄວາມພະຍາຍາມເຂົ້າລະຫັດແລ້ວ)";
+        err.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!";
         err.classList.remove('hidden');
     }
-}
-
-// ⭐ ລະບົບຂໍຄວາມຊ່ວຍເຫຼືອ "ລືມລະຫັດຜ່ານ"
-function handleForgotPassword() {
-    var u = prompt('ກະລຸນາໃສ່ Username ຫຼື ລະຫັດພະນັກງານຂອງທ່ານ:');
-    if (!u) return;
-
-    if (!window.securityAuditLogs) window.securityAuditLogs = [];
-    window.securityAuditLogs.unshift({
-        id: Date.now(),
-        type: 'FORGOT_PASSWORD_REQUEST',
-        user: u,
-        fullName: 'ພະນັກງານແຈ້ງລືມລະຫັດ',
-        details: `ພະນັກງານກົດຂໍ Reset ລະຫັດຜ່ານ ເນື່ອງຈາກບໍ່ຈື່ລະຫັດ`,
-        status: 'PENDING_RESET',
-        timestamp: new Date().toLocaleString('lo-LA')
-    });
-
-    if (!window.systemNotifications) window.systemNotifications = [];
-    window.systemNotifications.unshift({
-        id: Date.now(),
-        title: `ແຈ້ງເຕືອນລືມລະຫັດຜ່ານ: ${u}`,
-        message: `ພະນັກງານລະຫັດ ${u} ໄດ້ແຈ້ງລືມລະຫັດຜ່ານ ກະລຸນາກວດສອບ ແລະ Reset ລະຫັດໃຫ້ເພິ່ນ.`,
-        tag: 'Security',
-        date: new Date().toLocaleString('lo-LA'),
-        readBy: []
-    });
-
-    saveAll();
-    alert('ລະບົບໄດ້ບັນທຶກຄຳຮ້ອງ ແລະ ແຈ້ງເຕືອນຫາ Super Admin ຮຽບຮ້ອຍແລ້ວ! ກະລຸນາຕິດຕໍ່ Admin ເພື່ອຮັບລະຫັດໃໝ່.');
 }
 
 function logout() {
@@ -140,5 +109,4 @@ function logout() {
 
 window.checkAuth = checkAuth;
 window.doLogin = doLogin;
-window.handleForgotPassword = handleForgotPassword;
 window.logout = logout;
