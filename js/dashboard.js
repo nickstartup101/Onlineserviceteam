@@ -1,60 +1,195 @@
+// ================= ⭐ DASHBOARD REAL-TIME MULTI-TEAM MONITOR =================
+
+// ດຶງຮູບ Avatar ຂອງພະນັກງານ
+function getStaffAvatarUrl(name) {
+    var u = (window.users || []).find(usr => usr.nameLao === name);
+    if (u && u.photo) return u.photo;
+    var bg = (u && u.isLeader) ? 'c01e2e' : '475569';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bg}&color=fff&size=64&bold=true`;
+}
+
+// ສ້າງ Pill Card ຮູບວົງມົນນ້ອຍໆ + ຊື່
+function renderStaffPill(name) {
+    var u = (window.users || []).find(usr => usr.nameLao === name);
+    var isLeader = u && u.isLeader;
+    var avatarUrl = getStaffAvatarUrl(name);
+
+    return `
+        <div class="inline-flex items-center gap-1.5 p-0.5 pr-2.5 rounded-full border shadow-sm transition hover:scale-105 ${isLeader ? 'bg-red-50 border-red-200 text-brand-red font-bold' : 'bg-white border-slate-200 text-slate-700 font-medium'}">
+            <img src="${avatarUrl}" class="w-5 h-5 rounded-full object-cover border ${isLeader ? 'border-brand-red' : 'border-slate-200'}" alt="${name}"/>
+            <span class="text-xs leading-none">${name}</span>
+            ${isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : ''}
+        </div>
+    `;
+}
+
+// Render ລາຍຊື່ແຍກຕາມທີມ 1 ແລະ ທີມ 2
+function renderDashMultiTeamStaff(containerId, teamGroups) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+
+    if (teamGroups.length === 0) {
+        el.innerHTML = `<span class="text-slate-400 text-xs italic py-2 block text-center">ບໍ່ມີຄົນປະຈຳການໃນວັນນີ້</span>`;
+        return;
+    }
+
+    teamGroups.forEach((tg, idx) => {
+        var pillsHtml = tg.staff.map(name => renderStaffPill(name)).join(' ');
+        
+        el.innerHTML += `
+            <div class="space-y-1.5 ${idx > 0 ? 'pt-2.5 border-t border-slate-100' : ''}">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span> ${tg.teamTitle}
+                    </span>
+                    <span class="text-[10px] font-semibold text-slate-400">${tg.staff.length} ຄົນ</span>
+                </div>
+                <div class="flex flex-wrap gap-1.5">${pillsHtml}</div>
+            </div>
+        `;
+    });
+}
+
+// ລະບົບກວດສອບ ແລະ ສະແດງປ້າຍ LIVE ກະພິບຕາມເວລາຈິງ
+function updateLiveShiftBadge(isWeekendOrHol) {
+    var now = new Date();
+    var currentHour = now.getHours() + (now.getMinutes() / 60);
+
+    var c1 = document.getElementById('dashCard1');
+    var c2 = document.getElementById('dashCard2');
+    var c3 = document.getElementById('dashCard3');
+
+    var b1 = document.getElementById('liveBadge1');
+    var b2 = document.getElementById('liveBadge2');
+    var b3 = document.getElementById('liveBadge3');
+
+    var isS1 = false, isS2 = false, isS3 = false;
+
+    if (isWeekendOrHol) {
+        if (currentHour >= 8 && currentHour < 13.5) isS1 = true;
+        else if (currentHour >= 13.5 && currentHour < 19) isS2 = true;
+        else isS3 = true;
+    } else {
+        if (currentHour >= 8 && currentHour < 16) isS1 = true;
+        if (currentHour >= 12 && currentHour < 20) isS2 = true;
+        if (currentHour >= 20 || currentHour < 8) isS3 = true;
+    }
+
+    function toggleLive(card, badge, isActive) {
+        if (!card || !badge) return;
+        if (isActive) {
+            badge.classList.remove('hidden');
+            badge.classList.add('inline-flex');
+            card.classList.add('border-brand-red', 'ring-2', 'ring-red-100');
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('inline-flex');
+            card.classList.remove('border-brand-red', 'ring-2', 'ring-red-100');
+        }
+    }
+
+    toggleLive(c1, b1, isS1);
+    toggleLive(c2, b2, isS2);
+    toggleLive(c3, b3, isS3);
+}
+
+// Main Dashboard Renderer
 function renderDashboard() {
-    var date = document.getElementById('dashDateInput').value;
+    var dateInput = document.getElementById('dashDateInput');
+    if (!dateInput) return;
+    var date = dateInput.value;
+
+    var isHoliday = isDateInHolidayRange(date);
     var isWeekend = new Date(date).getDay() === 6 || new Date(date).getDay() === 0;
+    var isWeekendOrHol = isWeekend || isHoliday;
 
-    document.getElementById('shift1TimeText').innerText = isWeekend ? '08:00 - 13:30' : '08:00 - 16:00';
-    document.getElementById('shift2TimeText').innerText = isWeekend ? '13:30 - 19:00' : '12:00 - 20:00';
-    document.getElementById('shift3TimeText').innerText = isWeekend ? '19:00 - 08:00' : '20:00 - 08:00';
-
-    var sheet = getActiveSheet();
-    var dayData = sheet.data?.[date] || { shift1: [], shift2: [], shift3: [] };
-
-    function renderStaffBadges(names) {
-        return names.filter(n => n).map(n => {
-            var isL = users.find(u => u.nameLao === n && u.isLeader);
-            return `<span class="inline-block px-2.5 py-0.5 rounded-lg text-xs border mr-1 mb-1 font-lao ${isL ? 'bg-red-50 border-red-200 text-brand-red font-bold' : 'bg-slate-50 border-slate-200 text-slate-700'}">${n}</span>`;
-        }).join('');
+    // Day Type Badge
+    var dayTypeBadge = document.getElementById('dayTypeBadge');
+    if (dayTypeBadge) {
+        if (isWeekendOrHol) {
+            dayTypeBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-brand-red border border-red-200 flex items-center gap-1.5";
+            dayTypeBadge.innerHTML = `<span class="material-symbols-outlined text-xs">weekend</span> ວັນພັກທ້າຍອາທິດ / ພິເສດ`;
+        } else {
+            dayTypeBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5";
+            dayTypeBadge.innerHTML = `<span class="material-symbols-outlined text-xs">work</span> ວັນທຳມະດາ (Weekday)`;
+        }
     }
 
-    document.getElementById('shift1Names').innerHTML = renderStaffBadges(dayData.shift1 || []);
-    document.getElementById('shift2Names').innerHTML = renderStaffBadges(dayData.shift2 || []);
-    document.getElementById('shift3Names').innerHTML = renderStaffBadges(dayData.shift3 || []);
+    document.getElementById('shift1TimeText').innerText = isWeekendOrHol ? '08:00 - 13:30' : '08:00 - 16:00';
+    document.getElementById('shift2TimeText').innerText = isWeekendOrHol ? '13:30 - 19:00' : '12:00 - 20:00';
+    document.getElementById('shift3TimeText').innerText = isWeekendOrHol ? '19:00 - 08:00' : '20:00 - 08:00';
 
-    document.getElementById('shift1CountBadge').innerText = `${(dayData.shift1 || []).filter(n => n).length} ຄົນ`;
-    document.getElementById('shift2CountBadge').innerText = `${(dayData.shift2 || []).filter(n => n).length} ຄົນ`;
-    document.getElementById('shift3CountBadge').innerText = `${(dayData.shift3 || []).filter(n => n).length} ຄົນ`;
+    // ດຶງຂໍ້ມູນທຸກຕາຕະລາງ / ທຸກທີມ (ທີມ 1, ທີມ 2...) ມາສະແດງ
+    var allS1ByTeam = [];
+    var allS2ByTeam = [];
+    var allS3ByTeam = [];
+    var totalS1 = 0, totalS2 = 0, totalS3 = 0;
 
-    // Render Daily Leaves & Swaps
+    (window.scheduleSheets || []).forEach(sheet => {
+        var dayInfo = sheet.data?.[date];
+        if (dayInfo) {
+            var s1 = (dayInfo.shift1 || []).filter(n => n && n.trim() !== '');
+            var s2 = (dayInfo.shift2 || []).filter(n => n && n.trim() !== '');
+            var s3 = (dayInfo.shift3 || []).filter(n => n && n.trim() !== '');
+
+            // ຕັ້ງຊື່ທີມໃຫ້ອ່ານງ່າຍ
+            var cleanTeamName = sheet.title.replace('ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ', 'ຕາຕະລາງ');
+
+            if (s1.length > 0) { allS1ByTeam.push({ teamTitle: cleanTeamName, staff: s1 }); totalS1 += s1.length; }
+            if (s2.length > 0) { allS2ByTeam.push({ teamTitle: cleanTeamName, staff: s2 }); totalS2 += s2.length; }
+            if (s3.length > 0) { allS3ByTeam.push({ teamTitle: cleanTeamName, staff: s3 }); totalS3 += s3.length; }
+        }
+    });
+
+    document.getElementById('shift1CountBadge').innerText = `${totalS1} ຄົນ`;
+    document.getElementById('shift2CountBadge').innerText = `${totalS2} ຄົນ`;
+    document.getElementById('shift3CountBadge').innerText = `${totalS3} ຄົນ`;
+
+    renderDashMultiTeamStaff('shift1Names', allS1ByTeam);
+    renderDashMultiTeamStaff('shift2Names', allS2ByTeam);
+    renderDashMultiTeamStaff('shift3Names', allS3ByTeam);
+
+    // ອັບເດດ LIVE Pulse
+    updateLiveShiftBadge(isWeekendOrHol);
+
+    // ລາຍການລາພັກ & ປ່ຽນກະ
     document.getElementById('dashActivityDateLabel').innerText = `ວັນທີ ${date}`;
-    var dayLeaves = leavesList.filter(l => l.date === date);
+    var dayLeaves = (window.leavesList || []).filter(l => l.date === date);
     var leavesDiv = document.getElementById('dashLeavesContainer');
-    leavesDiv.innerHTML = '';
-    if (dayLeaves.length === 0) {
-        leavesDiv.innerHTML = `<p class="text-slate-400 italic text-xs py-1">ບໍ່ມີພະນັກງານລາພັກໃນວັນນີ້</p>`;
-    } else {
-        dayLeaves.forEach(l => {
-            leavesDiv.innerHTML += `
-                <div class="p-2.5 bg-red-50/60 border border-red-100 rounded-xl flex justify-between items-center">
-                    <div><span class="font-bold text-slate-800">${l.empName}</span> <span class="text-[10px] text-slate-500">(${l.shift})</span></div>
-                    <span class="text-brand-red bg-red-100 px-2 py-0.5 rounded text-[10px] font-bold">${l.reason}</span>
-                </div>
-            `;
-        });
+    if (leavesDiv) {
+        leavesDiv.innerHTML = '';
+        if (dayLeaves.length === 0) {
+            leavesDiv.innerHTML = `<p class="text-slate-400 italic text-xs py-1">ບໍ່ມີພະນັກງານລາພັກໃນວັນນີ້</p>`;
+        } else {
+            dayLeaves.forEach(l => {
+                leavesDiv.innerHTML += `
+                    <div class="p-2 bg-red-50 border border-red-100 rounded-xl flex justify-between items-center">
+                        <div class="flex items-center gap-1.5">${renderStaffPill(l.empName)} <span class="text-[10px] text-slate-500">(${l.shift})</span></div>
+                        <span class="text-brand-red bg-red-100 px-2 py-0.5 rounded text-[10px] font-bold">${l.reason}</span>
+                    </div>
+                `;
+            });
+        }
     }
 
-    var daySwaps = swapHistory.filter(s => s.status === 'COMPLETED' && date >= s.startDate && date <= s.endDate);
+    var daySwaps = (window.swapHistory || []).filter(s => s.status === 'COMPLETED' && date >= s.startDate && date <= s.endDate);
     var swapsDiv = document.getElementById('dashSwapsContainer');
-    swapsDiv.innerHTML = '';
-    if (daySwaps.length === 0) {
-        swapsDiv.innerHTML = `<p class="text-slate-400 italic text-xs py-1">ບໍ່ມີລາຍການປ່ຽນກະໃນວັນນີ້</p>`;
-    } else {
-        daySwaps.forEach(s => {
-            swapsDiv.innerHTML += `
-                <div class="p-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl flex justify-between items-center">
-                    <div><span class="font-bold text-slate-800">${s.fromName} ↔ ${s.toName}</span></div>
-                    <span class="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px] font-bold">ປ່ຽນສຳເລັດ</span>
-                </div>
-            `;
-        });
+    if (swapsDiv) {
+        swapsDiv.innerHTML = '';
+        if (daySwaps.length === 0) {
+            swapsDiv.innerHTML = `<p class="text-slate-400 italic text-xs py-1">ບໍ່ມີລາຍການປ່ຽນກະໃນວັນນີ້</p>`;
+        } else {
+            daySwaps.forEach(s => {
+                swapsDiv.innerHTML += `
+                    <div class="p-2 bg-emerald-50 border border-emerald-100 rounded-xl flex justify-between items-center">
+                        <div class="flex items-center gap-1">${renderStaffPill(s.fromName)} <span class="text-xs text-slate-400">➔</span> ${renderStaffPill(s.toName)}</div>
+                        <span class="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px] font-bold">ປ່ຽນສຳເລັດ</span>
+                    </div>
+                `;
+            });
+        }
     }
 }
+
+window.renderDashboard = renderDashboard;
