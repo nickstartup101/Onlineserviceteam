@@ -1,4 +1,4 @@
-// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (SUPABASE DIRECT WRITE) =================
+// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (MATCHED TO SUPABASE SCHEMA) =================
 
 function renderAdminAllStaffReport() {
     if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
@@ -100,8 +100,6 @@ function renderAdminAllStaffReport() {
                     typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-brand-red border border-red-200">ປ້ອນລະຫັດຜິດ</span>';
                 } else if (log.type === 'PASSWORD_CHANGE') {
                     typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">ປ່ຽນລະຫັດຜ່ານ</span>';
-                } else if (log.type === 'ADMIN_PASSWORD_RESET') {
-                    typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200">Admin Reset</span>';
                 } else {
                     typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Login ສຳເລັດ</span>';
                 }
@@ -201,9 +199,9 @@ function handlePhotoUploadAndCompress(event) {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
 
-            // ⭐ Sync ຮູບຂຶ້ນ Supabase
+            // Sync Supabase
             if (window.supabaseClient) {
-                await window.supabaseClient.from('users').update({ photo: photoBase64 }).eq('user', window.currentUser.user);
+                await window.supabaseClient.from('profiles').update({ photo: photoBase64 }).eq('user_code', window.currentUser.user);
             }
 
             showToast('ສຳເລັດ', 'ອັບເດດຮູບໂປຣໄຟລ໌ຮຽບຮ້ອຍ', 'success');
@@ -248,13 +246,12 @@ async function handleUpdateProfile() {
     saveAll();
     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
-    // ⭐ Sync ຂຶ້ນ Supabase
     if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('users').update({
-                fullName: name,
+            await window.supabaseClient.from('profiles').update({
+                full_name: name,
                 pass: window.currentUser.pass
-            }).eq('user', window.currentUser.user);
+            }).eq('user_code', window.currentUser.user);
         } catch (e) {
             console.error("Supabase Profile Sync Error:", e);
         }
@@ -264,7 +261,7 @@ async function handleUpdateProfile() {
     showToast('ສຳເລັດ', 'ອັບເດດໂປຣໄຟລ໌ ແລະ ບັນທຶກລະຫັດໃໝ່ແລ້ວ!', 'success');
 }
 
-// ⭐ 1. ຈອງມື້ພັກປະຈຳປີ ພ້ອມ INSERT ລົງ SUPABASE ທັນທີ
+// ⭐ 1. ຈອງມື້ພັກປະຈຳປີ (ກົງກັບ Column ໃນ Supabase: user_code, name_lao, start_date, end_date)
 async function handleBookAnnualLeave() {
     var start = document.getElementById('bookLeaveStart')?.value;
     var end = document.getElementById('bookLeaveEnd')?.value;
@@ -305,24 +302,35 @@ async function handleBookAnnualLeave() {
     renderAnnualLeaveBookings();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
-    // ⭐ INSERT ລົງ SUPABASE ໂດຍກົງ
+    // ⭐ INSERT ລົງ SUPABASE ດ້ວຍຊື່ COLUMN ທີ່ກົງກັບ TABLE EDITOR 100%
     if (window.supabaseClient) {
         try {
-            const { error } = await window.supabaseClient.from('annual_bookings').insert([newBooking]);
-            if (error) console.error("Supabase Leave Insert Error:", error);
-            else console.log("☁️ [Supabase]: Annual leave booked successfully!");
+            const { data, error } = await window.supabaseClient.from('annual_bookings').insert([{
+                user_code: window.currentUser.user,
+                name_lao: window.currentUser.nameLao,
+                start_date: start,
+                end_date: end,
+                shift: shift,
+                days: diffDays,
+                reason: reason,
+                status: 'CONFIRMED'
+            }]);
 
-            // ອັບເດດຈຳນວນມື້ພັກທີ່ໃຊ້ໄປຂອງ User
-            await window.supabaseClient.from('users').update({ usedAnnual: window.currentUser.usedAnnual }).eq('user', window.currentUser.user);
+            if (error) {
+                console.error("❌ Supabase Leave Insert Error:", error);
+                showToast('ແຈ້ງເຕືອນ', `Supabase Error: ${error.message}`, 'error');
+            } else {
+                console.log("☁️ [Supabase]: Leave inserted into annual_bookings table successfully!", data);
+            }
         } catch (e) {
-            console.error("Supabase Leave Error:", e);
+            console.error("Supabase Leave Exception:", e);
         }
     }
 
     showToast('ສຳເລັດ', `ຈອງມື້ພັກ [${shift}] ຈຳນວນ ${diffDays} ມື້ສຳເລັດ!`, 'success');
 }
 
-// ⭐ 2. ຟັງຊັນຍົກເລີກການຈອງມື້ພັກ (ພ້ອມຄືນໂຄຕ້າມື້ພັກ ແລະ DELETE ໃນ SUPABASE)
+// ⭐ 2. ຍົກເລີກການຈອງມື້ພັກ (DELETE ໃນ Supabase ຕາມ user_code & start_date)
 function promptCancelAnnualLeave(bookingId) {
     var booking = (window.annualBookings || []).find(b => b.id === bookingId);
     if (!booking) return;
@@ -331,12 +339,10 @@ function promptCancelAnnualLeave(bookingId) {
         'ຍົກເລີກການຈອງມື້ພັກ',
         `ທ່ານຕ້ອງການຍົກເລີກການຈອງມື້ພັກວັນທີ ${booking.startDate} ຫາ ${booking.endDate} (${booking.days} ມື້) ແທ້ບໍ່? ລະບົບຈະຄືນໂຄຕ້າມື້ພັກໃຫ້ທ່ານທັນທີ.`,
         async () => {
-            // 1. ຄືນໂຄຕ້າມື້ພັກໃຫ້ User
             window.currentUser.usedAnnual = Math.max(0, (window.currentUser.usedAnnual || 0) - booking.days);
             var idx = window.users.findIndex(u => u.user === window.currentUser.user);
             if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
-            // 2. ລຶບອອກຈາກ Array
             window.annualBookings = window.annualBookings.filter(b => b.id !== bookingId);
             window.leavesList = (window.leavesList || []).filter(l => l.date !== booking.startDate || l.empName !== booking.nameLao);
 
@@ -344,12 +350,14 @@ function promptCancelAnnualLeave(bookingId) {
             renderAnnualLeaveBookings();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
-            // 3. ⭐ DELETE ອອກຈາກ SUPABASE
+            // ⭐ DELETE ອອກຈາກ SUPABASE
             if (window.supabaseClient) {
                 try {
-                    await window.supabaseClient.from('annual_bookings').delete().eq('id', bookingId);
-                    await window.supabaseClient.from('users').update({ usedAnnual: window.currentUser.usedAnnual }).eq('user', window.currentUser.user);
-                    console.log("☁️ [Supabase]: Leave booking cancelled & refunded!");
+                    await window.supabaseClient.from('annual_bookings')
+                        .delete()
+                        .eq('user_code', booking.user || window.currentUser.user)
+                        .eq('start_date', booking.startDate);
+                    console.log("☁️ [Supabase]: Leave booking deleted from Supabase!");
                 } catch (e) {
                     console.error("Supabase Cancel Leave Error:", e);
                 }
@@ -387,7 +395,7 @@ function renderAnnualLeaveBookings() {
                     <div class="flex items-center justify-end gap-2">
                         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">${b.status}</span>
                         ${isMyBooking ? `
-                            <button type="button" onclick="promptCancelAnnualLeave(${b.id})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5" title="ຍົກເລີກການຈອງນີ້">
+                            <button type="button" onclick="promptCancelAnnualLeave(${b.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5" title="ຍົກເລີກການຈອງນີ້">
                                 <span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ
                             </button>
                         ` : ''}
@@ -398,7 +406,7 @@ function renderAnnualLeaveBookings() {
     });
 }
 
-// ⭐ 3. ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ ພ້ອມ INSERT ລົງ SUPABASE ທັນທີ
+// ⭐ 3. ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ (INSERT ລົງ shift_swaps)
 async function handleCreateSwap() {
     var start = document.getElementById('swapDateStart')?.value;
     var end = document.getElementById('swapDateEnd')?.value;
@@ -424,26 +432,24 @@ async function handleCreateSwap() {
     if (!window.swapHistory) window.swapHistory = [];
     window.swapHistory.unshift(newSwap);
 
-    if (!window.systemNotifications) window.systemNotifications = [];
-    window.systemNotifications.unshift({
-        id: Date.now(),
-        title: `ມີຄຳຮ້ອງຂໍປ່ຽນກະໃໝ່!`,
-        message: `${window.currentUser.nameLao} ຂໍປ່ຽນກະນຳທ່ານ (${start} ຫາ ${end})`,
-        tag: 'Swap Request',
-        date: new Date().toLocaleString('lo-LA'),
-        readBy: [window.currentUser.user]
-    });
-
     saveAll();
     renderSwapHistory();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
 
-    // ⭐ INSERT ລົງ SUPABASE
+    // ⭐ INSERT ລົງ SUPABASE TABLE shift_swaps
     if (window.supabaseClient) {
         try {
-            const { error } = await window.supabaseClient.from('swap_history').insert([newSwap]);
-            if (error) console.error("Supabase Swap Insert Error:", error);
-            else console.log("☁️ [Supabase]: Swap request inserted successfully!");
+            await window.supabaseClient.from('shift_swaps').insert([{
+                from_name: window.currentUser.nameLao,
+                to_name: toName,
+                start_date: start,
+                end_date: end,
+                from_shift: fromShift,
+                to_shift: toShift,
+                reason: reason,
+                status: 'PENDING'
+            }]);
+            console.log("☁️ [Supabase]: Swap inserted into shift_swaps table!");
         } catch (e) {
             console.error("Supabase Swap Error:", e);
         }
@@ -452,20 +458,23 @@ async function handleCreateSwap() {
     showToast('ສຳເລັດ', `ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ແລ້ວ!`, 'success');
 }
 
-// ⭐ 4. ຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະ (DELETE ໃນ SUPABASE)
 function promptCancelSwap(swapId) {
     askConfirm(
         'ຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະ',
         'ທ່ານຕ້ອງການຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະນີ້ແທ້ບໍ່?',
         async () => {
+            var swapObj = (window.swapHistory || []).find(s => s.id === swapId);
             window.swapHistory = (window.swapHistory || []).filter(s => s.id !== swapId);
             saveAll();
             renderSwapHistory();
 
-            if (window.supabaseClient) {
+            if (window.supabaseClient && swapObj) {
                 try {
-                    await window.supabaseClient.from('swap_history').delete().eq('id', swapId);
-                    console.log("☁️ [Supabase]: Swap request cancelled & deleted!");
+                    await window.supabaseClient.from('shift_swaps')
+                        .delete()
+                        .eq('from_name', swapObj.fromName)
+                        .eq('start_date', swapObj.startDate);
+                    console.log("☁️ [Supabase]: Swap request deleted!");
                 } catch (e) {
                     console.error("Supabase Delete Swap Error:", e);
                 }
@@ -530,7 +539,7 @@ async function acceptSwap(id) {
     for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
         var dStr = d.toISOString().split('T')[0];
 
-        if (sheet.data[dStr]) {
+        if (sheet?.data?.[dStr]) {
             var sFrom = sheet.data[dStr][req.fromShift] || [];
             var sTo = sheet.data[dStr][req.toShift] || [];
 
@@ -542,40 +551,28 @@ async function acceptSwap(id) {
         }
     }
 
-    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
-    window.scheduleAuditLogs.unshift({
-        id: Date.now(),
-        sheetId: sheet.id,
-        sheetTitle: sheet.title,
-        date: `${req.startDate} ຫາ ${req.endDate}`,
-        shift: `${req.fromShift} ↔ ${req.toShift}`,
-        oldName: req.fromName,
-        newName: req.toName,
-        reason: `P2P Swap ຍອມຮັບໂດຍ ${req.toName}`,
-        adminName: 'P2P System',
-        timestamp: new Date().toLocaleString('lo-LA')
-    });
-
     saveAll();
     renderSwapHistory();
     renderUserCurrentWeekWorkspace();
     if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
-    // ⭐ ອັບເດດສະຖານະໃນ SUPABASE ທັນທີ
+    // Update Supabase
     if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('swap_history').update({ status: 'COMPLETED' }).eq('id', id);
-            await window.supabaseClient.from('schedule_sheets').upsert({
+            await window.supabaseClient.from('shift_swaps')
+                .update({ status: 'COMPLETED' })
+                .eq('from_name', req.fromName)
+                .eq('start_date', req.startDate);
+
+            await window.supabaseClient.from('schedules').upsert({
                 id: sheet.id,
-                monthKey: sheet.monthKey,
+                month_key: sheet.monthKey,
                 title: sheet.title,
                 notes: sheet.notes || '',
                 status: sheet.status,
-                data: sheet.data,
-                updated_at: new Date()
+                data: sheet.data
             }, { onConflict: 'id' });
-            console.log("☁️ [Supabase]: Swap accepted and schedule updated in cloud!");
         } catch (e) {
             console.error("Supabase Accept Swap Error:", e);
         }
@@ -589,8 +586,8 @@ async function declineSwap(id) {
     if (req) req.status = 'DECLINED';
     saveAll();
     renderSwapHistory();
-    if (window.supabaseClient) {
-        await window.supabaseClient.from('swap_history').update({ status: 'DECLINED' }).eq('id', id);
+    if (window.supabaseClient && req) {
+        await window.supabaseClient.from('shift_swaps').update({ status: 'DECLINED' }).eq('from_name', req.fromName).eq('start_date', req.startDate);
     }
     showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
 }
