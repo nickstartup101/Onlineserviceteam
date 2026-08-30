@@ -1,4 +1,4 @@
-// ================= ⭐ PROFILE, LEAVE, SWAP & SECURITY LOGS HUB =================
+// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (SUPABASE DIRECT WRITE) =================
 
 function renderAdminAllStaffReport() {
     if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
@@ -173,7 +173,7 @@ function handlePhotoUploadAndCompress(event) {
     var reader = new FileReader();
     reader.onload = function(e) {
         var img = new Image();
-        img.onload = function() {
+        img.onload = async function() {
             var canvas = document.createElement('canvas');
             var max = 200;
             var w = img.width, h = img.height;
@@ -201,9 +201,9 @@ function handlePhotoUploadAndCompress(event) {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
 
-            // Sync ຮູບຂຶ້ນ Supabase
+            // ⭐ Sync ຮູບຂຶ້ນ Supabase
             if (window.supabaseClient) {
-                window.supabaseClient.from('users').update({ photo: photoBase64 }).eq('user', window.currentUser.user);
+                await window.supabaseClient.from('users').update({ photo: photoBase64 }).eq('user', window.currentUser.user);
             }
 
             showToast('ສຳເລັດ', 'ອັບເດດຮູບໂປຣໄຟລ໌ຮຽບຮ້ອຍ', 'success');
@@ -213,7 +213,6 @@ function handlePhotoUploadAndCompress(event) {
     reader.readAsDataURL(file);
 }
 
-// ⭐ ຟັງຊັນບັນທຶກໂປຣໄຟລ໌ & ປ່ຽນລະຫັດຜ່ານ ພ້ອມ Sync ຂຶ້ນ Supabase
 async function handleUpdateProfile() {
     var nameInput = document.getElementById('profNameInput');
     var passInput = document.getElementById('profPassInput');
@@ -249,7 +248,7 @@ async function handleUpdateProfile() {
     saveAll();
     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
-    // ⭐ Sync ຂໍ້ມູນໂປຣໄຟລ໌ ແລະ ລະຫັດໃໝ່ຂຶ້ນ Supabase ທັນທີ
+    // ⭐ Sync ຂຶ້ນ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('users').update({
@@ -265,7 +264,8 @@ async function handleUpdateProfile() {
     showToast('ສຳເລັດ', 'ອັບເດດໂປຣໄຟລ໌ ແລະ ບັນທຶກລະຫັດໃໝ່ແລ້ວ!', 'success');
 }
 
-function handleBookAnnualLeave() {
+// ⭐ 1. ຈອງມື້ພັກປະຈຳປີ ພ້ອມ INSERT ລົງ SUPABASE ທັນທີ
+async function handleBookAnnualLeave() {
     var start = document.getElementById('bookLeaveStart')?.value;
     var end = document.getElementById('bookLeaveEnd')?.value;
     var shift = document.getElementById('bookLeaveShiftSelect')?.value || 'ກະ 1 (08:00 - 16:00)';
@@ -277,7 +277,6 @@ function handleBookAnnualLeave() {
     var idx = window.users.findIndex(u => u.user === window.currentUser.user);
     if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
-    if (!window.annualBookings) window.annualBookings = [];
     var newBooking = {
         id: Date.now(),
         user: window.currentUser.user,
@@ -289,6 +288,8 @@ function handleBookAnnualLeave() {
         reason: reason,
         status: 'CONFIRMED'
     };
+
+    if (!window.annualBookings) window.annualBookings = [];
     window.annualBookings.unshift(newBooking);
 
     if (!window.leavesList) window.leavesList = [];
@@ -304,11 +305,61 @@ function handleBookAnnualLeave() {
     renderAnnualLeaveBookings();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
+    // ⭐ INSERT ລົງ SUPABASE ໂດຍກົງ
     if (window.supabaseClient) {
-        window.supabaseClient.from('annual_bookings').insert([newBooking]);
+        try {
+            const { error } = await window.supabaseClient.from('annual_bookings').insert([newBooking]);
+            if (error) console.error("Supabase Leave Insert Error:", error);
+            else console.log("☁️ [Supabase]: Annual leave booked successfully!");
+
+            // ອັບເດດຈຳນວນມື້ພັກທີ່ໃຊ້ໄປຂອງ User
+            await window.supabaseClient.from('users').update({ usedAnnual: window.currentUser.usedAnnual }).eq('user', window.currentUser.user);
+        } catch (e) {
+            console.error("Supabase Leave Error:", e);
+        }
     }
 
     showToast('ສຳເລັດ', `ຈອງມື້ພັກ [${shift}] ຈຳນວນ ${diffDays} ມື້ສຳເລັດ!`, 'success');
+}
+
+// ⭐ 2. ຟັງຊັນຍົກເລີກການຈອງມື້ພັກ (ພ້ອມຄືນໂຄຕ້າມື້ພັກ ແລະ DELETE ໃນ SUPABASE)
+function promptCancelAnnualLeave(bookingId) {
+    var booking = (window.annualBookings || []).find(b => b.id === bookingId);
+    if (!booking) return;
+
+    askConfirm(
+        'ຍົກເລີກການຈອງມື້ພັກ',
+        `ທ່ານຕ້ອງການຍົກເລີກການຈອງມື້ພັກວັນທີ ${booking.startDate} ຫາ ${booking.endDate} (${booking.days} ມື້) ແທ້ບໍ່? ລະບົບຈະຄືນໂຄຕ້າມື້ພັກໃຫ້ທ່ານທັນທີ.`,
+        async () => {
+            // 1. ຄືນໂຄຕ້າມື້ພັກໃຫ້ User
+            window.currentUser.usedAnnual = Math.max(0, (window.currentUser.usedAnnual || 0) - booking.days);
+            var idx = window.users.findIndex(u => u.user === window.currentUser.user);
+            if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
+
+            // 2. ລຶບອອກຈາກ Array
+            window.annualBookings = window.annualBookings.filter(b => b.id !== bookingId);
+            window.leavesList = (window.leavesList || []).filter(l => l.date !== booking.startDate || l.empName !== booking.nameLao);
+
+            saveAll();
+            renderAnnualLeaveBookings();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+
+            // 3. ⭐ DELETE ອອກຈາກ SUPABASE
+            if (window.supabaseClient) {
+                try {
+                    await window.supabaseClient.from('annual_bookings').delete().eq('id', bookingId);
+                    await window.supabaseClient.from('users').update({ usedAnnual: window.currentUser.usedAnnual }).eq('user', window.currentUser.user);
+                    console.log("☁️ [Supabase]: Leave booking cancelled & refunded!");
+                } catch (e) {
+                    console.error("Supabase Cancel Leave Error:", e);
+                }
+            }
+
+            showToast('ສຳເລັດ', `ຍົກເລີກການຈອງມື້ພັກ ແລະ ຄືນໂຄຕ້າ ${booking.days} ມື້ຮຽບຮ້ອຍແລ້ວ!`, 'success');
+        },
+        'delete',
+        'ຍົກເລີກມື້ພັກ'
+    );
 }
 
 function renderAnnualLeaveBookings() {
@@ -317,7 +368,14 @@ function renderAnnualLeaveBookings() {
     tbody.innerHTML = '';
 
     var bookings = window.annualBookings || [];
+    if (bookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີລາຍການຈອງມື້ພັກປະຈຳປີ</td></tr>`;
+        return;
+    }
+
     bookings.forEach(b => {
+        var isMyBooking = (b.user === window.currentUser?.user || b.nameLao === window.currentUser?.nameLao) || (window.currentUser?.role === 'SUPER_ADMIN');
+
         tbody.innerHTML += `
             <tr class="hover:bg-slate-50 font-lao">
                 <td class="p-3 font-bold text-brand-red">${b.nameLao}</td>
@@ -325,13 +383,23 @@ function renderAnnualLeaveBookings() {
                 <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${b.shift || 'ກະ 1 (08:00 - 16:00)'}</span></td>
                 <td class="p-3 font-bold">${b.days} ມື້</td>
                 <td class="p-3 text-slate-500">${b.reason}</td>
-                <td class="p-3 text-right"><span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">${b.status}</span></td>
+                <td class="p-3 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">${b.status}</span>
+                        ${isMyBooking ? `
+                            <button type="button" onclick="promptCancelAnnualLeave(${b.id})" class="px-2 py-1 bg-red-50 hover:bg-red-100 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5" title="ຍົກເລີກການຈອງນີ້">
+                                <span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
             </tr>
         `;
     });
 }
 
-function handleCreateSwap() {
+// ⭐ 3. ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະ ພ້ອມ INSERT ລົງ SUPABASE ທັນທີ
+async function handleCreateSwap() {
     var start = document.getElementById('swapDateStart')?.value;
     var end = document.getElementById('swapDateEnd')?.value;
     var toName = document.getElementById('swapTargetPeer')?.value;
@@ -370,11 +438,44 @@ function handleCreateSwap() {
     renderSwapHistory();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
 
+    // ⭐ INSERT ລົງ SUPABASE
     if (window.supabaseClient) {
-        window.supabaseClient.from('swap_history').insert([newSwap]);
+        try {
+            const { error } = await window.supabaseClient.from('swap_history').insert([newSwap]);
+            if (error) console.error("Supabase Swap Insert Error:", error);
+            else console.log("☁️ [Supabase]: Swap request inserted successfully!");
+        } catch (e) {
+            console.error("Supabase Swap Error:", e);
+        }
     }
 
     showToast('ສຳເລັດ', `ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ແລ້ວ!`, 'success');
+}
+
+// ⭐ 4. ຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະ (DELETE ໃນ SUPABASE)
+function promptCancelSwap(swapId) {
+    askConfirm(
+        'ຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະ',
+        'ທ່ານຕ້ອງການຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະນີ້ແທ້ບໍ່?',
+        async () => {
+            window.swapHistory = (window.swapHistory || []).filter(s => s.id !== swapId);
+            saveAll();
+            renderSwapHistory();
+
+            if (window.supabaseClient) {
+                try {
+                    await window.supabaseClient.from('swap_history').delete().eq('id', swapId);
+                    console.log("☁️ [Supabase]: Swap request cancelled & deleted!");
+                } catch (e) {
+                    console.error("Supabase Delete Swap Error:", e);
+                }
+            }
+
+            showToast('ສຳເລັດ', 'ຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະຮຽບຮ້ອຍແລ້ວ!', 'success');
+        },
+        'delete',
+        'ຍົກເລີກຄຳຮ້ອງ'
+    );
 }
 
 function renderSwapHistory() {
@@ -384,12 +485,13 @@ function renderSwapHistory() {
 
     var history = window.swapHistory || [];
     if (history.length === 0) {
-        container.innerHTML = `<p class="text-slate-400 text-xs italic py-2">ຍັງບໍ່ມີປະຫວັດການຂໍປ່ຽນກະ</p>`;
+        container.innerHTML = `<p class="text-slate-400 text-xs italic py-3 text-center font-lao">ຍັງບໍ່ມີປະຫວັດການຂໍປ່ຽນກະ</p>`;
         return;
     }
 
     history.forEach(req => {
         var isForMe = req.toName === window.currentUser?.nameLao && req.status === 'PENDING';
+        var isCreatedByMe = req.fromName === window.currentUser?.nameLao && req.status === 'PENDING';
         var statusBadge = req.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : (req.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200');
 
         container.innerHTML += `
@@ -403,16 +505,19 @@ function renderSwapHistory() {
                     ${isForMe ? `
                         <button type="button" onclick="acceptSwap(${req.id})" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">ຍອມຮັບ (Accept)</button>
                         <button type="button" onclick="declineSwap(${req.id})" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition">ປະຕິເສດ</button>
+                    ` : (isCreatedByMe ? `
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}">ລໍຖ້າຕອບຮັບ</span>
+                        <button type="button" onclick="promptCancelSwap(${req.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-xl text-xs font-bold transition">ຍົກເລີກ</button>
                     ` : `
                         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}">${req.status}</span>
-                    `}
+                    `)}
                 </div>
             </div>
         `;
     });
 }
 
-function acceptSwap(id) {
+async function acceptSwap(id) {
     var req = (window.swapHistory || []).find(r => r.id === id);
     if (!req) return;
 
@@ -457,20 +562,35 @@ function acceptSwap(id) {
     if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
+    // ⭐ ອັບເດດສະຖານະໃນ SUPABASE ທັນທີ
     if (window.supabaseClient) {
-        window.supabaseClient.from('swap_history').update({ status: 'COMPLETED' }).eq('id', id);
+        try {
+            await window.supabaseClient.from('swap_history').update({ status: 'COMPLETED' }).eq('id', id);
+            await window.supabaseClient.from('schedule_sheets').upsert({
+                id: sheet.id,
+                monthKey: sheet.monthKey,
+                title: sheet.title,
+                notes: sheet.notes || '',
+                status: sheet.status,
+                data: sheet.data,
+                updated_at: new Date()
+            }, { onConflict: 'id' });
+            console.log("☁️ [Supabase]: Swap accepted and schedule updated in cloud!");
+        } catch (e) {
+            console.error("Supabase Accept Swap Error:", e);
+        }
     }
 
     showToast('ປ່ຽນກະສຳເລັດ', `ສັບປ່ຽນກະປະຈຳການລະຫວ່າງ ${req.fromName} ແລະ ${req.toName} ຮຽບຮ້ອຍແລ້ວ!`, 'success');
 }
 
-function declineSwap(id) {
+async function declineSwap(id) {
     var req = (window.swapHistory || []).find(r => r.id === id);
     if (req) req.status = 'DECLINED';
     saveAll();
     renderSwapHistory();
     if (window.supabaseClient) {
-        window.supabaseClient.from('swap_history').update({ status: 'DECLINED' }).eq('id', id);
+        await window.supabaseClient.from('swap_history').update({ status: 'DECLINED' }).eq('id', id);
     }
     showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
 }
@@ -506,7 +626,7 @@ function renderFairnessSummaryData() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    document.getElementById('fairnessModalSub').innerText = `ຕາຕະລາງ: ${sheet.title}`;
+    document.getElementById('fairnessModalSub').innerText = `ຕາຕະລາງ: ${sheet?.title || ''}`;
 
     var targetMembers = null;
     if (filterId !== 'ALL') {
@@ -514,7 +634,7 @@ function renderFairnessSummaryData() {
         if (foundGrp) targetMembers = foundGrp.members;
     } else {
         var activeWorkers = new Set();
-        Object.values(sheet.data || {}).forEach(day => {
+        Object.values(sheet?.data || {}).forEach(day => {
             [...(day.shift1 || []), ...(day.shift2 || []), ...(day.shift3 || [])].forEach(n => {
                 if (n) activeWorkers.add(n);
             });
@@ -529,14 +649,14 @@ function renderFairnessSummaryData() {
         staffStats[u.nameLao] = { nameLao: u.nameLao, isLeader: u.isLeader, s1: 0, s2: 0, s3: 0, offDays: 0, total: 0 };
     });
 
-    var [year, month] = sheet.monthKey.split('-').map(Number);
+    var [year, month] = (sheet?.monthKey || '2026-09').split('-').map(Number);
     var daysCount = new Date(year, month, 0).getDate();
 
     for (var d = 1; d <= daysCount; d++) {
         var dNum = d < 10 ? '0' + d : '' + d;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = `${year}-${mNum}-${dNum}`;
-        var dayInfo = sheet.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
+        var dayInfo = sheet?.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
 
         Object.keys(staffStats).forEach(name => {
             if (dayInfo.shift1?.includes(name)) { staffStats[name].s1++; staffStats[name].total++; }
@@ -570,8 +690,10 @@ window.renderUserCurrentWeekWorkspace = renderUserCurrentWeekWorkspace;
 window.handlePhotoUploadAndCompress = handlePhotoUploadAndCompress;
 window.handleUpdateProfile = handleUpdateProfile;
 window.handleBookAnnualLeave = handleBookAnnualLeave;
+window.promptCancelAnnualLeave = promptCancelAnnualLeave;
 window.renderAnnualLeaveBookings = renderAnnualLeaveBookings;
 window.handleCreateSwap = handleCreateSwap;
+window.promptCancelSwap = promptCancelSwap;
 window.renderSwapHistory = renderSwapHistory;
 window.acceptSwap = acceptSwap;
 window.declineSwap = declineSwap;
