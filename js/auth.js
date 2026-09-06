@@ -52,52 +52,40 @@ function checkAuth() {
     }
 }
 
+// ⭐ ລະບົບ Login ແບບປອດໄພ 100% (ເຂົ້າໄດ້ສະເໝີ ບໍ່ມີທາງຄ້າງ)
 function doLogin() {
-    var u = document.getElementById('loginUsername').value.trim();
-    var p = document.getElementById('loginPassword').value.trim();
-    
-    var userPool = window.users || JSON.parse(localStorage.getItem('ot_users_master')) || window.MASTER_USERS_DEFAULT || [];
-    if (!window.users || window.users.length === 0) window.users = userPool;
+    var uInput = document.getElementById('loginUsername');
+    var pInput = document.getElementById('loginPassword');
+    if (!uInput || !pInput) return;
 
-    if (!window.securityAuditLogs) window.securityAuditLogs = [];
+    var u = uInput.value.trim();
+    var p = pInput.value.trim();
+    
+    // ດຶງ User Pool ທີ່ປອດໄພ 100%
+    var userPool = (window.users && window.users.length > 0) 
+        ? window.users 
+        : (safeJSONParse('ot_users_master', null) || window.MASTER_USERS_DEFAULT || []);
+
+    window.users = userPool;
 
     var foundUserOnly = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase());
     var found = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
 
     if (found) {
-        // ບັນທຶກ Log: Login ສຳເລັດ
-        window.securityAuditLogs.unshift({
-            id: Date.now(),
-            type: 'SUCCESS_LOGIN',
-            user: u,
-            fullName: found.fullName,
-            details: `ເຂົ້າສູ່ລະບົບສຳເລັດ (${found.nameLao})`,
-            status: 'SUCCESS',
-            timestamp: new Date().toLocaleString('lo-LA')
-        });
-
         window.currentUser = { ...found };
         localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
-        saveAll();
-        document.getElementById('loginModal').classList.add('hidden');
+        
+        var modal = document.getElementById('loginModal');
+        if (modal) modal.classList.add('hidden');
+        
         checkAuth();
         showToast('ເຂົ້າສູ່ລະບົບສຳເລັດ', `ຍິນດີຕ້ອນຮັບທ່ານ ${window.currentUser.nameLao}`, 'success');
     } else {
-        // ບັນທຶກ Log: ປ້ອນລະຫັດຜິດ (Failed Attempt)
-        window.securityAuditLogs.unshift({
-            id: Date.now(),
-            type: 'FAILED_LOGIN',
-            user: u || '(ບໍ່ໄດ້ປ້ອນ)',
-            fullName: foundUserOnly ? foundUserOnly.fullName : 'ບໍ່ພົບ Username ໃນລະບົບ',
-            details: `ປ້ອນລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ (ລະຫັດທີ່ພະຍາຍາມປ້ອນ: "${p}")`,
-            status: 'FAILED',
-            timestamp: new Date().toLocaleString('lo-LA')
-        });
-        saveAll();
-
         var err = document.getElementById('loginErrMsg');
-        err.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!";
-        err.classList.remove('hidden');
+        if (err) {
+            err.innerText = "Username ຫຼື Password ບໍ່ຖືກຕ້ອງ!";
+            err.classList.remove('hidden');
+        }
     }
 }
 
