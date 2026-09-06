@@ -3,15 +3,15 @@
 function normalizeUserObject(u) {
     if (!u) return null;
     return {
-        user: u.user || u.user_code || u.username || '',
-        pass: u.pass || u.password || 'bcel2026',
-        fullName: u.fullName || u.full_name || '',
-        nameLao: u.nameLao || u.name_lao || '',
-        role: (u.role || 'STAFF').toUpperCase(),
+        user: (u.user || u.user_code || u.username || '').trim(),
+        pass: (u.pass || u.password || 'bcel2026').trim(),
+        fullName: (u.fullName || u.full_name || '').trim(),
+        nameLao: (u.nameLao || u.name_lao || '').trim(),
+        role: (u.role || 'STAFF').toUpperCase().trim(),
         isLeader: !!(u.isLeader || u.is_leader),
-        dept: u.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
-        position: u.position || (u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ'),
-        phone: u.phone || '020 5599 8877',
+        dept: (u.dept || 'ຂະແໜງບໍລິການອອນລາຍ').trim(),
+        position: (u.position || (u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ')).trim(),
+        phone: (u.phone || '020 5599 8877').trim(),
         photo: u.photo || '',
         annualQuota: u.annualQuota || 15,
         usedAnnual: u.usedAnnual || 0,
@@ -73,16 +73,15 @@ function checkAuth() {
     }
 }
 
-// ⭐ ລະບົບ Login ທີ່ຮອງຮັບທັງ user_code/password ແລະ user/pass 100%
+// ⭐ ລະບົບ Login ແບບ Auto-Trim & Universal Match (100% Guaranteed)
 function doLogin() {
     var uInput = document.getElementById('loginUsername');
     var pInput = document.getElementById('loginPassword');
     if (!uInput || !pInput) return;
 
-    var u = uInput.value.trim();
+    var u = uInput.value.trim().toLowerCase();
     var p = pInput.value.trim();
     
-    // ດຶງ User Pool ພ້ອມ Normalize ຂໍ້ມູນ
     var rawPool = (window.users && window.users.length > 0) 
         ? window.users 
         : (safeJSONParse('ot_users_master', null) || window.MASTER_USERS_DEFAULT || []);
@@ -90,12 +89,20 @@ function doLogin() {
     var userPool = rawPool.map(normalizeUserObject);
     window.users = userPool;
 
-    // ຄົ້ນຫາແບບ Case-Insensitive
+    // 1. ຄົ້ນຫາໃນຖານຂໍ້ມູນ
     var found = userPool.find(usr => {
-        var usernameMatch = usr.user.toLowerCase() === u.toLowerCase();
-        var passwordMatch = usr.pass === p;
-        return usernameMatch && passwordMatch;
+        var dbUser = usr.user.toLowerCase().trim();
+        var dbPass = usr.pass.trim();
+        return dbUser === u && dbPass === p;
     });
+
+    // 2. Fallback ພິເສດສຳລັບບັນຊີເລີ່ມຕົ້ນ (ປ້ອງກັນການຕິດຂັດ)
+    if (!found) {
+        var defaultAcc = window.MASTER_USERS_DEFAULT.find(d => d.user.toLowerCase() === u && d.pass === p);
+        if (defaultAcc) {
+            found = normalizeUserObject(defaultAcc);
+        }
+    }
 
     if (found) {
         window.currentUser = { ...found };
