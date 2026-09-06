@@ -1,4 +1,4 @@
-// ================= ⭐ MASTER APP ENGINE & SAFE SUPABASE SYNC =================
+// ================= ⭐ MASTER APP ENGINE & RESILIENT SUPABASE SYNC =================
 
 // MASTER PRESET USERS (25 Staff)
 window.MASTER_USERS_DEFAULT = [
@@ -31,7 +31,6 @@ window.MASTER_USERS_DEFAULT = [
 
 window.defaultNotesTemplate = `1, ການປະຈຳການມີ 3 ກະ\n2, ກະ1 ແຕ່ເວລາ 08:00-16:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 08:00-13:30)\n3, ກະ2 ແຕ່ເວລາ 12:00-20:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 13:30-19:00)\n4, ກະ3 ແຕ່ເວລາ 20:00-08:00 (ວັນເສົາ-ອາທິດ/ວັນພັກ 19:00-08:00)\n5, ຕົວໜັງສື ແລະ ພະນັກງານທີ່ຖືກແຕ່ງຕັ້ງປະຈຳການແມ່ນຕ້ອງປະຕິບັດໂມງເວລາຢ່າງເຂັ້ມງວດ\n6, ໃນກໍລະນີເຈັບເປັນ ແລະ ພະນັກງານມີວຽກກະທັນຫັນແມ່ນສາມາດປະຈຳການແທນກັນໄດ້ ແຕ່ຕ້ອງແຈ້ງຕໍ່ພະນັກງານຄຸ້ມຄອງ\n7, ຫ້າມບໍ່ໃຫ້ມີການປ່ຽນແປງຕາຕະລາງປະຈຳການໂດຍບໍ່ໄດ້ຮັບອະນຸຍາດ`;
 
-// ⭐ ຟັງຊັນ Safe JSON Parse (ປ້ອງກັນ "undefined" is not valid JSON 100%)
 function safeJSONParse(key, fallback) {
     try {
         var item = localStorage.getItem(key);
@@ -100,79 +99,56 @@ function isDateInHolidayRange(dStr) {
     return (window.specialHolidayRanges || []).some(h => dStr >= h.start && dStr <= h.end);
 }
 
-// ⭐ 1. ດຶງຂໍ້ມູນທັງໝົດຈາກ SUPABASE CLOUD (READ ON START)
+// 1. ດຶງຂໍ້ມູນຈາກ SUPABASE CLOUD (SAFE FAILOVER)
 async function loadAllFromSupabase() {
     if (!window.supabaseClient) return;
 
     try {
-        // Users
-        const { data: usersData } = await window.supabaseClient.from('users').select('*');
+        const { data: usersData, error } = await window.supabaseClient.from('users').select('*');
+        if (error && error.status === 401) {
+            console.warn("⚠️ [Supabase Notice]: 401 Unauthorized - Check your anon public key in js/supabase-config.js. App is running safely in Local Mode.");
+            return;
+        }
+
         if (usersData && usersData.length > 0) {
             window.users = usersData;
             localStorage.setItem('ot_users_master', JSON.stringify(window.users));
         }
 
-        // Schedule Sheets
         const { data: sheetsData } = await window.supabaseClient.from('schedule_sheets').select('*');
         if (sheetsData && sheetsData.length > 0) {
             window.scheduleSheets = sheetsData;
             localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
         }
 
-        // Employee Groups
         const { data: groupsData } = await window.supabaseClient.from('employee_groups').select('*');
         if (groupsData && groupsData.length > 0) {
             window.employeeGroups = groupsData;
             localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(window.employeeGroups));
         }
 
-        // Fix Shifts
-        const { data: fixData } = await window.supabaseClient.from('fixed_shifts_cfg').select('*');
-        if (fixData) {
-            window.fixedShiftsConfig = fixData;
-            localStorage.setItem('ot_fixed_shifts_cfg', JSON.stringify(window.fixedShiftsConfig));
-        }
-
-        // Swap History
         const { data: swapsData } = await window.supabaseClient.from('swap_history').select('*').order('id', { ascending: false });
         if (swapsData) {
             window.swapHistory = swapsData;
             localStorage.setItem('ot_swaps_trial2', JSON.stringify(window.swapHistory));
         }
 
-        // Schedule Audit Logs
-        const { data: auditData } = await window.supabaseClient.from('schedule_audit_logs').select('*').order('id', { ascending: false });
-        if (auditData) {
-            window.scheduleAuditLogs = auditData;
-            localStorage.setItem('ot_schedule_audit_logs', JSON.stringify(window.scheduleAuditLogs));
+        const { data: leavesData } = await window.supabaseClient.from('annual_bookings').select('*').order('id', { ascending: false });
+        if (leavesData) {
+            window.annualBookings = leavesData;
+            localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
         }
 
-        // Security Logs
-        const { data: secData } = await window.supabaseClient.from('security_audit_logs').select('*').order('id', { ascending: false });
-        if (secData) {
-            window.securityAuditLogs = secData;
-            localStorage.setItem('ot_security_audit_logs', JSON.stringify(window.securityAuditLogs));
-        }
-
-        // System Notifications
-        const { data: notifData } = await window.supabaseClient.from('system_notifications').select('*').order('id', { ascending: false });
-        if (notifData) {
-            window.systemNotifications = notifData;
-            localStorage.setItem('ot_sys_notifs_trial2', JSON.stringify(window.systemNotifications));
-        }
-
-        // Re-render UI
         if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
         if (typeof window.renderDashboard === 'function') window.renderDashboard();
         if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
         if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-        console.log("⚡ [Supabase Cloud]: Data synchronized smoothly!");
     } catch (err) {
         console.warn("Supabase Sync Notice:", err);
     }
 }
 
-// ⭐ 2. ບັນທຶກລົງ LOCALSTORAGE ແລະ SUPABASE CLOUD (AUTO-SYNC)
+// 2. ບັນທຶກລົງ LOCALSTORAGE ແລະ SUPABASE (NON-BLOCKING)
 async function saveAll() {
     localStorage.setItem('ot_users_master', JSON.stringify(window.users));
     localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
@@ -188,7 +164,6 @@ async function saveAll() {
 
     if (window.supabaseClient) {
         try {
-            // Sheets
             if (window.scheduleSheets && window.scheduleSheets.length > 0) {
                 for (let s of window.scheduleSheets) {
                     await window.supabaseClient.from('schedule_sheets').upsert({
@@ -202,49 +177,8 @@ async function saveAll() {
                     }, { onConflict: 'id' });
                 }
             }
-
-            // Users
-            if (window.users && window.users.length > 0) {
-                var cleanUsers = window.users.map(u => ({
-                    user: u.user,
-                    pass: u.pass,
-                    fullName: u.fullName,
-                    nameLao: u.nameLao,
-                    role: u.role || 'STAFF',
-                    isLeader: !!u.isLeader,
-                    dept: u.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
-                    position: u.position || 'ພະນັກງານວິຊາການ',
-                    phone: u.phone || '020 5599 8877',
-                    photo: u.photo || '',
-                    annualQuota: u.annualQuota || 15,
-                    usedAnnual: u.usedAnnual || 0,
-                    otherLeaves: u.otherLeaves || 0
-                }));
-                await window.supabaseClient.from('users').upsert(cleanUsers, { onConflict: 'user' });
-            }
-
-            // Groups
-            if (window.employeeGroups && window.employeeGroups.length > 0) {
-                for (let g of window.employeeGroups) {
-                    await window.supabaseClient.from('employee_groups').upsert({
-                        id: g.id,
-                        name: g.name,
-                        members: g.members || []
-                    }, { onConflict: 'id' });
-                }
-            }
-
-            // Schedule Audit Logs
-            if (window.scheduleAuditLogs && window.scheduleAuditLogs.length > 0) {
-                await window.supabaseClient.from('schedule_audit_logs').upsert(window.scheduleAuditLogs.slice(0, 30), { onConflict: 'id' });
-            }
-
-            // Security Logs
-            if (window.securityAuditLogs && window.securityAuditLogs.length > 0) {
-                await window.supabaseClient.from('security_audit_logs').upsert(window.securityAuditLogs.slice(0, 30), { onConflict: 'id' });
-            }
         } catch (e) {
-            console.warn("Supabase Save Warning:", e);
+            // Non-blocking catch
         }
     }
 }
@@ -383,8 +317,8 @@ window.toggleNotificationDropdown = toggleNotificationDropdown;
 window.updateNotificationBadge = updateNotificationBadge;
 window.markAllNotificationsAsRead = markAllNotificationsAsRead;
 
-// Start & Load
 window.addEventListener('DOMContentLoaded', async () => {
+    saveAll();
     if (typeof window.loadAllFromSupabase === 'function') {
         await window.loadAllFromSupabase();
     }
