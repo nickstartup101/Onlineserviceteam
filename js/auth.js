@@ -1,3 +1,24 @@
+// ================= ⭐ RESILIENT UNIVERSAL AUTHENTICATION =================
+
+function normalizeUserObject(u) {
+    if (!u) return null;
+    return {
+        user: u.user || u.user_code || u.username || '',
+        pass: u.pass || u.password || 'bcel2026',
+        fullName: u.fullName || u.full_name || '',
+        nameLao: u.nameLao || u.name_lao || '',
+        role: (u.role || 'STAFF').toUpperCase(),
+        isLeader: !!(u.isLeader || u.is_leader),
+        dept: u.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
+        position: u.position || (u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ'),
+        phone: u.phone || '020 5599 8877',
+        photo: u.photo || '',
+        annualQuota: u.annualQuota || 15,
+        usedAnnual: u.usedAnnual || 0,
+        otherLeaves: u.otherLeaves || 0
+    };
+}
+
 function checkAuth() {
     var modal = document.getElementById('loginModal');
     if (!window.currentUser) {
@@ -52,7 +73,7 @@ function checkAuth() {
     }
 }
 
-// ⭐ ລະບົບ Login ແບບປອດໄພ 100% (ເຂົ້າໄດ້ສະເໝີ ບໍ່ມີທາງຄ້າງ)
+// ⭐ ລະບົບ Login ທີ່ຮອງຮັບທັງ user_code/password ແລະ user/pass 100%
 function doLogin() {
     var uInput = document.getElementById('loginUsername');
     var pInput = document.getElementById('loginPassword');
@@ -61,15 +82,20 @@ function doLogin() {
     var u = uInput.value.trim();
     var p = pInput.value.trim();
     
-    // ດຶງ User Pool ທີ່ປອດໄພ 100%
-    var userPool = (window.users && window.users.length > 0) 
+    // ດຶງ User Pool ພ້ອມ Normalize ຂໍ້ມູນ
+    var rawPool = (window.users && window.users.length > 0) 
         ? window.users 
         : (safeJSONParse('ot_users_master', null) || window.MASTER_USERS_DEFAULT || []);
 
+    var userPool = rawPool.map(normalizeUserObject);
     window.users = userPool;
 
-    var foundUserOnly = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase());
-    var found = userPool.find(usr => usr.user.toLowerCase() === u.toLowerCase() && usr.pass === p);
+    // ຄົ້ນຫາແບບ Case-Insensitive
+    var found = userPool.find(usr => {
+        var usernameMatch = usr.user.toLowerCase() === u.toLowerCase();
+        var passwordMatch = usr.pass === p;
+        return usernameMatch && passwordMatch;
+    });
 
     if (found) {
         window.currentUser = { ...found };
@@ -98,3 +124,4 @@ function logout() {
 window.checkAuth = checkAuth;
 window.doLogin = doLogin;
 window.logout = logout;
+window.normalizeUserObject = normalizeUserObject;
