@@ -1,8 +1,9 @@
-// ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE (DIRECT SUPABASE WRITE) =================
+// ================= ⭐ FAIR ZIGZAG SCHEDULE ENGINE & SUPABASE CLOUD SYNC =================
 
-function rebalanceNightShifts() {
+// 1. REBALANCE ກະ 3 ອັດສະລິຍະ
+async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
-    var schedData = sheet.data || {};
+    var schedData = sheet?.data || {};
     var dates = Object.keys(schedData);
     if (dates.length === 0) {
         showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງຍັງວ່າງເປົ່າ ບໍ່ສາມາດ Rebalance ໄດ້', 'error');
@@ -72,7 +73,7 @@ function rebalanceNightShifts() {
         iteration++;
     }
 
-    saveAll();
+    await saveAll();
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     showToast('Rebalance ສຳເລັດ', `ປັບສົມດຸນກະ 3 ໃຫ້ທຸກຄົນເທົ່າທຽມກັນ (ຜິດດ່ຽງບໍ່ເກີນ ±1) ຮຽບຮ້ອຍແລ້ວ!`, 'success');
@@ -123,19 +124,19 @@ function renderActiveFixedShiftsList() {
     });
 }
 
-function handleAddFixedShift() {
-    var name = document.getElementById('fixedShiftUserSelect').value;
-    var shift = document.getElementById('fixedShiftSlotSelect').value;
+async function handleAddFixedShift() {
+    var name = document.getElementById('fixedShiftUserSelect')?.value;
+    var shift = document.getElementById('fixedShiftSlotSelect')?.value;
     window.fixedShiftsConfig = window.fixedShiftsConfig.filter(f => f.nameLao !== name);
     window.fixedShiftsConfig.push({ nameLao: name, fixedShift: shift });
-    saveAll();
+    await saveAll();
     renderActiveFixedShiftsList();
     showToast('ສຳເລັດ', `ລັອກ "${name}" ໄວ້ ${shift} ແລ້ວ!`, 'success');
 }
 
-function removeFixedShift(idx) {
+async function removeFixedShift(idx) {
     window.fixedShiftsConfig.splice(idx, 1);
-    saveAll();
+    await saveAll();
     renderActiveFixedShiftsList();
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
@@ -272,21 +273,21 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
 
 async function executeGroupRandomSchedule() {
     var sheet = getActiveSheet();
-    var [year, month] = sheet.monthKey.split('-').map(Number);
+    var [year, month] = (sheet?.monthKey || '2026-09').split('-').map(Number);
     var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'ALL';
     
     var members = null;
     if (selectedGrpId !== 'ALL') {
-        var found = window.employeeGroups.find(g => g.id === selectedGrpId);
+        var found = (window.employeeGroups || []).find(g => g.id === selectedGrpId);
         if (found && found.members) members = found.members;
     }
 
     sheet.data = generateMonthDataZigzag(year, month, members);
-    rebalanceNightShifts();
-    saveAll();
+    await rebalanceNightShifts();
+    await saveAll();
 
     document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
-    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງ Zigzag ແລະ ປັບສົມດຸນກະ 3 ເທົ່າທຽມກັນ 100%!`, 'success');
+    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງ Zigzag ແລະ ບັນທຶກລົງ Supabase ແລ້ວ!`, 'success');
 }
 
 function openBatchMonthModal() {
@@ -313,7 +314,7 @@ async function executeBatchMonthGenerate() {
     var selectedMembers = null;
     var groupNameTag = '';
     if (selectedGrpId !== 'ALL') {
-        var foundGrp = window.employeeGroups.find(g => g.id === selectedGrpId);
+        var foundGrp = (window.employeeGroups || []).find(g => g.id === selectedGrpId);
         if (foundGrp) {
             selectedMembers = foundGrp.members;
             groupNameTag = ` (${foundGrp.name})`;
@@ -354,16 +355,16 @@ async function executeBatchMonthGenerate() {
 
     if (firstGeneratedSheetId) window.activeSheetId = firstGeneratedSheetId;
 
-    saveAll();
-    rebalanceNightShifts();
+    await saveAll();
+    await rebalanceNightShifts();
     document.getElementById('batchMonthModal')?.classList.add('hidden');
     renderSheetDropdown();
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
+    showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ${count} ເດືອນ ແລະ ບັນທຶກລົງ Supabase ແລ້ວ!`, 'success');
 }
 
-// ⭐ PUBLISH ພ້ອມ UPSERT ລົງ SUPABASE ທັນທີ
+// ⭐ PUBLISH ພ້ອມ SYNC SUPABASE
 async function publishSchedule() {
     var sheet = getActiveSheet();
     sheet.status = 'PUBLISHED';
@@ -373,6 +374,7 @@ async function publishSchedule() {
         title: `ຕາຕະລາງປະຈຳການໃໝ່ຖືກເຜີຍແຜ່ແລ້ວ!`,
         message: `ຕາຕະລາງ "${sheet.title}" ໄດ້ຮັບການ Publish ເປັນທາງການແລ້ວ. ກະລຸນາກວດສອບກະປະຈຳການຂອງທ່ານ.`,
         tag: 'Publish ທາງການ',
+        sheetId: sheet.id,
         date: new Date().toLocaleString('lo-LA'),
         readBy: [window.currentUser?.user]
     };
@@ -380,34 +382,14 @@ async function publishSchedule() {
     if (!window.systemNotifications) window.systemNotifications = [];
     window.systemNotifications.unshift(notifEntry);
 
-    saveAll();
+    await saveAll();
     renderSheetDropdown();
     renderScheduleTable();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-
-    // ⭐ UPSERT ລົງ SUPABASE
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('schedule_sheets').upsert({
-                id: sheet.id,
-                monthKey: sheet.monthKey,
-                title: sheet.title,
-                notes: sheet.notes || '',
-                status: 'PUBLISHED',
-                data: sheet.data,
-                updated_at: new Date()
-            }, { onConflict: 'id' });
-
-            await window.supabaseClient.from('system_notifications').insert([notifEntry]);
-            console.log("☁️ [Supabase]: Schedule published & saved to cloud!");
-        } catch (e) {
-            console.error("Supabase Publish Error:", e);
-        }
-    }
-
-    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການ ແລະ ບັນທຶກລົງ Supabase ແລ້ວ!', 'success');
+    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການ ແລະ Sync ຂຶ້ນ Supabase ແລ້ວ!', 'success');
 }
 
+// ຕາຕະລາງສະແດງຜົນ
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -417,7 +399,6 @@ function renderScheduleTable() {
     var daysCount = new Date(year, month, 0).getDate();
 
     var isOfficial = sheet?.status === 'PUBLISHED';
-    var statusTagTitle = isOfficial ? ' [ສະບັບທາງການ]' : ' [ສະບັບຮ່າງ - ຍັງບໍ່ເປັນທາງການ]';
 
     var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
@@ -582,7 +563,6 @@ function closeEditPublishedRemarkModal() {
     window.pendingPublishedCellEdit = null;
 }
 
-// ⭐ CONFIRM CELL UPDATE ພ້ອມ UPSERT ລົງ SUPABASE
 async function confirmApplyPublishedCellUpdate() {
     if (!window.pendingPublishedCellEdit) return;
     var { date, shift, index, currentName, newName } = window.pendingPublishedCellEdit;
@@ -621,34 +601,12 @@ async function confirmApplyPublishedCellUpdate() {
     if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
     sheet.data[date][shift][index] = newName;
 
-    saveAll();
+    await saveAll();
     closeEditPublishedRemarkModal();
     closeCellModal();
     renderScheduleTable();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-
-    // ⭐ UPSERT ລົງ SUPABASE
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('schedule_sheets').upsert({
-                id: sheet.id,
-                monthKey: sheet.monthKey,
-                title: sheet.title,
-                notes: sheet.notes || '',
-                status: sheet.status,
-                data: sheet.data,
-                updated_at: new Date()
-            }, { onConflict: 'id' });
-
-            await window.supabaseClient.from('schedule_audit_logs').insert([auditEntry]);
-            await window.supabaseClient.from('system_notifications').insert([notifEntry]);
-            console.log("☁️ [Supabase]: Cell updated and logged in cloud!");
-        } catch (e) {
-            console.error("Supabase Cell Update Error:", e);
-        }
-    }
-
-    showToast('ອັບເດດສຳເລັດ', `ດັດແກ້ຕາຕະລາງ ແລະ ແຈ້ງເຕືອນຫາພະນັກງານແລ້ວ!`, 'success');
+    showToast('ອັບເດດສຳເລັດ', `ດັດແກ້ຕາຕະລາງ ແລະ Sync ລົງ Supabase ແລ້ວ!`, 'success');
 }
 
 function renderSheetDropdown() {
@@ -676,7 +634,6 @@ function changeActiveSheet() {
     }
 }
 
-// ⭐ ສ້າງຕາຕະລາງໃໝ່ ພ້ອມ INSERT ລົງ SUPABASE
 async function handleCreateNewSheet() {
     var month = document.getElementById('newSheetMonthInput')?.value;
     var title = document.getElementById('newSheetTitleInput')?.value.trim() || `ຕາຕະລາງປະຈຳການ ${month}`;
@@ -695,28 +652,17 @@ async function handleCreateNewSheet() {
 
     window.scheduleSheets.push(newSheet);
     window.activeSheetId = newId;
-    saveAll();
+    await saveAll();
 
     document.getElementById('newSheetModal')?.classList.add('hidden');
     renderSheetDropdown();
     renderScheduleTable();
-
-    // ⭐ INSERT ລົງ SUPABASE
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('schedule_sheets').insert([newSheet]);
-            console.log("☁️ [Supabase]: New sheet created in cloud!");
-        } catch (e) {
-            console.error("Supabase Create Sheet Error:", e);
-        }
-    }
-
     showToast('ສຳເລັດ', `ສ້າງ "${title}" ສຳເລັດ!`, 'success');
 }
 
 function openNewSheetModal() { document.getElementById('newSheetTitleInput').value = ''; document.getElementById('newSheetModal')?.classList.remove('hidden'); }
 
-function openDuplicateSheetModal() {
+async function openDuplicateSheetModal() {
     var sheet = getActiveSheet();
     var month = prompt('ກະລຸນາໃສ່ເດືອນທີ່ຕ້ອງການ Clone (ເຊັ່ນ: 2026-11):', '2026-11');
     if (!month) return;
@@ -728,15 +674,10 @@ function openDuplicateSheetModal() {
     var newSheet = { id: newId, monthKey: month, title: title, notes: sheet.notes || window.defaultNotesTemplate, status: 'DRAFT', data: clonedData };
     window.scheduleSheets.push(newSheet);
     window.activeSheetId = newId;
-    saveAll();
+    await saveAll();
     renderSheetDropdown();
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
-
-    if (window.supabaseClient) {
-        window.supabaseClient.from('schedule_sheets').insert([newSheet]);
-    }
-
     showToast('ສຳເລັດ', `ຄັດລອກ Template ໄປເດືອນ ${month} ແລ້ວ!`, 'success');
 }
 
@@ -747,11 +688,11 @@ function openEditSheetInfoModal() {
     document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
 }
 
-function handleSaveSheetInfo() {
+async function handleSaveSheetInfo() {
     var sheet = getActiveSheet();
-    sheet.title = document.getElementById('editSheetTitleInput').value.trim();
-    sheet.notes = document.getElementById('editSheetNotesInput').value.trim();
-    saveAll();
+    sheet.title = document.getElementById('editSheetTitleInput')?.value.trim();
+    sheet.notes = document.getElementById('editSheetNotesInput')?.value.trim();
+    await saveAll();
     document.getElementById('editSheetInfoModal')?.classList.add('hidden');
     renderSheetDropdown();
     renderScheduleTable();
@@ -759,10 +700,10 @@ function handleSaveSheetInfo() {
 }
 
 function promptResetSchedule() {
-    askConfirm('ຣີເຊັດຕາຕະລາງ', 'ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?', () => {
+    askConfirm('ຣີເຊັດຕາຕະລາງ', 'ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?', async () => {
         var sheet = getActiveSheet();
         sheet.data = {};
-        saveAll();
+        await saveAll();
         renderScheduleTable();
         showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງແລ້ວ', 'success');
     }, 'restart_alt', 'Reset');
@@ -775,18 +716,18 @@ function promptDeleteCurrentSheet() {
     }
     var sheet = getActiveSheet();
     askConfirm('ຢືນຢັນການລຶບຕາຕະລາງ', `ທ່ານຕ້ອງການລຶບ "${sheet.title}" ອອກຈາກລະບົບແທ້ບໍ່?`, async () => {
-        window.scheduleSheets = window.scheduleSheets.filter(s => s.id !== sheet.id);
+        var delId = sheet.id;
+        window.scheduleSheets = window.scheduleSheets.filter(s => s.id !== delId);
         window.activeSheetId = window.scheduleSheets[0].id;
-        saveAll();
+        await saveAll();
+
+        if (window.supabaseClient) {
+            await window.supabaseClient.from('schedules').delete().eq('id', delId);
+        }
+
         renderSheetDropdown();
         renderScheduleTable();
         if (typeof window.renderDashboard === 'function') window.renderDashboard();
-
-        // DELETE ໃນ Supabase
-        if (window.supabaseClient) {
-            await window.supabaseClient.from('schedule_sheets').delete().eq('id', sheet.id);
-        }
-
         showToast('ສຳເລັດ', `ລຶບຕາຕະລາງ "${sheet.title}" ຮຽບຮ້ອຍແລ້ວ!`, 'success');
     }, 'delete', 'ລຶບຕາຕະລາງ');
 }
@@ -811,48 +752,71 @@ function deleteAllDraftSheets() {
             });
         }
         window.activeSheetId = window.scheduleSheets[0].id;
-        saveAll();
+        await saveAll();
+
+        if (window.supabaseClient && draftIds.length > 0) {
+            await window.supabaseClient.from('schedules').delete().in('id', draftIds);
+        }
+
         document.getElementById('batchMonthModal')?.classList.add('hidden');
         renderSheetDropdown();
         renderScheduleTable();
         if (typeof window.renderDashboard === 'function') window.renderDashboard();
-
-        if (window.supabaseClient && draftIds.length > 0) {
-            await window.supabaseClient.from('schedule_sheets').delete().in('id', draftIds);
-        }
-
         showToast('ສຳເລັດ', `ລຶບຕາຕະລາງລ່ວງໜ້າ ${draftSheets.length} ເດືອນຮຽບຮ້ອຍແລ້ວ!`, 'success');
     }, 'delete_sweep', 'ລຶບ Draft ທັງໝົດ');
 }
 
-function saveDraft() { getActiveSheet().status = 'DRAFT'; saveAll(); renderSheetDropdown(); renderScheduleTable(); showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); }
+async function saveDraft() { 
+    getActiveSheet().status = 'DRAFT'; 
+    await saveAll(); 
+    renderSheetDropdown(); 
+    renderScheduleTable(); 
+    showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); 
+}
 
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ລົ້ນ
 function exportToA4PDF() {
     var sheet = getActiveSheet();
     var element = document.getElementById('pdfExportArea');
+    if (!element) return;
     
     var noPrintEls = element.querySelectorAll('.no-print');
     noPrintEls.forEach(el => el.style.display = 'none');
 
-    html2pdf().set({
-        margin: [3, 3, 3, 3],
-        filename: `${sheet.title}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(element).save().then(() => {
+    // ປັບຂະໜາດ ແລະ ຄຸນະພາບໃຫ້ພໍດີໜ້າເຈ້ຍ A4 Portrait ເຕັມ 100%
+    var opt = {
+        margin:       [4, 4, 4, 4],
+        filename:     `${sheet.title}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            letterRendering: true
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
         noPrintEls.forEach(el => el.style.display = '');
     });
 }
 
 function openHolidayModal() { document.getElementById('holidayModal')?.classList.remove('hidden'); }
-function handleSaveHolidayRange() {
+async function handleSaveHolidayRange() {
     var title = document.getElementById('holidayTitleInput')?.value.trim();
     var start = document.getElementById('holidayStartDateInput')?.value;
     var end = document.getElementById('holidayEndDateInput')?.value;
     if (!title || !start || !end) return;
+    
+    var newHol = { title, start_date: start, end_date: end };
     window.specialHolidayRanges.push({ title, start, end });
-    saveAll();
+    await saveAll();
+
+    if (window.supabaseClient) {
+        await window.supabaseClient.from('special_holidays').insert([newHol]);
+    }
+
     document.getElementById('holidayModal')?.classList.add('hidden');
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
