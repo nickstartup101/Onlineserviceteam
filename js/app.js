@@ -1,4 +1,4 @@
-// ================= ⭐ MASTER APP ENGINE & CLOUD-FIRST SYNC =================
+// ================= ⭐ MASTER APP ENGINE & RESILIENT SUPABASE SYNC =================
 
 window.MASTER_USERS_DEFAULT = [
     { user: 'admin', pass: 'admin123', fullName: 'System Administrator', nameLao: 'Admin', role: 'SUPER_ADMIN', isLeader: false },
@@ -40,7 +40,7 @@ function safeJSONParse(key, fallback) {
     }
 }
 
-// Load State safely
+// Load Local State as Fast Cache
 var savedUsers = safeJSONParse('ot_users_master', null);
 window.users = (savedUsers && savedUsers.length > 0) ? savedUsers : window.MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
 var users = window.users;
@@ -48,7 +48,6 @@ var users = window.users;
 window.currentUser = safeJSONParse('ot_auth_live', null);
 window.activeSheetId = localStorage.getItem('ot_active_sheet_id_trial2') || 'sheet-1';
 window.specialHolidayRanges = safeJSONParse('ot_holidays_trial2', []);
-
 window.employeeGroups = safeJSONParse('ot_emp_groups_trial2', [
     {
         id: 'grp-main',
@@ -56,7 +55,6 @@ window.employeeGroups = safeJSONParse('ot_emp_groups_trial2', [
         members: window.users.filter(u => u.role !== 'SUPER_ADMIN').map(u => u.nameLao)
     }
 ]);
-
 window.scheduleSheets = safeJSONParse('ot_schedule_sheets_trial2', [
     {
         id: 'sheet-1',
@@ -98,21 +96,16 @@ function isDateInHolidayRange(dStr) {
     return (window.specialHolidayRanges || []).some(h => dStr >= h.start && dStr <= h.end);
 }
 
-// ⭐ 1. ດຶງຂໍ້ມູນຈາກ SUPABASE CLOUD (READ ON START & SYNC ACTIVE USER)
+// ⭐ 1. ດຶງຂໍ້ມູນຈາກ SUPABASE CLOUD (PRIMARY SOURCE OF TRUTH)
 async function loadAllFromSupabase() {
     if (!window.supabaseClient) return;
 
     try {
-        // ດຶງ profiles
-        var { data: profilesData } = await window.supabaseClient.from('profiles').select('*');
-        if (!profilesData || profilesData.length === 0) {
-            var { data: usersData } = await window.supabaseClient.from('users').select('*');
-            profilesData = usersData;
-        }
-
+        // A. ດຶງ profiles
+        const { data: profilesData } = await window.supabaseClient.from('profiles').select('*');
         if (profilesData && profilesData.length > 0) {
             window.users = profilesData.map(u => ({
-                user: u.user_code || u.user || u.username || '',
+                user: u.user_code || u.user || '',
                 pass: u.password || u.pass || 'bcel2026',
                 fullName: u.full_name || u.fullName || '',
                 nameLao: u.name_lao || u.nameLao || '',
@@ -121,21 +114,20 @@ async function loadAllFromSupabase() {
                 dept: u.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
                 position: u.position || '',
                 phone: u.phone || '020 5599 8877',
-                photo: u.photo || '', // ⭐ ດຶງຮູບພາບ Base64 ຈາກ Cloud
+                photo: u.photo || '',
                 annualQuota: u.annual_quota || u.annualQuota || 15,
                 usedAnnual: u.used_annual || u.usedAnnual || 0,
                 otherLeaves: u.other_leaves || u.otherLeaves || 0
             }));
             localStorage.setItem('ot_users_master', JSON.stringify(window.users));
 
-            // ⭐ SYNC ຮູບ ແລະ ລະຫັດໃຫ້ກັບ User ທີ່ກຳລັງ Login ຢູ່ທັນທີ
+            // Sync user active session
             if (window.currentUser) {
                 var freshUser = window.users.find(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
                 if (freshUser) {
                     window.currentUser = { ...window.currentUser, ...freshUser };
                     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
-                    // ອັບເດດ Topbar Avatar ທັນທີ
                     var topAvatar = document.getElementById('topAvatar');
                     var profPreview = document.getElementById('profPhotoPreview');
                     if (topAvatar && window.currentUser.photo) topAvatar.src = window.currentUser.photo;
@@ -144,7 +136,7 @@ async function loadAllFromSupabase() {
             }
         }
 
-        // ດຶງ Schedules
+        // B. ດຶງ schedules
         const { data: sheetsData } = await window.supabaseClient.from('schedules').select('*');
         if (sheetsData && sheetsData.length > 0) {
             window.scheduleSheets = sheetsData.map(s => ({
@@ -158,7 +150,31 @@ async function loadAllFromSupabase() {
             localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
         }
 
-        // ດຶງ Annual Bookings
+        // C. ດຶງ employee_groups
+        const { data: groupsData } = await window.supabaseClient.from('employee_groups').select('*');
+        if (groupsData && groupsData.length > 0) {
+            window.employeeGroups = groupsData;
+            localStorage.setItem('ot_emp_groups_trial2', JSON.stringify(window.employeeGroups));
+        }
+
+        // D. ດຶງ shift_swaps
+        const { data: swapsData } = await window.supabaseClient.from('shift_swaps').select('*').order('id', { ascending: false });
+        if (swapsData) {
+            window.swapHistory = swapsData.map(sw => ({
+                id: sw.id,
+                fromName: sw.from_name || sw.fromName,
+                toName: sw.to_name || sw.toName,
+                startDate: sw.start_date || sw.startDate,
+                endDate: sw.end_date || sw.endDate,
+                fromShift: sw.from_shift || sw.fromShift,
+                toShift: sw.to_shift || sw.toShift,
+                reason: sw.reason,
+                status: sw.status
+            }));
+            localStorage.setItem('ot_swaps_trial2', JSON.stringify(window.swapHistory));
+        }
+
+        // E. ດຶງ annual_bookings
         const { data: leavesData } = await window.supabaseClient.from('annual_bookings').select('*').order('id', { ascending: false });
         if (leavesData) {
             window.annualBookings = leavesData.map(b => ({
@@ -175,18 +191,30 @@ async function loadAllFromSupabase() {
             localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
         }
 
-        // Re-render UI ທັງໝົດດ້ວຍຂໍ້ມູນ Cloud
+        // F. ດຶງ special_holidays
+        const { data: holData } = await window.supabaseClient.from('special_holidays').select('*');
+        if (holData) {
+            window.specialHolidayRanges = holData.map(h => ({
+                title: h.title,
+                start: h.start_date || h.start,
+                end: h.end_date || h.end
+            }));
+            localStorage.setItem('ot_holidays_trial2', JSON.stringify(window.specialHolidayRanges));
+        }
+
+        // Re-render UI
         if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
         if (typeof window.renderDashboard === 'function') window.renderDashboard();
         if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+        if (typeof window.renderGroupsTab === 'function') window.renderGroupsTab();
         if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-        console.log("☁️ [Cloud Sync]: Profiles, Photos, and Schedules synchronized!");
+        console.log("☁️ [Supabase Cloud]: All data synchronized smoothly from Cloud!");
     } catch (err) {
         console.warn("Supabase Sync Notice:", err);
     }
 }
 
-// 2. ບັນທຶກລົງ LOCALSTORAGE ແລະ SUPABASE
+// ⭐ 2. ບັນທຶກລົງ LOCALSTORAGE ແລະ SYNC ລົງ SUPABASE (FULL UPSERT)
 async function saveAll() {
     localStorage.setItem('ot_users_master', JSON.stringify(window.users));
     localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
@@ -199,6 +227,27 @@ async function saveAll() {
     localStorage.setItem('ot_sys_notifs_trial2', JSON.stringify(window.systemNotifications));
     localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
     localStorage.setItem('ot_security_audit_logs', JSON.stringify(window.securityAuditLogs));
+
+    // ⭐ AUTO-SYNC CLOUD
+    if (window.supabaseClient) {
+        try {
+            // Schedules
+            if (window.scheduleSheets && window.scheduleSheets.length > 0) {
+                for (let s of window.scheduleSheets) {
+                    await window.supabaseClient.from('schedules').upsert({
+                        id: s.id,
+                        month_key: s.monthKey,
+                        title: s.title,
+                        notes: s.notes || '',
+                        status: s.status || 'DRAFT',
+                        data: s.data || {}
+                    }, { onConflict: 'id' });
+                }
+            }
+        } catch (e) {
+            console.warn("Cloud Save Warning:", e);
+        }
+    }
 }
 
 // UI Helpers
