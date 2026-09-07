@@ -859,72 +859,79 @@ function renderFairnessSummaryData() {
     });
 }
 
-// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ຕັດຂອບຊ້າຍ ແລະ ບໍ່ Zoom
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ຕັດຂອບຊ້າຍ
 function exportToA4PDF() {
     var sheet = getActiveSheet();
-    var source = document.getElementById('pdfExportArea');
-    if (!source) {
+    var element = document.getElementById('pdfExportArea');
+    if (!element) {
         showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງສຳລັບ Export', 'error');
         return;
     }
 
-    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4 ໃຫ້ພໍດີໜ້າເຈ້ຍ...', 'info');
+    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4...', 'info');
 
-    // 1. Clone ຕາຕະລາງອອກມາຕ່າງຫາກ ເພື່ອຕັດບັນຫາ Sidebar ດ້ານຊ້າຍມາດັນຕາຕະລາງ
-    var clone = source.cloneNode(true);
+    // 1. Reset Scroll ຂອງໜ້າຈໍໃຫ້ຢູ່ເທິງສຸດ ແລະ ຊ້າຍສຸດກ່ອນ
+    var parent = element.parentElement;
+    var prevScrollTop = parent ? parent.scrollTop : 0;
+    var prevScrollLeft = parent ? parent.scrollLeft : 0;
+    if (parent) {
+        parent.scrollTop = 0;
+        parent.scrollLeft = 0;
+    }
 
-    // 2. ສ້າງ Wrapper ຊົ່ວຄາວທີ່ເລີ່ມຕົ້ນຈາກ (left: 0, top: 0) ພໍດີຂອບເຈ້ຍ
-    var wrapper = document.createElement('div');
-    wrapper.id = 'pdf-temp-wrapper';
-    wrapper.style.position = 'fixed';
-    wrapper.style.top = '0';
-    wrapper.style.left = '0';
-    wrapper.style.width = '1080px';
-    wrapper.style.backgroundColor = '#ffffff';
-    wrapper.style.zIndex = '999999';
-    wrapper.style.padding = '0';
-    wrapper.style.margin = '0';
+    // 2. ບັນທຶກ Class ແລະ Style ເດີມໄວ້
+    var originalClass = element.className;
+    var originalStyle = element.getAttribute('style') || '';
 
-    // ປັບແຕ່ງ Clone ໃຫ້ພໍດີ A4 Landscape 100% (1080px ≈ 287mm ພໍດີຂອບເຈ້ຍ)
-    clone.style.margin = '0';
-    clone.style.width = '1080px';
-    clone.style.maxWidth = '1080px';
-    clone.style.boxShadow = 'none';
+    // 3. ລຶບ class "mx-auto" ອອກຊົ່ວຄາວ (ໂຕການຫຼັກທີ່ເຮັດໃຫ້ຕາຕະລາງດັນຫຼຸດຂອບຊ້າຍ!)
+    element.classList.remove('mx-auto');
+    element.style.margin = '0 !important';
+    element.style.marginLeft = '0 !important';
+    element.style.marginRight = '0 !important';
+    element.style.boxShadow = 'none';
 
-    // ລຶບປຸ່ມ ແລະ ສ່ວນທີ່ບໍ່ຕ້ອງການພິມອອກ
-    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+    var noPrintEls = element.querySelectorAll('.no-print');
+    noPrintEls.forEach(el => el.style.display = 'none');
 
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
-
-    // 3. ຕັ້ງຄ່າ PDF A4 Landscape ແນວນອນ 100%
+    // 4. ຕັ້ງຄ່າ PDF A4 Landscape ແນວນອນ 100%
     var opt = {
-        margin:       [6, 6, 6, 6],
+        margin:       [4, 4, 4, 4],
         filename:     `${sheet?.title || 'ຕາຕະລາງປະຈຳການ'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { 
-            scale: 2, // ຄວາມລະອຽດຄົມຊັດສູງ
+            scale: 2, 
             useCORS: true, 
             logging: false,
             letterRendering: true,
             scrollX: 0,
-            scrollY: 0,
-            windowWidth: 1080
+            scrollY: 0
         },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(clone).save().then(() => {
-        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+    html2pdf().set(opt).from(element).save().then(() => {
+        // ຄືນຄ່າສະຖານະເດີມທັງໝົດ
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        if (parent) {
+            parent.scrollTop = prevScrollTop;
+            parent.scrollLeft = prevScrollLeft;
+        }
+        noPrintEls.forEach(el => el.style.display = '');
         showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດຮຽບຮ້ອຍ!', 'success');
     }).catch(err => {
         console.error("PDF Export Error:", err);
-        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        if (parent) {
+            parent.scrollTop = prevScrollTop;
+            parent.scrollLeft = prevScrollLeft;
+        }
+        noPrintEls.forEach(el => el.style.display = '');
         showToast('ຜິດພາດ', 'ເກີດຂໍ້ຜິດພາດໃນການ Export PDF', 'error');
     });
 }
-
 // ຜູກທຸກ Function ເຂົ້າ window
 window.rebalanceNightShifts = rebalanceNightShifts;
 window.openEditPublishedScheduleGuide = openEditPublishedScheduleGuide;
