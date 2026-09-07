@@ -140,8 +140,8 @@ async function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// ⭐ ສູດກຸ່ມ 7 ຄົນ: ເຮັດວຽກ 5 ວັນ ພັກ 2 ວັນ (Rolling 5/2)
-// ໝູນວຽນຮູບແບບ 5 ຄົນ: 2-2-1, 1-2-2, 2-1-2
+// ⭐ 1. ສູດກຸ່ມ 7 ຄົນ: ເຮັດວຽກ 5 ວັນ ພັກ 2 ວັນ (Rolling 5/2)
+// 5 ຄົນຕໍ່ວັນ ໝູນວຽນຮູບແບບ (2-2-1), (1-2-2), (2-1-2)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -164,19 +164,22 @@ function generate7PersonFlexZigzag(year, month, staffList) {
             dailySlots[assignedSlot] = staffList[p];
         }
 
-        // ສະຫຼັບ 3 ຮູບແບບການແຈກຢາຍ 5 ຄົນ: (2-2-1), (1-2-2), (2-1-2)
+        // ສະຫຼັບ 3 ຮູບແບບການແຈກຢາຍ 5 ຄົນ
         var mode = (i + month) % 3;
         var s1 = [], s2 = [], s3 = [];
 
         if (mode === 0) {
+            // ຮູບແບບ 2-2-1
             s1 = [dailySlots[0], dailySlots[1]];
             s2 = [dailySlots[2], dailySlots[3]];
             s3 = [dailySlots[4]];
         } else if (mode === 1) {
+            // ຮູບແບບ 1-2-2
             s1 = [dailySlots[0]];
             s2 = [dailySlots[1], dailySlots[2]];
             s3 = [dailySlots[3], dailySlots[4]];
         } else {
+            // ຮູບແບບ 2-1-2
             s1 = [dailySlots[0], dailySlots[1]];
             s2 = [dailySlots[2]];
             s3 = [dailySlots[3], dailySlots[4]];
@@ -193,18 +196,31 @@ function generate7PersonFlexZigzag(year, month, staffList) {
     return data;
 }
 
-// ⭐ ສູດສຳລັບທີມຫຼັກ (14-17 ຄົນ): ກະ 3 ເທົ່າກັນ, ວັນພັກເທົ່າກັນ, ກະ 1-2 ສະຫຼັບລາຍອາທິດ
-function generateFairBalancedZigzag(year, month, staffList) {
+// ⭐ 2. ສູດທີມຫຼັກ 17 ຄົນ (4 ຫົວໜ້າ + 13 ພະນັກງານ) ຕາມ Fairness Target 100%
+function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
-    var N = staffList.length;
-    if (N === 0) return data;
 
-    var s3Queue = [...staffList];
-    var s3Pointer = (month * 7) % N;
+    // ແຍກຫົວໜ້າ 4 ທ່ານ ແລະ ພະນັກງານ 13 ທ່ານ
+    var leaderNames = staffList.filter(name => {
+        var u = (window.users || []).find(usr => usr.nameLao === name);
+        return u && u.isLeader;
+    });
 
-    var weekendQueue = [...staffList];
-    var weekendPointer = (month * 3) % N;
+    if (leaderNames.length < 4) {
+        leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(n => staffList.includes(n));
+    }
+    while (leaderNames.length < 4 && staffList.length > leaderNames.length) {
+        var extra = staffList.find(n => !leaderNames.includes(n));
+        if (extra) leaderNames.push(extra);
+    }
+
+    var regularStaff = staffList.filter(n => !leaderNames.includes(n));
+    var numRegular = regularStaff.length || 13;
+
+    // ຄິວໝູນວຽນວັນເສົາ-ອາທິດ (ເພື່ອໃຫ້ພັກ 5-6 ວັນ ແລະ ເຮັດວຽກ 24-25 ກະ)
+    var weekendLeaderIdx = (month * 2) % 4;
+    var weekendStaffIdx = (month * 5) % numRegular;
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
@@ -213,50 +229,51 @@ function generateFairBalancedZigzag(year, month, staffList) {
         var dateObj = new Date(Date.UTC(year, month - 1, i));
         var dayOfWeek = dateObj.getUTCDay();
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
-        var weekNum = Math.floor((i - 1) / 7);
+        var W = Math.floor((i - 1) / 7); // ອາທິດທີ W
 
         if (isWeekend) {
+            // ວັນເສົາ - ອາທິດ: ເຮັດວຽກ 6 ຄົນ (ກະລະ 2 ຄົນ), ພັກ 11 ຄົນ
+            var wLeader = leaderNames[weekendLeaderIdx % 4];
+            weekendLeaderIdx++;
+
             var wStaff = [];
-            for (var k = 0; k < 6; k++) {
-                wStaff.push(weekendQueue[(weekendPointer + k) % N]);
+            for (var k = 0; k < 5; k++) {
+                wStaff.push(regularStaff[(weekendStaffIdx + k) % numRegular]);
             }
-            weekendPointer = (weekendPointer + 6) % N;
+            weekendStaffIdx = (weekendStaffIdx + 5) % numRegular;
 
             data[dStr] = {
                 isWeekend: true,
                 isG7Team: false,
-                shift1: [wStaff[4], wStaff[5]].filter(Boolean),
-                shift2: [wStaff[2], wStaff[3]].filter(Boolean),
-                shift3: [wStaff[0], wStaff[1]].filter(Boolean)
+                shift1: [wLeader, wStaff[0]].filter(Boolean),      // 1 ຫົວໜ້າ + 1 ພະນັກງານ = 2 ຄົນ
+                shift2: [wStaff[1], wStaff[2]].filter(Boolean),    // 2 ພະນັກງານ = 2 ຄົນ
+                shift3: [wStaff[3], wStaff[4]].filter(Boolean)     // 2 ພະນັກງານ = 2 ຄົນ
             };
         } else {
-            var s3_today = [];
-            for (var s = 0; s < 2; s++) {
-                s3_today.push(s3Queue[s3Pointer % N]);
-                s3Pointer++;
+            // ວັນຈັນ - ສຸກ: ເຮັດວຽກ 17 ຄົນເຕັມ
+            // 1. ຫົວໜ້າໝູນວຽນ Zigzag: 1A ➔ 3 ➔ 2 ➔ 1B
+            var l_1A = leaderNames[(0 + W) % 4];
+            var l_S3 = leaderNames[(1 + W) % 4];
+            var l_S2 = leaderNames[(2 + W) % 4];
+            var l_1B = leaderNames[(3 + W) % 4];
+
+            // 2. ພະນັກງານ 13 ທ່ານໝູນວຽນ Zigzag: 3 ➔ 2 ➔ 1
+            var staffOffset = (W * 3) % numRegular;
+            var rotated = [];
+            for (var r = 0; r < numRegular; r++) {
+                rotated.push(regularStaff[(r + staffOffset) % numRegular]);
             }
 
-            var availableToday = staffList.filter(n => !s3_today.includes(n));
-            var half = Math.ceil(availableToday.length / 2);
-
-            var s1_today = [];
-            var s2_today = [];
-
-            availableToday.forEach((person, pIdx) => {
-                var slot = (pIdx + weekNum * half) % availableToday.length;
-                if (slot < half) {
-                    s1_today.push(person);
-                } else {
-                    s2_today.push(person);
-                }
-            });
+            var staff_S3 = rotated.slice(0, 3);  // 3 ພະນັກງານ ➔ ກະ 3
+            var staff_S2 = rotated.slice(3, 8);  // 5 ພະນັກງານ ➔ ກະ 2
+            var staff_S1 = rotated.slice(8, 13); // 5 ພະນັກງານ ➔ ກະ 1
 
             data[dStr] = {
                 isWeekend: false,
                 isG7Team: false,
-                shift1: s1_today.filter(Boolean),
-                shift2: s2_today.filter(Boolean),
-                shift3: s3_today.filter(Boolean)
+                shift1: [l_1A, l_1B, ...staff_S1].filter(Boolean), // 2 ຫົວໜ້າ + 5 ພະນັກງານ = 7 ຄົນ
+                shift2: [l_S2, ...staff_S2].filter(Boolean),       // 1 ຫົວໜ້າ + 5 ພະນັກງານ = 6 ຄົນ
+                shift3: [l_S3, ...staff_S3].filter(Boolean)        // 1 ຫົວໜ້າ + 3 ພະນັກງານ = 4 ຄົນ
             };
         }
     }
@@ -264,7 +281,7 @@ function generateFairBalancedZigzag(year, month, staffList) {
     return data;
 }
 
-// ⭐ ເລືອກສູດອັດຕະໂນມັດຕາມຈຳນວນຄົນໃນກຸ່ມ
+// ⭐ 3. ເລືອກສູດອັດຕະໂນມັດຕາມຈຳນວນຄົນ
 function generateMonthDataZigzag(year, month, targetGroupMembers) {
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
@@ -276,11 +293,11 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
     if (staffList.length === 7) {
         return generate7PersonFlexZigzag(year, month, staffList);
     } else {
-        return generateFairBalancedZigzag(year, month, staffList);
+        return generate17PersonLeadersAndStaffZigzag(year, month, staffList);
     }
 }
 
-// ⭐ ໃສ່ເຄື່ອງໝາຍກຸ່ມ 7 ຄົນໃນເມນູເລືອກກຸ່ມ Random Zigzag
+// ⭐ ເມນູເລືອກກຸ່ມ Random Zigzag ພ້ອມ Tag ບອກກຸ່ມ 7 ຄົນ
 function openRandomGroupSelectModal() {
     var select = document.getElementById('randomSelectedGroupId');
     if (!select) return;
@@ -326,7 +343,7 @@ async function executeGroupRandomSchedule() {
     showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງ Zigzag ສຳເລັດຮຽບຮ້ອຍ!`, 'success');
 }
 
-// ⭐ ໃສ່ເຄື່ອງໝາຍກຸ່ມ 7 ຄົນໃນເມນູສ້າງລ່ວງໜ້າ
+// ⭐ ເມນູສ້າງລ່ວງໜ້າ
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
     if (select) {
@@ -512,7 +529,6 @@ function renderScheduleTable() {
             `;
         }
 
-        // ⭐ ຊ່ອງຕາຕະລາງສະແດງຊື່ສະອາດ 100% ບໍ່ມີ G7 ຕິດອອກມາ
         tbody.innerHTML += `
             <tr class="${isWeekendOrHol ? 'bg-slate-50' : 'bg-white'}">
                 <td class="font-bold whitespace-nowrap">${i}/${mNum}/${year}</td>
@@ -525,7 +541,7 @@ function renderScheduleTable() {
     }
 }
 
-// ⭐ ສະແດງສະເພາະຊື່ພະນັກງານແບບສະອາດ ເໝາະສຳລັບ Print & A4 PDF
+// ⭐ ຊ່ອງຕາຕະລາງສະແດງສະເພາະຊື່ພະນັກງານແບບສະອາດ 100% ບໍ່ມີ G7 ຕິດອອກມາຕອນ Print
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 2); rows = Math.max(rows, 1);
     var html = `<div class="grid w-full h-full" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr)); height: 48px;">`;
@@ -811,7 +827,7 @@ function renderFairnessSummaryData() {
     }
 
     targetUsers.forEach((u, idx) => {
-        var s1 = 0, s2 = 0, s3 = 0, totalOff = 0;
+        var s1 = 0, s2 = 0, s3 = 0, weekendOff = 0;
 
         dates.forEach(d => {
             var day = schedData[d] || {};
@@ -823,8 +839,8 @@ function renderFairnessSummaryData() {
             if (onS2) s2++;
             if (onS3) s3++;
 
-            if (!onS1 && !onS2 && !onS3) {
-                totalOff++;
+            if (day.isWeekend && !onS1 && !onS2 && !onS3) {
+                weekendOff++;
             }
         });
 
@@ -841,14 +857,14 @@ function renderFairnessSummaryData() {
                 <td class="p-3 text-center font-semibold text-slate-700">${s1}</td>
                 <td class="p-3 text-center font-semibold text-purple-700">${s2}</td>
                 <td class="p-3 text-center font-bold text-brand-red">${s3}</td>
-                <td class="p-3 text-center font-bold text-emerald-600">${totalOff} ວັນ</td>
+                <td class="p-3 text-center font-bold text-emerald-600">${weekendOff} ວັນ</td>
                 <td class="p-3 text-right font-black text-slate-900">${total} ກະ</td>
             </tr>
         `;
     });
 }
 
-// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ບໍ່ຕັດຂອບຊ້າຍ
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% (A4 Landscape ສະອາດບໍ່ຕັດຂອບ)
 function exportToA4PDF() {
     var sheet = getActiveSheet();
     var element = document.getElementById('pdfExportArea');
@@ -941,7 +957,7 @@ window.renderSheetDropdown = renderSheetDropdown;
 window.changeActiveSheet = changeActiveSheet;
 window.generateMonthDataZigzag = generateMonthDataZigzag;
 window.generate7PersonFlexZigzag = generate7PersonFlexZigzag;
-window.generateFairBalancedZigzag = generateFairBalancedZigzag;
+window.generate17PersonLeadersAndStaffZigzag = generate17PersonLeadersAndStaffZigzag;
 window.executeGroupRandomSchedule = executeGroupRandomSchedule;
 window.openRandomGroupSelectModal = openRandomGroupSelectModal;
 window.openBatchMonthModal = openBatchMonthModal;
