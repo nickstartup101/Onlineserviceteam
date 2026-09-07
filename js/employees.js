@@ -1,3 +1,5 @@
+// ================= ⭐ EMPLOYEES MANAGEMENT & DIRECT SUPABASE SYNC =================
+
 function renderEmployeesTable() {
     var tbody = document.getElementById('employeesTableBody');
     if (!tbody) return;
@@ -23,13 +25,31 @@ function renderEmployeesTable() {
     });
 }
 
-function promptRestoreDefaultUsers() {
-    askConfirm('ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ', 'ທ່ານຕ້ອງການຣີເຊັດລາຍຊື່ພະນັກງານທັງໝົດ 25 ທ່ານໃຫ້ເປັນຄ່າເລີ່ມຕົ້ນແທ້ບໍ່?', () => {
+async function promptRestoreDefaultUsers() {
+    askConfirm('ກູ້ຄືນລາຍຊື່ເລີ່ມຕົ້ນ', 'ທ່ານຕ້ອງການຣີເຊັດລາຍຊື່ພະນັກງານທັງໝົດ 25 ທ່ານໃຫ້ເປັນຄ່າເລີ່ມຕົ້ນແທ້ບໍ່?', async () => {
         window.users = window.MASTER_USERS_DEFAULT.map(u => ({ ...u, photo: '', annualQuota: 15, usedAnnual: 2, otherLeaves: 0 }));
-        saveAll();
+        await saveAll();
+
+        // ⭐ SYNC 25 ທ່ານລົງ SUPABASE PROFILES TABLE
+        if (window.supabaseClient) {
+            var cloudUsers = window.users.map(u => ({
+                user_code: u.user,
+                pass: u.pass,
+                password: u.pass,
+                full_name: u.fullName,
+                name_lao: u.nameLao,
+                role: u.role,
+                is_leader: u.isLeader,
+                dept: u.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
+                position: u.position || 'ພະນັກງານວິຊາການ',
+                phone: u.phone || '020 5599 8877'
+            }));
+            await window.supabaseClient.from('profiles').upsert(cloudUsers, { onConflict: 'user_code' });
+        }
+
         renderEmployeesTable();
         renderScheduleStaffRoster();
-        showToast('ກູ້ຄືນສຳເລັດ', 'ລາຍຊື່ພະນັກງານ 25 ທ່ານຖືກກູ້ຄືນແລ້ວ', 'success');
+        showToast('ກູ້ຄືນສຳເລັດ', 'ລາຍຊື່ພະນັກງານ 25 ທ່ານຖືກກູ້ຄືນ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
     }, 'restart_alt', 'ກູ້ຄືນຂໍ້ມູນ');
 }
 
@@ -43,7 +63,7 @@ function openAddEmpModal() {
     document.getElementById('modalEmpPhone').value = '020 5599 8877';
     document.getElementById('modalEmpPass').value = 'bcel2026';
     document.getElementById('modalEmpIsLeader').checked = false;
-    document.getElementById('empModal').classList.remove('hidden');
+    document.getElementById('empModal')?.classList.remove('hidden');
 }
 
 function openEditEmpModal(index) {
@@ -57,30 +77,45 @@ function openEditEmpModal(index) {
     document.getElementById('modalEmpPhone').value = emp.phone || '020 5599 8877';
     document.getElementById('modalEmpPass').value = emp.pass;
     document.getElementById('modalEmpIsLeader').checked = emp.isLeader || false;
-    document.getElementById('empModal').classList.remove('hidden');
+    document.getElementById('empModal')?.classList.remove('hidden');
 }
 
-function closeEmpModal() { document.getElementById('empModal').classList.add('hidden'); }
+function closeEmpModal() { document.getElementById('empModal')?.classList.add('hidden'); }
 
-function handleSaveEmployee() {
-    var editId = document.getElementById('editEmpId').value;
-    var u = document.getElementById('modalEmpUser').value.trim();
-    var full = document.getElementById('modalEmpFullName').value.trim();
-    var lao = document.getElementById('modalEmpNameLao').value.trim();
-    var dept = document.getElementById('modalEmpDept').value.trim() || 'ຂະແໜງບໍລິການອອນລາຍ';
-    var phone = document.getElementById('modalEmpPhone').value.trim() || '020 5599 8877';
-    var p = document.getElementById('modalEmpPass').value.trim();
-    var leader = document.getElementById('modalEmpIsLeader').checked;
+// ⭐ ເພີ່ມ / ແກ້ໄຂພະນັກງານ ພ້ອມ UPSERT ລົງ SUPABASE TABLE "profiles"
+async function handleSaveEmployee() {
+    var editId = document.getElementById('editEmpId')?.value;
+    var u = document.getElementById('modalEmpUser')?.value.trim();
+    var full = document.getElementById('modalEmpFullName')?.value.trim();
+    var lao = document.getElementById('modalEmpNameLao')?.value.trim();
+    var dept = document.getElementById('modalEmpDept')?.value.trim() || 'ຂະແໜງບໍລິການອອນລາຍ';
+    var phone = document.getElementById('modalEmpPhone')?.value.trim() || '020 5599 8877';
+    var p = document.getElementById('modalEmpPass')?.value.trim();
+    var leader = document.getElementById('modalEmpIsLeader')?.checked;
 
     if (!u || !full || !lao || !p) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນພະນັກງານໃຫ້ຄົບ', 'error'); return; }
 
-    if (!window.securityAuditLogs) window.securityAuditLogs = [];
+    var empData = {
+        user: u,
+        pass: p,
+        fullName: full,
+        nameLao: lao,
+        dept: dept,
+        phone: phone,
+        role: 'STAFF',
+        isLeader: leader,
+        photo: '',
+        annualQuota: 15,
+        usedAnnual: 0,
+        otherLeaves: 0
+    };
 
     if (editId !== '') {
         var oldPass = window.users[editId].pass;
-        window.users[editId] = { ...window.users[editId], user: u, fullName: full, nameLao: lao, dept: dept, phone: phone, pass: p, isLeader: leader };
+        window.users[editId] = { ...window.users[editId], ...empData };
 
         if (oldPass !== p) {
+            if (!window.securityAuditLogs) window.securityAuditLogs = [];
             window.securityAuditLogs.unshift({
                 id: Date.now(),
                 type: 'ADMIN_PASSWORD_RESET',
@@ -92,14 +127,35 @@ function handleSaveEmployee() {
             });
         }
     } else {
-        window.users.push({ user: u, pass: p, fullName: full, nameLao: lao, dept: dept, phone: phone, role: 'STAFF', isLeader: leader, photo: '', annualQuota: 15, usedAnnual: 0, otherLeaves: 0 });
+        window.users.push(empData);
+    }
+
+    await saveAll();
+
+    // ⭐ UPSERT ລົງ SUPABASE TABLE "profiles"
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient.from('profiles').upsert({
+                user_code: u,
+                pass: p,
+                password: p,
+                full_name: full,
+                name_lao: lao,
+                dept: dept,
+                position: leader ? 'ຫົວໜ້າກະປະຈຳການ' : 'ພະນັກງານວິຊາການ',
+                phone: phone,
+                is_leader: leader
+            }, { onConflict: 'user_code' });
+            console.log("☁️ [Supabase]: Employee upserted to profiles table in cloud!");
+        } catch (e) {
+            console.error("Supabase Save Employee Error:", e);
+        }
     }
 
     closeEmpModal();
     renderEmployeesTable();
     renderScheduleStaffRoster();
-    saveAll();
-    showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນພະນັກງານແລ້ວ', 'success');
+    showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນພະນັກງານລົງ Supabase ຮຽບຮ້ອຍ!', 'success');
 }
 
 function renderScheduleStaffRoster() {
