@@ -1,4 +1,4 @@
-// ================= ⭐ PROFILE, LEAVE, SWAP & SUPABASE SYNC =================
+// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB =================
 
 function renderAdminAllStaffReport() {
     if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
@@ -165,7 +165,7 @@ function renderUserCurrentWeekWorkspace() {
     renderSwapHistory();
 }
 
-// ⭐ 1. ອັບໂຫຼດຮູບໂປຣໄຟລ໌ ພ້ອມ UPDATE ລົງ SUPABASE TABLE "profiles"
+// 1. ອັບໂຫຼດຮູບໂປຣໄຟລ໌
 function handlePhotoUploadAndCompress(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -174,7 +174,7 @@ function handlePhotoUploadAndCompress(event) {
         var img = new Image();
         img.onload = async function() {
             var canvas = document.createElement('canvas');
-            var max = 150; // ຂະໜາດກະທັດຮັດ 150x150 (~15KB)
+            var max = 150;
             var w = img.width, h = img.height;
             if (w > h) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
             else { if (h > max) { w = Math.round((w * max) / h); h = max; } }
@@ -184,7 +184,7 @@ function handlePhotoUploadAndCompress(event) {
             var photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
             window.currentUser.photo = photoBase64;
-            var userIdx = window.users.findIndex(u => u.user === window.currentUser.user || u.nameLao === window.currentUser.nameLao);
+            var userIdx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
             if (userIdx !== -1) {
                 window.users[userIdx].photo = photoBase64;
             }
@@ -203,16 +203,11 @@ function handlePhotoUploadAndCompress(event) {
             // ⭐ UPDATE ຮູບລົງ SUPABASE TABLE "profiles"
             if (window.supabaseClient) {
                 try {
-                    const { error } = await window.supabaseClient
+                    await window.supabaseClient
                         .from('profiles')
                         .update({ photo: photoBase64 })
                         .eq('user_code', window.currentUser.user);
-
-                    if (error) {
-                        console.error("❌ Supabase Photo Update Error:", error);
-                    } else {
-                        console.log("☁️ [Supabase]: Profile photo updated in profiles table!");
-                    }
+                    console.log("☁️ [Supabase]: Profile photo updated in cloud!");
                 } catch (err) {
                     console.error("Supabase Photo Exception:", err);
                 }
@@ -225,7 +220,7 @@ function handlePhotoUploadAndCompress(event) {
     reader.readAsDataURL(file);
 }
 
-// ⭐ 2. ປ່ຽນຊື່ / ລະຫັດຜ່ານ ພ້ອມ UPDATE ລົງ SUPABASE TABLE "profiles"
+// ⭐ 2. ປ່ຽນລະຫັດຜ່ານໃໝ່ (UPDATE ລົງທັງຖັນ password ແລະ pass ໃນ Supabase)
 async function handleUpdateProfile() {
     var nameInput = document.getElementById('profNameInput');
     var passInput = document.getElementById('profPassInput');
@@ -253,7 +248,7 @@ async function handleUpdateProfile() {
     }
 
     window.currentUser.fullName = name;
-    var idx = window.users.findIndex(u => u.user === window.currentUser.user);
+    var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
     if (idx !== -1) {
         window.users[idx] = { ...window.users[idx], fullName: name, pass: pass || window.users[idx].pass };
     }
@@ -261,11 +256,14 @@ async function handleUpdateProfile() {
     saveAll();
     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
-    // ⭐ UPDATE ຊື່ ແລະ ລະຫັດໃໝ່ລົງ SUPABASE TABLE "profiles"
+    // ⭐ UPDATE ຊື່ ແລະ ລະຫັດຜ່ານລົງທັງຖັນ full_name, pass, password
     if (window.supabaseClient) {
         try {
             var updatePayload = { full_name: name };
-            if (pass) updatePayload.pass = pass;
+            if (pass) {
+                updatePayload.pass = pass;
+                updatePayload.password = pass; // ⭐ Update ທັງສອງຖັນພ້ອມກັນ
+            }
 
             const { error } = await window.supabaseClient
                 .from('profiles')
@@ -275,7 +273,7 @@ async function handleUpdateProfile() {
             if (error) {
                 console.error("❌ Supabase Profile Update Error:", error);
             } else {
-                console.log("☁️ [Supabase]: Profile & Password updated in profiles table!");
+                console.log("☁️ [Supabase]: Profile & Password updated in cloud!");
             }
         } catch (e) {
             console.error("Supabase Profile Exception:", e);
@@ -296,7 +294,7 @@ async function handleBookAnnualLeave() {
 
     var diffDays = Math.ceil(Math.abs(new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1;
     window.currentUser.usedAnnual = (window.currentUser.usedAnnual || 0) + diffDays;
-    var idx = window.users.findIndex(u => u.user === window.currentUser.user);
+    var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
     if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
     var newBooking = {
@@ -357,7 +355,7 @@ function promptCancelAnnualLeave(bookingId) {
         `ທ່ານຕ້ອງການຍົກເລີກການຈອງມື້ພັກວັນທີ ${booking.startDate} ຫາ ${booking.endDate} (${booking.days} ມື້) ແທ້ບໍ່? ລະບົບຈະຄືນໂຄຕ້າມື້ພັກໃຫ້ທ່ານທັນທີ.`,
         async () => {
             window.currentUser.usedAnnual = Math.max(0, (window.currentUser.usedAnnual || 0) - booking.days);
-            var idx = window.users.findIndex(u => u.user === window.currentUser.user);
+            var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
             if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
             window.annualBookings = window.annualBookings.filter(b => b.id !== bookingId);
@@ -666,7 +664,7 @@ function renderFairnessSummaryData() {
     for (var d = 1; d <= daysCount; d++) {
         var dNum = d < 10 ? '0' + d : '' + d;
         var mNum = month < 10 ? '0' + month : '' + month;
-        var dStr = `${year}-${mNum}-${dNum}`;
+        var dStr = `${year}-${mNum}-${dayNum}`;
         var dayInfo = sheet?.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
 
         Object.keys(staffStats).forEach(name => {
