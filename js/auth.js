@@ -3,19 +3,19 @@
 function normalizeUserObject(u) {
     if (!u) return null;
     return {
-        user: (u.user || u.user_code || u.username || '').trim(),
-        pass: (u.pass || u.password || 'bcel2026').trim(),
-        fullName: (u.fullName || u.full_name || '').trim(),
-        nameLao: (u.nameLao || u.name_lao || '').trim(),
+        user: (u.user_code || u.user || u.username || '').trim(),
+        pass: (u.password || u.pass || 'bcel2026').trim(),
+        fullName: (u.full_name || u.fullName || '').trim(),
+        nameLao: (u.name_lao || u.nameLao || '').trim(),
         role: (u.role || 'STAFF').toUpperCase().trim(),
-        isLeader: !!(u.isLeader || u.is_leader),
+        isLeader: !!(u.is_leader || u.isLeader),
         dept: (u.dept || 'ຂະແໜງບໍລິການອອນລາຍ').trim(),
-        position: (u.position || (u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ')).trim(),
+        position: (u.position || (u.is_leader || u.isLeader ? 'ຫົວໜ້າກະ' : 'ພະນັກງານ')).trim(),
         phone: (u.phone || '020 5599 8877').trim(),
-        photo: u.photo || '',
-        annualQuota: u.annualQuota || 15,
-        usedAnnual: u.usedAnnual || 0,
-        otherLeaves: u.otherLeaves || 0
+        photo: u.photo || '', // ⭐ ຮູບພາບຈາກ Cloud
+        annualQuota: u.annual_quota || u.annualQuota || 15,
+        usedAnnual: u.used_annual || u.usedAnnual || 0,
+        otherLeaves: u.other_leaves || u.otherLeaves || 0
     };
 }
 
@@ -28,9 +28,15 @@ function checkAuth() {
         document.getElementById('topUserName').innerText = window.currentUser.nameLao;
         document.getElementById('topUserRole').innerText = window.currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff';
         
-        var avatar = window.currentUser.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(window.currentUser.nameLao)}&background=c01e2e&color=fff`;
-        document.getElementById('topAvatar').src = avatar;
-        document.getElementById('profPhotoPreview').src = avatar;
+        // ⭐ ດຶງຮູບຈາກ Cloud ຖ້າມີ
+        var defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(window.currentUser.nameLao)}&background=c01e2e&color=fff`;
+        var finalAvatar = window.currentUser.photo || defaultAvatar;
+
+        var topAvatar = document.getElementById('topAvatar');
+        var profPreview = document.getElementById('profPhotoPreview');
+        if (topAvatar) topAvatar.src = finalAvatar;
+        if (profPreview) profPreview.src = finalAvatar;
+
         document.getElementById('profNameDisplay').innerText = window.currentUser.fullName;
         document.getElementById('profCodeDisplay').innerText = window.currentUser.user;
         document.getElementById('profNameInput').value = window.currentUser.fullName;
@@ -73,7 +79,7 @@ function checkAuth() {
     }
 }
 
-// ⭐ ລະບົບ Login ແບບ Auto-Trim & Universal Match (100% Guaranteed)
+// ⭐ ລະບົບ Login ທີ່ກວດສອບທັງຖັນ password ແລະ pass
 function doLogin() {
     var uInput = document.getElementById('loginUsername');
     var pInput = document.getElementById('loginPassword');
@@ -89,20 +95,11 @@ function doLogin() {
     var userPool = rawPool.map(normalizeUserObject);
     window.users = userPool;
 
-    // 1. ຄົ້ນຫາໃນຖານຂໍ້ມູນ
     var found = userPool.find(usr => {
-        var dbUser = usr.user.toLowerCase().trim();
-        var dbPass = usr.pass.trim();
-        return dbUser === u && dbPass === p;
+        var usernameMatch = usr.user.toLowerCase() === u;
+        var passwordMatch = (usr.pass === p);
+        return usernameMatch && passwordMatch;
     });
-
-    // 2. Fallback ພິເສດສຳລັບບັນຊີເລີ່ມຕົ້ນ (ປ້ອງກັນການຕິດຂັດ)
-    if (!found) {
-        var defaultAcc = window.MASTER_USERS_DEFAULT.find(d => d.user.toLowerCase() === u && d.pass === p);
-        if (defaultAcc) {
-            found = normalizeUserObject(defaultAcc);
-        }
-    }
 
     if (found) {
         window.currentUser = { ...found };
