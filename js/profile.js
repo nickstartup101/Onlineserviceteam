@@ -220,7 +220,7 @@ function handlePhotoUploadAndCompress(event) {
     reader.readAsDataURL(file);
 }
 
-// ⭐ 2. ປ່ຽນລະຫັດຜ່ານໃໝ່ (UPDATE ລົງທັງຖັນ password ແລະ pass ໃນ Supabase)
+// ⭐ 2. ປ່ຽນລະຫັດຜ່ານໃໝ່
 async function handleUpdateProfile() {
     var nameInput = document.getElementById('profNameInput');
     var passInput = document.getElementById('profPassInput');
@@ -256,13 +256,12 @@ async function handleUpdateProfile() {
     saveAll();
     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
-    // ⭐ UPDATE ຊື່ ແລະ ລະຫັດຜ່ານລົງທັງຖັນ full_name, pass, password
     if (window.supabaseClient) {
         try {
             var updatePayload = { full_name: name };
             if (pass) {
                 updatePayload.pass = pass;
-                updatePayload.password = pass; // ⭐ Update ທັງສອງຖັນພ້ອມກັນ
+                updatePayload.password = pass;
             }
 
             const { error } = await window.supabaseClient
@@ -576,15 +575,6 @@ async function acceptSwap(id) {
                 .update({ status: 'COMPLETED' })
                 .eq('from_name', req.fromName)
                 .eq('start_date', req.startDate);
-
-            await window.supabaseClient.from('schedules').upsert({
-                id: sheet.id,
-                month_key: sheet.monthKey,
-                title: sheet.title,
-                notes: sheet.notes || '',
-                status: sheet.status,
-                data: sheet.data
-            }, { onConflict: 'id' });
         } catch (e) {
             console.error("Supabase Accept Swap Error:", e);
         }
@@ -604,6 +594,7 @@ async function declineSwap(id) {
     showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
 }
 
+// ⭐ FAIRNESS SUMMARY MODAL (ແກ້ໄຂບັນຫາ dayNum Error ແລ້ວ)
 window.openFairnessSummaryModal = function() {
     var groupSelect = document.getElementById('fairnessGroupFilterSelect');
     if (groupSelect) {
@@ -635,7 +626,8 @@ function renderFairnessSummaryData() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    document.getElementById('fairnessModalSub').innerText = `ຕາຕະລາງ: ${sheet?.title || ''}`;
+    var subEl = document.getElementById('fairnessModalSub');
+    if (subEl) subEl.innerText = `ຕາຕະລາງ: ${sheet?.title || ''}`;
 
     var targetMembers = null;
     if (filterId !== 'ALL') {
@@ -664,7 +656,7 @@ function renderFairnessSummaryData() {
     for (var d = 1; d <= daysCount; d++) {
         var dNum = d < 10 ? '0' + d : '' + d;
         var mNum = month < 10 ? '0' + month : '' + month;
-        var dStr = `${year}-${mNum}-${dayNum}`;
+        var dStr = `${year}-${mNum}-${dNum}`; //  ແກ້ໄຂເປັນ dNum ແລ້ວ
         var dayInfo = sheet?.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
 
         Object.keys(staffStats).forEach(name => {
@@ -706,3 +698,4 @@ window.promptCancelSwap = promptCancelSwap;
 window.renderSwapHistory = renderSwapHistory;
 window.acceptSwap = acceptSwap;
 window.declineSwap = declineSwap;
+window.renderFairnessSummaryData = renderFairnessSummaryData;
