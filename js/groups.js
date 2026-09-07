@@ -1,9 +1,11 @@
+// ================= ⭐ GROUPS MANAGEMENT & DIRECT SUPABASE SYNC =================
+
 function renderGroupsTab() {
     var grid = document.getElementById('groupsListGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    employeeGroups.forEach((grp, idx) => {
+    (window.employeeGroups || []).forEach((grp, idx) => {
         grid.innerHTML += `
             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4">
                 <div>
@@ -11,9 +13,9 @@ function renderGroupsTab() {
                         <h3 class="font-bold text-base text-slate-800">${grp.name}</h3>
                         <span class="px-2.5 py-1 bg-red-50 text-brand-red rounded-xl font-bold text-[10px] border border-red-200">Zigzag Active</span>
                     </div>
-                    <p class="text-xs text-slate-500 font-semibold mb-3">ສະມາຊິກໃນກຸ່ມ (${grp.members.length} ຄົນ):</p>
+                    <p class="text-xs text-slate-500 font-semibold mb-3">ສະມາຊິກໃນກຸ່ມ (${grp.members?.length || 0} ຄົນ):</p>
                     <div class="flex flex-wrap gap-1 max-h-36 overflow-y-auto">
-                        ${grp.members.map(m => `<span class="bg-slate-100 px-2 py-0.5 rounded-lg text-xs font-lao">${m}</span>`).join('')}
+                        ${(grp.members || []).map(m => `<span class="bg-slate-100 px-2 py-0.5 rounded-lg text-xs font-lao">${m}</span>`).join('')}
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">
@@ -30,26 +32,26 @@ function openAddGroupModal() {
     document.getElementById('editGroupId').value = '';
     document.getElementById('groupNameInput').value = '';
     renderGroupMemberCheckboxes([]);
-    document.getElementById('groupModal').classList.remove('hidden');
+    document.getElementById('groupModal')?.classList.remove('hidden');
 }
 
 function openEditGroupModal(index) {
-    var grp = employeeGroups[index];
+    var grp = window.employeeGroups[index];
     document.getElementById('groupModalTitle').innerText = 'ແກ້ໄຂໝວດ/ກຸ່ມພະນັກງານ';
     document.getElementById('editGroupId').value = index;
     document.getElementById('groupNameInput').value = grp.name;
     renderGroupMemberCheckboxes(grp.members || []);
-    document.getElementById('groupModal').classList.remove('hidden');
+    document.getElementById('groupModal')?.classList.remove('hidden');
 }
 
-function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+function closeGroupModal() { document.getElementById('groupModal')?.classList.add('hidden'); }
 
 function renderGroupMemberCheckboxes(selectedMembers) {
     var container = document.getElementById('groupMemberCheckboxList');
     if (!container) return;
     container.innerHTML = '';
 
-    var staffList = users.filter(u => u.role !== 'SUPER_ADMIN');
+    var staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN');
     staffList.forEach(u => {
         var isChecked = selectedMembers && selectedMembers.includes(u.nameLao) ? 'checked' : '';
         container.innerHTML += `
@@ -65,9 +67,10 @@ function toggleSelectAllGroupMembers(select) {
     document.querySelectorAll('.group-member-checkbox').forEach(cb => cb.checked = select);
 }
 
-function handleSaveGroup() {
-    var editId = document.getElementById('editGroupId').value;
-    var name = document.getElementById('groupNameInput').value.trim();
+// ⭐ ສ້າງ / ແກ້ໄຂກຸ່ມ ພ້ອມ UPSERT ລົງ SUPABASE
+async function handleSaveGroup() {
+    var editId = document.getElementById('editGroupId')?.value;
+    var name = document.getElementById('groupNameInput')?.value.trim();
 
     if (!name) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ກຸ່ມ', 'error'); return; }
 
@@ -79,24 +82,58 @@ function handleSaveGroup() {
         return;
     }
 
+    var groupObj = null;
     if (editId !== '') {
-        employeeGroups[editId] = { ...employeeGroups[editId], name, members: selected };
+        groupObj = { ...window.employeeGroups[editId], name, members: selected };
+        window.employeeGroups[editId] = groupObj;
     } else {
-        employeeGroups.push({ id: 'grp-' + Date.now(), name, members: selected });
+        groupObj = { id: 'grp-' + Date.now(), name, members: selected };
+        window.employeeGroups.push(groupObj);
     }
 
-    saveAll();
+    await saveAll();
+
+    // ⭐ UPSERT ລົງ SUPABASE
+    if (window.supabaseClient && groupObj) {
+        try {
+            await window.supabaseClient.from('employee_groups').upsert({
+                id: groupObj.id,
+                name: groupObj.name,
+                members: groupObj.members
+            }, { onConflict: 'id' });
+            console.log("☁️ [Supabase]: Employee group synced to cloud!");
+        } catch (e) {
+            console.error("Supabase Group Sync Error:", e);
+        }
+    }
+
     closeGroupModal();
     renderGroupsTab();
-    showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນໝວດກຸ່ມຮຽບຮ້ອຍ', 'success');
+    showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນໝວດກຸ່ມລົງ Supabase ຮຽບຮ້ອຍ!', 'success');
 }
 
 function promptDeleteGroup(idx) {
-    var grp = employeeGroups[idx];
-    askConfirm('ລຶບກຸ່ມ', `ທ່ານຕ້ອງການລຶບກຸ່ມ "${grp.name}" ແທ້ບໍ່?`, () => {
-        employeeGroups.splice(idx, 1);
-        saveAll();
+    var grp = window.employeeGroups[idx];
+    askConfirm('ລຶບກຸ່ມ', `ທ່ານຕ້ອງການລຶບກຸ່ມ "${grp.name}" ແທ້ບໍ່?`, async () => {
+        var delId = grp.id;
+        window.employeeGroups.splice(idx, 1);
+        await saveAll();
+
+        // DELETE ໃນ Supabase
+        if (window.supabaseClient) {
+            await window.supabaseClient.from('employee_groups').delete().eq('id', delId);
+        }
+
         renderGroupsTab();
         showToast('ສຳເລັດ', 'ລຶບກຸ່ມຮຽບຮ້ອຍ', 'success');
     }, 'delete', 'ລຶບ');
 }
+
+window.renderGroupsTab = renderGroupsTab;
+window.openAddGroupModal = openAddGroupModal;
+window.openEditGroupModal = openEditGroupModal;
+window.closeGroupModal = closeGroupModal;
+window.renderGroupMemberCheckboxes = renderGroupMemberCheckboxes;
+window.toggleSelectAllGroupMembers = toggleSelectAllGroupMembers;
+window.handleSaveGroup = handleSaveGroup;
+window.promptDeleteGroup = promptDeleteGroup;
