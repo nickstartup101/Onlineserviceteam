@@ -859,121 +859,70 @@ function renderFairnessSummaryData() {
     });
 }
 
-// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ລົ້ນ (ປັບເປັນ LANDSCAPE + ລັອກ SCALE)
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ຕັດຂອບຊ້າຍ ແລະ ບໍ່ Zoom
 function exportToA4PDF() {
     var sheet = getActiveSheet();
-    var element = document.getElementById('pdfExportArea');
-    if (!element) {
-        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບພື້ນທີ່ຕາຕະລາງ', 'error');
+    var source = document.getElementById('pdfExportArea');
+    if (!source) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງສຳລັບ Export', 'error');
         return;
     }
-    
-    var noPrintEls = element.querySelectorAll('.no-print');
-    noPrintEls.forEach(el => el.style.display = 'none');
 
-    // ບັນທຶກ style ເດີມໄວ້
-    var originalWidth = element.style.width;
-    var originalMaxWidth = element.style.maxWidth;
-    var originalBoxShadow = element.style.boxShadow;
+    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4 ໃຫ້ພໍດີໜ້າເຈ້ຍ...', 'info');
 
-    // ລັອກຂະໜາດ A4 Landscape (1060px) ເພື່ອບໍ່ໃຫ້ພາບ zoom ຫຼື ລົ້ນໜ້າເຈ້ຍ
-    element.style.width = '1060px';
-    element.style.maxWidth = '1060px';
-    element.style.boxShadow = 'none';
+    // 1. Clone ຕາຕະລາງອອກມາຕ່າງຫາກ ເພື່ອຕັດບັນຫາ Sidebar ດ້ານຊ້າຍມາດັນຕາຕະລາງ
+    var clone = source.cloneNode(true);
 
+    // 2. ສ້າງ Wrapper ຊົ່ວຄາວທີ່ເລີ່ມຕົ້ນຈາກ (left: 0, top: 0) ພໍດີຂອບເຈ້ຍ
+    var wrapper = document.createElement('div');
+    wrapper.id = 'pdf-temp-wrapper';
+    wrapper.style.position = 'fixed';
+    wrapper.style.top = '0';
+    wrapper.style.left = '0';
+    wrapper.style.width = '1080px';
+    wrapper.style.backgroundColor = '#ffffff';
+    wrapper.style.zIndex = '999999';
+    wrapper.style.padding = '0';
+    wrapper.style.margin = '0';
+
+    // ປັບແຕ່ງ Clone ໃຫ້ພໍດີ A4 Landscape 100% (1080px ≈ 287mm ພໍດີຂອບເຈ້ຍ)
+    clone.style.margin = '0';
+    clone.style.width = '1080px';
+    clone.style.maxWidth = '1080px';
+    clone.style.boxShadow = 'none';
+
+    // ລຶບປຸ່ມ ແລະ ສ່ວນທີ່ບໍ່ຕ້ອງການພິມອອກ
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    // 3. ຕັ້ງຄ່າ PDF A4 Landscape ແນວນອນ 100%
     var opt = {
         margin:       [6, 6, 6, 6],
-        filename:     `${sheet?.title || 'Schedule'}.pdf`,
+        filename:     `${sheet?.title || 'ຕາຕະລາງປະຈຳການ'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { 
-            scale: 1.5, // ຄວາມລະອຽດພໍດີຄົມຊັດ ແລະ ບໍ່ຂະຫຍາຍ zoom ເກີນໜ້າເຈ້ຍ
+            scale: 2, // ຄວາມລະອຽດຄົມຊັດສູງ
             useCORS: true, 
             logging: false,
             letterRendering: true,
             scrollX: 0,
             scrollY: 0,
-            windowWidth: 1200
+            windowWidth: 1080
         },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }, // A4 ແນວນອນ ພໍດີກັບຕາຕະລາງຫຼາຍກະ
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        element.style.width = originalWidth;
-        element.style.maxWidth = originalMaxWidth;
-        element.style.boxShadow = originalBoxShadow;
-        noPrintEls.forEach(el => el.style.display = '');
+    html2pdf().set(opt).from(clone).save().then(() => {
+        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+        showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດຮຽບຮ້ອຍ!', 'success');
     }).catch(err => {
-        console.error(err);
-        element.style.width = originalWidth;
-        element.style.maxWidth = originalMaxWidth;
-        element.style.boxShadow = originalBoxShadow;
-        noPrintEls.forEach(el => el.style.display = '');
-        showToast('ຜິດພາດ', 'ບໍ່ສາມາດ Export PDF ໄດ້', 'error');
+        console.error("PDF Export Error:", err);
+        if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+        showToast('ຜິດພາດ', 'ເກີດຂໍ້ຜິດພາດໃນການ Export PDF', 'error');
     });
-}
-
-function openHolidayModal() { document.getElementById('holidayModal')?.classList.remove('hidden'); }
-async function handleSaveHolidayRange() {
-    var title = document.getElementById('holidayTitleInput')?.value.trim();
-    var start = document.getElementById('holidayStartDateInput')?.value;
-    var end = document.getElementById('holidayEndDateInput')?.value;
-    if (!title || !start || !end) return;
-    
-    var newHol = { title, start_date: start, end_date: end };
-    window.specialHolidayRanges.push({ title, start, end });
-    await saveAll();
-
-    if (window.supabaseClient) {
-        await window.supabaseClient.from('special_holidays').insert([newHol]);
-    }
-
-    document.getElementById('holidayModal')?.classList.add('hidden');
-    renderScheduleTable();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
-}
-
-function openCellModal(date, shift, index, currentName) {
-    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
-    window.activeEditCell = { date, shift, index, currentName };
-    document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift}]`;
-    renderCellStaffList('');
-    document.getElementById('cellSelectModal')?.classList.remove('hidden');
-}
-
-function closeCellModal() { document.getElementById('cellSelectModal')?.classList.add('hidden'); window.activeEditCell = null; }
-function renderCellStaffList(q) {
-    var container = document.getElementById('cellStaffListContainer');
-    if (!container) return;
-    container.innerHTML = '';
-    window.users.filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
-        container.innerHTML += `
-            <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">
-                <span>${u.nameLao} (${u.fullName})</span>
-                ${u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : ''}
-            </div>
-        `;
-    });
-}
-function filterCellStaffList() { renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim()); }
-
-function openRandomGroupSelectModal() {
-    var select = document.getElementById('randomSelectedGroupId');
-    if (!select) return;
-    select.innerHTML = '';
-    var optAll = document.createElement('option');
-    optAll.value = 'ALL';
-    optAll.innerText = 'ພະນັກງານທັງໝົດ (All Staff)';
-    select.appendChild(optAll);
-
-    window.employeeGroups.forEach(grp => {
-        var opt = document.createElement('option');
-        opt.value = grp.id;
-        opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)`;
-        select.appendChild(opt);
-    });
-    document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
 
 // ຜູກທຸກ Function ເຂົ້າ window
