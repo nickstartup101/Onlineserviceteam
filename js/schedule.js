@@ -774,31 +774,142 @@ async function saveDraft() {
     showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); 
 }
 
-// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ລົ້ນ
+// ⭐ 8. ບົດສະຫຼຸບຄວາມເທົ່າທຽມ (FAIRNESS SUMMARY ENGINE)
+function openFairnessSummaryModal() {
+    var sheet = getActiveSheet();
+    var subEl = document.getElementById('fairnessModalSub');
+    if (subEl && sheet) {
+        subEl.innerText = `ກວດສອບຄວາມສົມດຸນຂອງ ${sheet.title || ''}`;
+    }
+
+    var select = document.getElementById('fairnessGroupFilterSelect');
+    if (select) {
+        select.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
+        (window.employeeGroups || []).forEach(grp => {
+            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)</option>`;
+        });
+    }
+
+    renderFairnessSummaryData();
+    document.getElementById('fairnessModal')?.classList.remove('hidden');
+}
+
+function closeFairnessSummaryModal() {
+    document.getElementById('fairnessModal')?.classList.add('hidden');
+}
+
+function renderFairnessSummaryData() {
+    var sheet = getActiveSheet();
+    var schedData = sheet?.data || {};
+    var dates = Object.keys(schedData);
+    var filterGroupId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
+
+    var targetUsers = (window.users || []).filter(u => u.role !== 'SUPER_ADMIN');
+    if (filterGroupId !== 'ALL') {
+        var grp = (window.employeeGroups || []).find(g => g.id === filterGroupId);
+        if (grp && grp.members) {
+            targetUsers = targetUsers.filter(u => grp.members.includes(u.nameLao));
+        }
+    }
+
+    var tbody = document.getElementById('fairnessSummaryTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (targetUsers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">ບໍ່ພົບຂໍ້ມູນພະນັກງານ</td></tr>`;
+        return;
+    }
+
+    targetUsers.forEach((u, idx) => {
+        var s1 = 0, s2 = 0, s3 = 0, weekendOff = 0;
+
+        dates.forEach(d => {
+            var day = schedData[d] || {};
+            var onS1 = (day.shift1 || []).includes(u.nameLao);
+            var onS2 = (day.shift2 || []).includes(u.nameLao);
+            var onS3 = (day.shift3 || []).includes(u.nameLao);
+
+            if (onS1) s1++;
+            if (onS2) s2++;
+            if (onS3) s3++;
+
+            if (day.isWeekend && !onS1 && !onS2 && !onS3) {
+                weekendOff++;
+            }
+        });
+
+        var total = s1 + s2 + s3;
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-slate-800">
+                <td class="p-3 text-slate-400 font-mono">${idx + 1}</td>
+                <td class="p-3 font-bold flex items-center gap-1.5">
+                    ${u.nameLao} 
+                    <span class="text-[10px] font-normal text-slate-400">(${u.fullName})</span>
+                    ${u.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.5 rounded font-bold">ຫົວໜ້າ</span>' : ''}
+                </td>
+                <td class="p-3 text-center font-semibold text-slate-700">${s1}</td>
+                <td class="p-3 text-center font-semibold text-purple-700">${s2}</td>
+                <td class="p-3 text-center font-bold text-brand-red">${s3}</td>
+                <td class="p-3 text-center font-bold text-emerald-600">${weekendOff}</td>
+                <td class="p-3 text-right font-black text-slate-900">${total}</td>
+            </tr>
+        `;
+    });
+}
+
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ພໍດີໜ້າເຈ້ຍ A4 ບໍ່ລົ້ນ (ປັບເປັນ LANDSCAPE + ລັອກ SCALE)
 function exportToA4PDF() {
     var sheet = getActiveSheet();
     var element = document.getElementById('pdfExportArea');
-    if (!element) return;
+    if (!element) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບພື້ນທີ່ຕາຕະລາງ', 'error');
+        return;
+    }
     
     var noPrintEls = element.querySelectorAll('.no-print');
     noPrintEls.forEach(el => el.style.display = 'none');
 
-    // ປັບຂະໜາດ ແລະ ຄຸນະພາບໃຫ້ພໍດີໜ້າເຈ້ຍ A4 Portrait ເຕັມ 100%
+    // ບັນທຶກ style ເດີມໄວ້
+    var originalWidth = element.style.width;
+    var originalMaxWidth = element.style.maxWidth;
+    var originalBoxShadow = element.style.boxShadow;
+
+    // ລັອກຂະໜາດ A4 Landscape (1060px) ເພື່ອບໍ່ໃຫ້ພາບ zoom ຫຼື ລົ້ນໜ້າເຈ້ຍ
+    element.style.width = '1060px';
+    element.style.maxWidth = '1060px';
+    element.style.boxShadow = 'none';
+
     var opt = {
-        margin:       [4, 4, 4, 4],
-        filename:     `${sheet.title}.pdf`,
+        margin:       [6, 6, 6, 6],
+        filename:     `${sheet?.title || 'Schedule'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { 
-            scale: 2, 
+            scale: 1.5, // ຄວາມລະອຽດພໍດີຄົມຊັດ ແລະ ບໍ່ຂະຫຍາຍ zoom ເກີນໜ້າເຈ້ຍ
             useCORS: true, 
             logging: false,
-            letterRendering: true
+            letterRendering: true,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 1200
         },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }, // A4 ແນວນອນ ພໍດີກັບຕາຕະລາງຫຼາຍກະ
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     html2pdf().set(opt).from(element).save().then(() => {
+        element.style.width = originalWidth;
+        element.style.maxWidth = originalMaxWidth;
+        element.style.boxShadow = originalBoxShadow;
         noPrintEls.forEach(el => el.style.display = '');
+    }).catch(err => {
+        console.error(err);
+        element.style.width = originalWidth;
+        element.style.maxWidth = originalMaxWidth;
+        element.style.boxShadow = originalBoxShadow;
+        noPrintEls.forEach(el => el.style.display = '');
+        showToast('ຜິດພາດ', 'ບໍ່ສາມາດ Export PDF ໄດ້', 'error');
     });
 }
 
@@ -901,3 +1012,8 @@ window.openRandomGroupSelectModal = openRandomGroupSelectModal;
 window.openEditPublishedRemarkModal = openEditPublishedRemarkModal;
 window.closeEditPublishedRemarkModal = closeEditPublishedRemarkModal;
 window.confirmApplyPublishedCellUpdate = confirmApplyPublishedCellUpdate;
+
+// ⭐ ເພີ່ມການເຊື່ອມຕໍ່ລະບົບສະຫຼຸບຄວາມເທົ່າທຽມ
+window.openFairnessSummaryModal = openFairnessSummaryModal;
+window.closeFairnessSummaryModal = closeFairnessSummaryModal;
+window.renderFairnessSummaryData = renderFairnessSummaryData;
