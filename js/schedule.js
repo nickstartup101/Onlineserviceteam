@@ -140,8 +140,8 @@ async function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// ⭐ ສູດກຸ່ມ 7 ຄົນ: ເຮັດວຽກ 5 ວັນ ພັກ 2 ວັນ (Rolling Off ບໍ່ຕົງເສົາ-ອາທິດ)
-// ພ້ອມ Random/ສະຫຼັບຮູບແບບ 5 ຄົນ: 2-2-1, 1-2-2, 2-1-2
+// ⭐ ສູດກຸ່ມ 7 ຄົນ: ເຮັດວຽກ 5 ວັນ ພັກ 2 ວັນ (Rolling 5/2)
+// ໝູນວຽນຮູບແບບ 5 ຄົນ: 2-2-1, 1-2-2, 2-1-2
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -157,7 +157,7 @@ function generate7PersonFlexZigzag(year, month, staffList) {
         var dayOfWeek = currentDate.getUTCDay();
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
-        // ໝູນວຽນ Slot 7 ຄົນ: 5 ຄົນເຮັດວຽກ (Slot 0-4), 2 ຄົນພັກຜ່ອນ (Slot 5-6)
+        // ໝູນວຽນ Slot: 5 ຄົນເຮັດວຽກ (Slot 0-4), 2 ຄົນພັກຜ່ອນ (Slot 5-6)
         var dailySlots = [];
         for (var p = 0; p < N; p++) {
             var assignedSlot = (p + totalDays) % N;
@@ -169,26 +169,22 @@ function generate7PersonFlexZigzag(year, month, staffList) {
         var s1 = [], s2 = [], s3 = [];
 
         if (mode === 0) {
-            // ຮູບແບບ 2-2-1 (ກະ1: 2, ກະ2: 2, ກະ3: 1)
             s1 = [dailySlots[0], dailySlots[1]];
             s2 = [dailySlots[2], dailySlots[3]];
             s3 = [dailySlots[4]];
         } else if (mode === 1) {
-            // ຮູບແບບ 1-2-2 (ກະ1: 1, ກະ2: 2, ກະ3: 2)
             s1 = [dailySlots[0]];
             s2 = [dailySlots[1], dailySlots[2]];
             s3 = [dailySlots[3], dailySlots[4]];
         } else {
-            // ຮູບແບບ 2-1-2 (ກະ1: 2, ກະ2: 1, ກະ3: 2)
             s1 = [dailySlots[0], dailySlots[1]];
             s2 = [dailySlots[2]];
             s3 = [dailySlots[3], dailySlots[4]];
         }
-        // dailySlots[5] ແລະ dailySlots[6] ແມ່ນ 2 ຄົນທີ່ໄດ້ພັກຜ່ອນ (OFF) ໃນມື້ນີ້
 
         data[dStr] = {
             isWeekend: isWeekend,
-            isG7Team: true, // ຕິດ Tag ກຸ່ມ 7 ຄົນສຳລັບສະແດງ Badge G7
+            isG7Team: true,
             shift1: s1.filter(Boolean),
             shift2: s2.filter(Boolean),
             shift3: s3.filter(Boolean)
@@ -284,6 +280,7 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
     }
 }
 
+// ⭐ ໃສ່ເຄື່ອງໝາຍກຸ່ມ 7 ຄົນໃນເມນູເລືອກກຸ່ມ Random Zigzag
 function openRandomGroupSelectModal() {
     var select = document.getElementById('randomSelectedGroupId');
     if (!select) return;
@@ -296,7 +293,9 @@ function openRandomGroupSelectModal() {
     (window.employeeGroups || []).forEach(grp => {
         var opt = document.createElement('option');
         opt.value = grp.id;
-        opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)`;
+        var isG7 = (grp.members || []).length === 7;
+        var tag = isG7 ? ' 🔹 [ກຸ່ມ 7 ຄົນ - Rolling 5/2]' : '';
+        opt.innerText = `${grp.name} (${grp.members.length} ຄົນ)${tag}`;
         select.appendChild(opt);
     });
     document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
@@ -310,7 +309,12 @@ async function executeGroupRandomSchedule() {
     var members = null;
     if (selectedGrpId !== 'ALL') {
         var found = (window.employeeGroups || []).find(g => g.id === selectedGrpId);
-        if (found && found.members) members = found.members;
+        if (found && found.members) {
+            members = found.members;
+            sheet.isG7GroupSheet = (members.length === 7);
+        }
+    } else {
+        sheet.isG7GroupSheet = false;
     }
 
     sheet.data = generateMonthDataZigzag(year, month, members);
@@ -322,12 +326,15 @@ async function executeGroupRandomSchedule() {
     showToast('ສຳເລັດ', `ສ້າງຕາຕະລາງ Zigzag ສຳເລັດຮຽບຮ້ອຍ!`, 'success');
 }
 
+// ⭐ ໃສ່ເຄື່ອງໝາຍກຸ່ມ 7 ຄົນໃນເມນູສ້າງລ່ວງໜ້າ
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
     if (select) {
         select.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
         (window.employeeGroups || []).forEach(grp => {
-            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)</option>`;
+            var isG7 = (grp.members || []).length === 7;
+            var tag = isG7 ? ' 🔹 [ກຸ່ມ 7 ຄົນ - Rolling 5/2]' : '';
+            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)${tag}</option>`;
         });
     }
     document.getElementById('batchMonthModal')?.classList.remove('hidden');
@@ -345,11 +352,13 @@ async function executeBatchMonthGenerate() {
 
     var selectedMembers = null;
     var groupNameTag = '';
+    var isG7 = false;
     if (selectedGrpId !== 'ALL') {
         var foundGrp = (window.employeeGroups || []).find(g => g.id === selectedGrpId);
         if (foundGrp) {
             selectedMembers = foundGrp.members;
-            groupNameTag = ` (${foundGrp.name})`;
+            isG7 = (selectedMembers.length === 7);
+            groupNameTag = isG7 ? ` (${foundGrp.name} - G7)` : ` (${foundGrp.name})`;
         }
     }
 
@@ -371,6 +380,7 @@ async function executeBatchMonthGenerate() {
         if (existingIdx !== -1) {
             window.scheduleSheets[existingIdx].data = generatedData;
             window.scheduleSheets[existingIdx].title = title;
+            window.scheduleSheets[existingIdx].isG7GroupSheet = isG7;
         } else {
             window.scheduleSheets.push({
                 id: sheetId,
@@ -378,6 +388,7 @@ async function executeBatchMonthGenerate() {
                 title: title,
                 notes: window.defaultNotesTemplate,
                 status: 'DRAFT',
+                isG7GroupSheet: isG7,
                 data: generatedData
             });
         }
@@ -429,6 +440,7 @@ function renderScheduleTable() {
     var daysCount = new Date(year, month, 0).getDate();
 
     var isOfficial = sheet?.status === 'PUBLISHED';
+    var isG7 = sheet?.isG7GroupSheet || false;
 
     var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
@@ -448,14 +460,15 @@ function renderScheduleTable() {
     var modCountText = document.getElementById('modifiedCellCountText');
 
     if (banner && badge) {
+        var g7BadgeInBanner = isG7 ? `<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🔹 ກຸ່ມ 7 ຄົນ (Rolling 5/2)</span>` : '';
         if (isOfficial) {
             banner.className = "no-print px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs";
             badge.className = "font-bold text-emerald-800 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official) ${g7BadgeInBanner}`;
         } else {
             banner.className = "no-print px-6 py-2 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-xs";
             badge.className = "font-bold text-amber-900 flex items-center gap-2";
-            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ`;
+            badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ ${g7BadgeInBanner}`;
         }
     }
 
@@ -499,20 +512,21 @@ function renderScheduleTable() {
             `;
         }
 
+        // ⭐ ຊ່ອງຕາຕະລາງສະແດງຊື່ສະອາດ 100% ບໍ່ມີ G7 ຕິດອອກມາ
         tbody.innerHTML += `
             <tr class="${isWeekendOrHol ? 'bg-slate-50' : 'bg-white'}">
                 <td class="font-bold whitespace-nowrap">${i}/${mNum}/${year}</td>
                 <td class="font-bold ${isWeekendOrHol ? 'text-brand-red' : ''}">${dayOfWeek}</td>
-                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift1 || []).length / 2)), isAdmin, sheet?.id, dayData.isG7Team)}</td>
-                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift2 || []).length / 2)), isAdmin, sheet?.id, dayData.isG7Team)}</td>
-                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(2, Math.ceil((dayData.shift3 || []).length / 2)), isAdmin, sheet?.id, dayData.isG7Team)}</td>
+                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift1 || []).length / 2)), isAdmin, sheet?.id)}</td>
+                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift2 || []).length / 2)), isAdmin, sheet?.id)}</td>
+                <td class="p-0">${renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(2, Math.ceil((dayData.shift3 || []).length / 2)), isAdmin, sheet?.id)}</td>
             </tr>
         `;
     }
 }
 
-// ⭐ ສະແດງ Grid ຊ່ອງພະນັກງານ ພ້ອມ Badge ພິເສດ "G7"
-function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId, isG7) {
+// ⭐ ສະແດງສະເພາະຊື່ພະນັກງານແບບສະອາດ ເໝາະສຳລັບ Print & A4 PDF
+function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 2); rows = Math.max(rows, 1);
     var html = `<div class="grid w-full h-full" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr)); height: 48px;">`;
     var total = rows * cols;
@@ -528,12 +542,9 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId, i
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
-        // ເຄື່ອງໝາຍພິເສດ "G7" ສຳລັບກຸ່ມ 7 ຄົນ
-        var g7Badge = (isG7 && name) ? `<span class="ml-1 px-1 py-0.2 rounded text-[8px] font-black bg-blue-100 text-blue-800 border border-blue-300 inline-block shadow-xs">G7</span>` : '';
-
         html += `
             <div class="grid-cell-box ${borderR} ${borderB} ${isAdmin ? 'editable' : ''} ${highlightClass} ${isLeader ? 'text-brand-red font-semibold' : 'text-slate-800'}" ${clickHandler}>
-                <span>${name}</span>${g7Badge}
+                ${name}
             </div>
         `;
     }
@@ -761,7 +772,9 @@ function openFairnessSummaryModal() {
     if (select) {
         select.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
         (window.employeeGroups || []).forEach(grp => {
-            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)</option>`;
+            var isG7 = (grp.members || []).length === 7;
+            var tag = isG7 ? ' 🔹 [ກຸ່ມ 7 ຄົນ - Rolling 5/2]' : '';
+            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)${tag}</option>`;
         });
     }
 
@@ -780,16 +793,12 @@ function renderFairnessSummaryData() {
     var filterGroupId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
 
     var targetUsers = (window.users || []).filter(u => u.role !== 'SUPER_ADMIN');
-    var isG7Filter = false;
 
     if (filterGroupId !== 'ALL') {
         var grp = (window.employeeGroups || []).find(g => g.id === filterGroupId);
         if (grp && grp.members) {
             targetUsers = targetUsers.filter(u => grp.members.includes(u.nameLao));
-            if (grp.members.length === 7) isG7Filter = true;
         }
-    } else if (targetUsers.length === 7) {
-        isG7Filter = true;
     }
 
     var tbody = document.getElementById('fairnessSummaryTableBody');
@@ -814,14 +823,12 @@ function renderFairnessSummaryData() {
             if (onS2) s2++;
             if (onS3) s3++;
 
-            // ມື້ພັກຜ່ອນ (ທັງເສົາ-ອາທິດ ແລະ ວັນທຳມະດາ)
             if (!onS1 && !onS2 && !onS3) {
                 totalOff++;
             }
         });
 
         var total = s1 + s2 + s3;
-        var g7Badge = isG7Filter ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-black bg-blue-100 text-blue-700 border border-blue-300">G7</span>` : '';
 
         tbody.innerHTML += `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-slate-800">
@@ -830,7 +837,6 @@ function renderFairnessSummaryData() {
                     ${u.nameLao} 
                     <span class="text-[10px] font-normal text-slate-400">(${u.fullName})</span>
                     ${u.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.5 rounded font-bold">ຫົວໜ້າ</span>' : ''}
-                    ${g7Badge}
                 </td>
                 <td class="p-3 text-center font-semibold text-slate-700">${s1}</td>
                 <td class="p-3 text-center font-semibold text-purple-700">${s2}</td>
