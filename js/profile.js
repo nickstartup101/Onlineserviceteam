@@ -8,7 +8,7 @@ function renderAdminAllStaffReport() {
     var auditTbody = document.getElementById('adminScheduleAuditTableBody');
     var secTbody = document.getElementById('adminSecurityAuditTableBody');
 
-    var staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN');
+    var staffList = (window.users || []).filter(u => u.role !== 'SUPER_ADMIN');
     var staffCountEl = document.getElementById('adminMetricStaffCount');
     var swapCountEl = document.getElementById('adminMetricSwapCount');
     var leaveCountEl = document.getElementById('adminMetricLeaveCount');
@@ -119,11 +119,28 @@ function renderAdminAllStaffReport() {
     }
 }
 
+// ⭐ ສະແດງຂໍ້ມູນສ່ວນຕົວໃນ WORKSPACE (ດຶງຊື່, ຂະແໜງ, ເບີໂທ ອັດຕະໂນມັດ)
 function renderUserCurrentWeekWorkspace() {
     if (!window.currentUser) return;
     var sheet = getActiveSheet();
     var titleEl = document.getElementById('userCurrentShiftTitle');
     var pillsContainer = document.getElementById('userWeekDaysPills');
+
+    // ດຶງຂໍ້ມູນເຂົ້າຊ່ອງ Form ໂປຣໄຟລ໌
+    var nameInput = document.getElementById('profNameInput');
+    var deptInput = document.getElementById('profDeptInput');
+    var phoneInput = document.getElementById('profPhoneInput');
+    var nameDisplay = document.getElementById('profNameDisplay');
+    var codeDisplay = document.getElementById('profCodeDisplay');
+    var photoPreview = document.getElementById('profPhotoPreview');
+
+    if (nameInput) nameInput.value = window.currentUser.fullName || '';
+    if (deptInput) deptInput.value = window.currentUser.dept || window.currentUser.department || 'ຂະແໜງບໍລິການອອນລາຍ';
+    if (phoneInput) phoneInput.value = window.currentUser.phone || '';
+    if (nameDisplay) nameDisplay.innerText = `${window.currentUser.nameLao} (${window.currentUser.fullName})`;
+    if (codeDisplay) codeDisplay.innerText = window.currentUser.user || '';
+    if (photoPreview && window.currentUser.photo) photoPreview.src = window.currentUser.photo;
+
     if (!titleEl || !pillsContainer) return;
 
     var myName = window.currentUser.nameLao;
@@ -156,7 +173,7 @@ function renderUserCurrentWeekWorkspace() {
     var peerSelect = document.getElementById('swapTargetPeer');
     if (peerSelect) {
         peerSelect.innerHTML = '';
-        window.users.filter(u => u.nameLao !== window.currentUser.nameLao && u.role !== 'SUPER_ADMIN').forEach(u => {
+        (window.users || []).filter(u => u.nameLao !== window.currentUser.nameLao && u.role !== 'SUPER_ADMIN').forEach(u => {
             peerSelect.innerHTML += `<option value="${u.nameLao}">${u.nameLao} (${u.fullName})</option>`;
         });
     }
@@ -184,7 +201,7 @@ function handlePhotoUploadAndCompress(event) {
             var photoBase64 = canvas.toDataURL('image/jpeg', 0.7);
 
             window.currentUser.photo = photoBase64;
-            var userIdx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
+            var userIdx = (window.users || []).findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
             if (userIdx !== -1) {
                 window.users[userIdx].photo = photoBase64;
             }
@@ -200,7 +217,7 @@ function handlePhotoUploadAndCompress(event) {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
 
-            // ⭐ UPDATE ຮູບລົງ SUPABASE TABLE "profiles"
+            // UPDATE ຮູບລົງ SUPABASE
             if (window.supabaseClient) {
                 try {
                     await window.supabaseClient
@@ -220,13 +237,17 @@ function handlePhotoUploadAndCompress(event) {
     reader.readAsDataURL(file);
 }
 
-// ⭐ 2. ປ່ຽນລະຫັດຜ່ານໃໝ່
+// ⭐ 2. ປັບປຸງໂປຣໄຟລ໌: ບັນທຶກຊື່, ຂະແໜງ, ເບີໂທ ແລະ ລະຫັດຜ່ານ ລົງ SUPABASE
 async function handleUpdateProfile() {
     var nameInput = document.getElementById('profNameInput');
     var passInput = document.getElementById('profPassInput');
+    var deptInput = document.getElementById('profDeptInput');
+    var phoneInput = document.getElementById('profPhoneInput');
 
     var name = nameInput ? nameInput.value.trim() : '';
     var pass = passInput ? passInput.value.trim() : '';
+    var dept = deptInput ? deptInput.value.trim() : 'ຂະແໜງບໍລິການອອນລາຍ';
+    var phone = phoneInput ? phoneInput.value.trim() : '';
 
     if (!name) { 
         showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ເຕັມ', 'error'); 
@@ -240,25 +261,42 @@ async function handleUpdateProfile() {
             type: 'PASSWORD_CHANGE',
             user: window.currentUser.user,
             fullName: name,
-            details: `ພະນັກງານປ່ຽນລະຫັດຜ່ານໃໝ່ເປັນ: "${pass}"`,
+            details: `ພະນັກງານປ່ຽນລະຫັດຜ່ານໃໝ່`,
             status: 'UPDATED',
             timestamp: new Date().toLocaleString('lo-LA')
         });
         window.currentUser.pass = pass;
     }
 
+    // ອັບເດດ State ໃນ Client
     window.currentUser.fullName = name;
-    var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
+    window.currentUser.dept = dept;
+    window.currentUser.department = dept;
+    window.currentUser.phone = phone;
+
+    var idx = (window.users || []).findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
     if (idx !== -1) {
-        window.users[idx] = { ...window.users[idx], fullName: name, pass: pass || window.users[idx].pass };
+        window.users[idx] = { 
+            ...window.users[idx], 
+            fullName: name, 
+            dept: dept,
+            department: dept,
+            phone: phone,
+            pass: pass || window.users[idx].pass 
+        };
     }
 
     saveAll();
     localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser));
 
+    // ⭐ SYNC ລົງ SUPABASE TABLE "profiles"
     if (window.supabaseClient) {
         try {
-            var updatePayload = { full_name: name };
+            var updatePayload = { 
+                full_name: name,
+                dept: dept,
+                phone: phone
+            };
             if (pass) {
                 updatePayload.pass = pass;
                 updatePayload.password = pass;
@@ -272,7 +310,7 @@ async function handleUpdateProfile() {
             if (error) {
                 console.error("❌ Supabase Profile Update Error:", error);
             } else {
-                console.log("☁️ [Supabase]: Profile & Password updated in cloud!");
+                console.log("☁️ [Supabase]: Profile (Name, Dept, Phone) updated in cloud!");
             }
         } catch (e) {
             console.error("Supabase Profile Exception:", e);
@@ -280,7 +318,8 @@ async function handleUpdateProfile() {
     }
 
     if (typeof window.checkAuth === 'function') window.checkAuth();
-    showToast('ສຳເລັດ', 'ອັບເດດໂປຣໄຟລ໌ ແລະ ບັນທຶກລະຫັດໃໝ່ລົງ Supabase ແລ້ວ!', 'success');
+    if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+    showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນສ່ວນຕົວ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
 }
 
 // 3. ຈອງມື້ພັກປະຈຳປີ
@@ -293,7 +332,7 @@ async function handleBookAnnualLeave() {
 
     var diffDays = Math.ceil(Math.abs(new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1;
     window.currentUser.usedAnnual = (window.currentUser.usedAnnual || 0) + diffDays;
-    var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
+    var idx = (window.users || []).findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
     if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
     var newBooking = {
@@ -354,7 +393,7 @@ function promptCancelAnnualLeave(bookingId) {
         `ທ່ານຕ້ອງການຍົກເລີກການຈອງມື້ພັກວັນທີ ${booking.startDate} ຫາ ${booking.endDate} (${booking.days} ມື້) ແທ້ບໍ່? ລະບົບຈະຄືນໂຄຕ້າມື້ພັກໃຫ້ທ່ານທັນທີ.`,
         async () => {
             window.currentUser.usedAnnual = Math.max(0, (window.currentUser.usedAnnual || 0) - booking.days);
-            var idx = window.users.findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
+            var idx = (window.users || []).findIndex(u => u.user.toLowerCase() === window.currentUser.user.toLowerCase());
             if (idx !== -1) window.users[idx].usedAnnual = window.currentUser.usedAnnual;
 
             window.annualBookings = window.annualBookings.filter(b => b.id !== bookingId);
@@ -594,97 +633,6 @@ async function declineSwap(id) {
     showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
 }
 
-// ⭐ FAIRNESS SUMMARY MODAL (ແກ້ໄຂບັນຫາ dayNum Error ແລ້ວ)
-window.openFairnessSummaryModal = function() {
-    var groupSelect = document.getElementById('fairnessGroupFilterSelect');
-    if (groupSelect) {
-        groupSelect.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
-        (window.employeeGroups || []).forEach(grp => {
-            groupSelect.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)</option>`;
-        });
-    }
-    renderFairnessSummaryData();
-    var modal = document.getElementById('fairnessModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    }
-};
-
-window.closeFairnessSummaryModal = function() {
-    var modal = document.getElementById('fairnessModal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
-    }
-};
-
-function renderFairnessSummaryData() {
-    var sheet = getActiveSheet();
-    var tbody = document.getElementById('fairnessSummaryTableBody');
-    var filterId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    var subEl = document.getElementById('fairnessModalSub');
-    if (subEl) subEl.innerText = `ຕາຕະລາງ: ${sheet?.title || ''}`;
-
-    var targetMembers = null;
-    if (filterId !== 'ALL') {
-        var foundGrp = (window.employeeGroups || []).find(g => g.id === filterId);
-        if (foundGrp) targetMembers = foundGrp.members;
-    } else {
-        var activeWorkers = new Set();
-        Object.values(sheet?.data || {}).forEach(day => {
-            [...(day.shift1 || []), ...(day.shift2 || []), ...(day.shift3 || [])].forEach(n => {
-                if (n) activeWorkers.add(n);
-            });
-        });
-        if (activeWorkers.size > 0 && activeWorkers.size < 20) {
-            targetMembers = Array.from(activeWorkers);
-        }
-    }
-
-    var staffStats = {};
-    window.users.filter(u => u.role !== 'SUPER_ADMIN' && (!targetMembers || targetMembers.includes(u.nameLao))).forEach(u => {
-        staffStats[u.nameLao] = { nameLao: u.nameLao, isLeader: u.isLeader, s1: 0, s2: 0, s3: 0, offDays: 0, total: 0 };
-    });
-
-    var [year, month] = (sheet?.monthKey || '2026-09').split('-').map(Number);
-    var daysCount = new Date(year, month, 0).getDate();
-
-    for (var d = 1; d <= daysCount; d++) {
-        var dNum = d < 10 ? '0' + d : '' + d;
-        var mNum = month < 10 ? '0' + month : '' + month;
-        var dStr = `${year}-${mNum}-${dNum}`; //  ແກ້ໄຂເປັນ dNum ແລ້ວ
-        var dayInfo = sheet?.data?.[dStr] || { shift1: [], shift2: [], shift3: [] };
-
-        Object.keys(staffStats).forEach(name => {
-            if (dayInfo.shift1?.includes(name)) { staffStats[name].s1++; staffStats[name].total++; }
-            else if (dayInfo.shift2?.includes(name)) { staffStats[name].s2++; staffStats[name].total++; }
-            else if (dayInfo.shift3?.includes(name)) { staffStats[name].s3++; staffStats[name].total++; }
-            else { staffStats[name].offDays++; }
-        });
-    }
-
-    var index = 1;
-    Object.values(staffStats).forEach(stat => {
-        tbody.innerHTML += `
-            <tr class="hover:bg-slate-50 font-lao">
-                <td class="p-3 font-semibold text-slate-400">${index++}</td>
-                <td class="p-3 font-bold ${stat.isLeader ? 'text-brand-red' : 'text-slate-800'}">
-                    ${stat.nameLao} ${stat.isLeader ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded ml-1 border border-red-200">ຫົວໜ້າ</span>' : ''}
-                </td>
-                <td class="p-3 text-center font-semibold text-slate-700">${stat.s1}</td>
-                <td class="p-3 text-center font-semibold text-purple-700">${stat.s2}</td>
-                <td class="p-3 text-center font-bold text-brand-red bg-red-50/40">${stat.s3}</td>
-                <td class="p-3 text-center font-bold text-emerald-700 bg-emerald-50/40">${stat.offDays} ວັນ</td>
-                <td class="p-3 text-right font-bold text-slate-800">${stat.total} ກະ</td>
-            </tr>
-        `;
-    });
-}
-
 // ຜູກທຸກ Function ເຂົ້າ window
 window.renderAdminAllStaffReport = renderAdminAllStaffReport;
 window.renderUserCurrentWeekWorkspace = renderUserCurrentWeekWorkspace;
@@ -698,4 +646,3 @@ window.promptCancelSwap = promptCancelSwap;
 window.renderSwapHistory = renderSwapHistory;
 window.acceptSwap = acceptSwap;
 window.declineSwap = declineSwap;
-window.renderFairnessSummaryData = renderFairnessSummaryData;
