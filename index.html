@@ -464,26 +464,29 @@
 
                     <!-- Security Audit Logs Table -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-                        <div class="flex justify-between items-center mb-3 border-b pb-2">
-                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                                <span class="material-symbols-outlined text-brand-red text-base">security</span>
-                                ປະຫວັດຄວາມປອດໄພ, ການເຂົ້າລະຫັດ & ການປ່ຽນລະຫັດຜ່ານ (Security & Auth Audit Logs)
-                            </h4>
-                            <span class="text-xs text-slate-400">ບັນທຶກຄວາມພະຍາຍາມເຂົ້າລະຫັດ ແລະ ປ່ຽນລະຫັດຜ່ານ</span>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-3 gap-2">
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-brand-red text-base">monitoring</span>
+                                    ສະຖິຕິການປັບປ່ຽນກະ & ຕິດຕາມການປະຈຳການເກີນມາດຕະຖານ (Shift Swap & Over-Duty Monitor)
+                                </h4>
+                                <p class="text-xs text-slate-500 mt-0.5">ຕິດຕາມຜູ້ທີ່ຂໍປ່ຽນກະເລື້ອຍໆ, ຜູ້ທີ່ຮັບກະ 3 ຫຼາຍເກີນໄປ, ມາເສົາ-ອາທິດຫຼາຍ ຫຼື ເຮັດວຽກເກີນ 25 ກະ</p>
+                            </div>
+                            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl">ມາດຕະຖານ: 24 ~ 25 ກະ/ເດືອນ</span>
                         </div>
-                        <div class="overflow-x-auto max-h-72">
+                        <div class="overflow-x-auto max-h-80">
                             <table class="w-full text-left text-xs">
                                 <thead class="bg-slate-50 text-slate-700 sticky top-0 border-b">
                                     <tr>
-                                        <th class="p-3">ປະເພດເຫດການ</th>
-                                        <th class="p-3">Username / ລະຫັດ</th>
-                                        <th class="p-3">ຊື່ພະນັກງານ</th>
-                                        <th class="p-3">ລາຍລະອຽດ / ລະຫັດທີ່ບັນທຶກ</th>
-                                        <th class="p-3 text-center">ສະຖານະ</th>
-                                        <th class="p-3 text-right">ເວລາບັນທຶກ</th>
+                                        <th class="p-3">ພະນັກງານ</th>
+                                        <th class="p-3 text-center">ຂໍປ່ຽນກະທັງໝົດ</th>
+                                        <th class="p-3 text-center text-purple-700 font-bold">ປ່ຽນມາກະ 3 (ກາງຄືນ)</th>
+                                        <th class="p-3 text-center text-blue-700 font-bold">ວຽກເສົາ-ອາທິດ</th>
+                                        <th class="p-3 text-center font-bold">ຍອດລວມວຽກປັດຈຸບັນ</th>
+                                        <th class="p-3 text-center">ການແຈ້ງເຕືອນຄວາມຜິດປົກກະຕິ</th>
                                     </tr>
                                 </thead>
-                                <tbody id="adminSecurityAuditTableBody" class="divide-y divide-slate-100"></tbody>
+                                <tbody id="adminAnomalyTableBody" class="divide-y divide-slate-100"></tbody>
                             </table>
                         </div>
                     </div>
