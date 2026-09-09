@@ -928,3 +928,238 @@ async function saveDraft() {
     sheet.status = 'DRAFT'; 
     await saveAll(); 
     await syncScheduleToSupabase(sheet);
+    renderSheetDropdown(); 
+    renderScheduleTable(); 
+    showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ແລະ Sync ລົງ Supabase ແລ້ວ', 'success'); 
+}
+
+// ⭐ 8. ບົດສະຫຼຸບຄວາມເທົ່າທຽມ (FAIRNESS SUMMARY)
+function openFairnessSummaryModal() {
+    var sheet = getActiveSheet();
+    var subEl = document.getElementById('fairnessModalSub');
+    if (subEl && sheet) {
+        subEl.innerText = `ກວດສອບຄວາມສົມດຸນຂອງ ${sheet.title || sheet.data?._meta?.title || ''}`;
+    }
+
+    var select = document.getElementById('fairnessGroupFilterSelect');
+    if (select) {
+        select.innerHTML = `<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>`;
+        (window.employeeGroups || []).forEach(grp => {
+            var isG7 = (grp.members || []).length === 7;
+            var tag = isG7 ? ' 🔹 [ກຸ່ມ 7 ຄົນ - Rolling 5/2]' : '';
+            select.innerHTML += `<option value="${grp.id}">${grp.name} (${grp.members.length} ຄົນ)${tag}</option>`;
+        });
+    }
+
+    renderFairnessSummaryData();
+    document.getElementById('fairnessModal')?.classList.remove('hidden');
+}
+
+function closeFairnessSummaryModal() {
+    document.getElementById('fairnessModal')?.classList.add('hidden');
+}
+
+function renderFairnessSummaryData() {
+    var sheet = getActiveSheet();
+    var schedData = sheet?.data || {};
+    var dates = Object.keys(schedData).filter(k => !k.startsWith('_'));
+    var filterGroupId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
+
+    var targetUsers = (window.users || []).filter(u => u.role !== 'SUPER_ADMIN');
+
+    if (filterGroupId !== 'ALL') {
+        var grp = (window.employeeGroups || []).find(g => g.id === filterGroupId);
+        if (grp && grp.members) {
+            targetUsers = targetUsers.filter(u => grp.members.includes(u.nameLao));
+        }
+    }
+
+    var tbody = document.getElementById('fairnessSummaryTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (targetUsers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">ບໍ່ພົບຂໍ້ມູນພະນັກງານ</td></tr>`;
+        return;
+    }
+
+    targetUsers.forEach((u, idx) => {
+        var s1 = 0, s2 = 0, s3 = 0, totalOff = 0;
+
+        dates.forEach(d => {
+            var day = schedData[d] || {};
+            var onS1 = (day.shift1 || []).includes(u.nameLao);
+            var onS2 = (day.shift2 || []).includes(u.nameLao);
+            var onS3 = (day.shift3 || []).includes(u.nameLao);
+
+            if (onS1) s1++;
+            if (onS2) s2++;
+            if (onS3) s3++;
+
+            if (!onS1 && !onS2 && !onS3) {
+                totalOff++;
+            }
+        });
+
+        var total = s1 + s2 + s3;
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-slate-800">
+                <td class="p-3 text-slate-400 font-mono">${idx + 1}</td>
+                <td class="p-3 font-bold flex items-center gap-1.5">
+                    ${u.nameLao} 
+                    <span class="text-[10px] font-normal text-slate-400">(${u.fullName})</span>
+                    ${u.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.5 rounded font-bold">ຫົວໜ້າ</span>' : ''}
+                </td>
+                <td class="p-3 text-center font-semibold text-slate-700">${s1}</td>
+                <td class="p-3 text-center font-semibold text-purple-700">${s2}</td>
+                <td class="p-3 text-center font-bold text-brand-red">${s3}</td>
+                <td class="p-3 text-center font-bold text-emerald-600">${totalOff} ວັນ</td>
+                <td class="p-3 text-right font-black text-slate-900">${total} ກະ</td>
+            </tr>
+        `;
+    });
+}
+
+// ⭐ 9. EXPORT A4 PDF ທີ່ FIT-TO-PAGE 100% ບໍ່ຕັດຂອບຊ້າຍ
+function exportToA4PDF() {
+    var sheet = getActiveSheet();
+    var element = document.getElementById('pdfExportArea');
+    if (!element) return;
+
+    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4...', 'info');
+
+    var parent = element.parentElement;
+    var prevScrollTop = parent ? parent.scrollTop : 0;
+    var prevScrollLeft = parent ? parent.scrollLeft : 0;
+    if (parent) { parent.scrollTop = 0; parent.scrollLeft = 0; }
+
+    var originalClass = element.className;
+    var originalStyle = element.getAttribute('style') || '';
+
+    element.classList.remove('mx-auto');
+    element.style.margin = '0 !important';
+    element.style.marginLeft = '0 !important';
+    element.style.boxShadow = 'none';
+
+    var noPrintEls = element.querySelectorAll('.no-print');
+    noPrintEls.forEach(el => el.style.display = 'none');
+
+    var opt = {
+        margin:       [4, 4, 4, 4],
+        filename:     `${sheet?.title || sheet?.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        if (parent) { parent.scrollTop = prevScrollTop; parent.scrollLeft = prevScrollLeft; }
+        noPrintEls.forEach(el => el.style.display = '');
+        showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດ!', 'success');
+    }).catch(err => {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        noPrintEls.forEach(el => el.style.display = '');
+        showToast('ຜິດພາດ', 'Export ບໍ່ສຳເລັດ', 'error');
+    });
+}
+
+function openHolidayModal() { document.getElementById('holidayModal')?.classList.remove('hidden'); }
+
+async function handleSaveHolidayRange() {
+    var title = document.getElementById('holidayTitleInput')?.value.trim();
+    var start = document.getElementById('holidayStartDateInput')?.value;
+    var end = document.getElementById('holidayEndDateInput')?.value;
+    if (!title || !start || !end) return;
+    
+    var newHol = { title: title, start_date: start, end_date: end };
+    if (!window.specialHolidayRanges) window.specialHolidayRanges = [];
+    window.specialHolidayRanges.push(newHol);
+    await saveAll();
+
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient.from('special_holidays').insert([newHol]);
+            console.log("☁️ [Supabase]: Inserted special holiday ->", newHol);
+        } catch (err) {
+            console.error("❌ [Supabase Holiday Error]:", err);
+        }
+    }
+
+    document.getElementById('holidayModal')?.classList.add('hidden');
+    renderScheduleTable();
+    showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດ ແລະ Sync ລົງ Supabase ແລ້ວ', 'success');
+}
+
+function openCellModal(date, shift, index, currentName) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.activeEditCell = { date, shift, index, currentName };
+    document.getElementById('cellModalSubtitle').innerText = `ວັນທີ: ${date} [${shift}]`;
+    renderCellStaffList('');
+    document.getElementById('cellSelectModal')?.classList.remove('hidden');
+}
+
+function closeCellModal() { document.getElementById('cellSelectModal')?.classList.add('hidden'); window.activeEditCell = null; }
+function renderCellStaffList(q) {
+    var container = document.getElementById('cellStaffListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    (window.users || []).filter(u => u.role !== 'SUPER_ADMIN' && (u.nameLao.includes(q) || u.fullName.includes(q))).forEach(u => {
+        container.innerHTML += `
+            <div onclick="selectStaffForCell('${u.nameLao}')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">
+                <span>${u.nameLao} (${u.fullName})</span>
+                ${u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : ''}
+            </div>
+        `;
+    });
+}
+function filterCellStaffList() { renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim()); }
+
+// ຜູກທຸກ Function ເຂົ້າ window ໃຫ້ກົດໄດ້ທຸກປຸ່ມ
+window.isDateInHolidayRange = isDateInHolidayRange;
+window.syncScheduleToSupabase = syncScheduleToSupabase;
+window.getMondayBasedWeekIndex = getMondayBasedWeekIndex;
+window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
+window.rebalanceNightShifts = rebalanceNightShifts;
+window.openEditPublishedScheduleGuide = openEditPublishedScheduleGuide;
+window.renderScheduleTable = renderScheduleTable;
+window.renderSheetDropdown = renderSheetDropdown;
+window.changeActiveSheet = changeActiveSheet;
+window.generateMonthDataZigzag = generateMonthDataZigzag;
+window.generate7PersonFlexZigzag = generate7PersonFlexZigzag;
+window.generate17PersonLeadersAndStaffZigzag = generate17PersonLeadersAndStaffZigzag;
+window.executeGroupRandomSchedule = executeGroupRandomSchedule;
+window.openRandomGroupSelectModal = openRandomGroupSelectModal;
+window.openBatchMonthModal = openBatchMonthModal;
+window.executeBatchMonthGenerate = executeBatchMonthGenerate;
+window.promptDeleteCurrentSheet = promptDeleteCurrentSheet;
+window.deleteAllDraftSheets = deleteAllDraftSheets;
+window.openFixedShiftModal = openFixedShiftModal;
+window.renderActiveFixedShiftsList = renderActiveFixedShiftsList;
+window.handleAddFixedShift = handleAddFixedShift;
+window.removeFixedShift = removeFixedShift;
+window.openNewSheetModal = openNewSheetModal;
+window.handleCreateNewSheet = handleCreateNewSheet;
+window.openEditSheetInfoModal = openEditSheetInfoModal;
+window.handleSaveSheetInfo = handleSaveSheetInfo;
+window.promptResetSchedule = promptResetSchedule;
+window.saveDraft = saveDraft;
+window.publishSchedule = publishSchedule;
+window.exportToA4PDF = exportToA4PDF;
+window.openHolidayModal = openHolidayModal;
+window.handleSaveHolidayRange = handleSaveHolidayRange;
+window.openCellModal = openCellModal;
+window.closeCellModal = closeCellModal;
+window.filterCellStaffList = filterCellStaffList;
+window.selectStaffForCell = selectStaffForCell;
+window.clearCurrentCell = clearCurrentCell;
+window.openEditPublishedRemarkModal = openEditPublishedRemarkModal;
+window.closeEditPublishedRemarkModal = closeEditPublishedRemarkModal;
+window.confirmApplyPublishedCellUpdate = confirmApplyPublishedCellUpdate;
+window.openFairnessSummaryModal = openFairnessSummaryModal;
+window.closeFairnessSummaryModal = closeFairnessSummaryModal;
+window.renderFairnessSummaryData = renderFairnessSummaryData;
