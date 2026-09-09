@@ -73,28 +73,18 @@ function getGlobalWeekendDayIndex(dateObj) {
 }
 
 // 2. ປຸ່ມ REBALANCE ອັດສະລິຍະ (ປັບທັງກະ 3 ແລະ ປັບຄົນພັກຫຼາຍມາແທນຄົນພັກໜ້ອຍ ໃຫ້ເທົ່າທຽມກັນ 100%)
+// ⭐ REBALANCE ກະ 3 ແບບປ້ອງກັນຫົວໜ້າຊ້ອນກັນ (ລັອກຫົວໜ້າ ກະ1=2, ກະ2=1, ກະ3=1 ສະເໝີ)
 async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
     var schedData = sheet?.data || {};
     var dates = Object.keys(schedData);
-    if (dates.length === 0) {
-        showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງຍັງວ່າງເປົ່າ ບໍ່ສາມາດ Rebalance ໄດ້', 'error');
-        return;
-    }
+    if (dates.length === 0) return;
 
-    var activeWorkers = new Set();
-    dates.forEach(d => {
-        [...(schedData[d].shift1 || []), ...(schedData[d].shift2 || []), ...(schedData[d].shift3 || [])].forEach(n => {
-            if (n && !window.fixedShiftsConfig?.some(f => f.nameLao === n)) {
-                activeWorkers.add(n);
-            }
-        });
-    });
+    var leaderNames = (window.users || []).filter(u => u.isLeader).map(u => u.nameLao);
+    var staffList = (window.users || []).filter(u => u.role !== 'SUPER_ADMIN' && !u.isLeader).map(u => u.nameLao);
 
-    var staffList = Array.from(activeWorkers);
-    if (staffList.length === 0) return;
-
-    function countS3() {
+    // Helper ນັບກະ 3 ສະເພາະພະນັກງານ
+    function countStaffS3() {
         var counts = {};
         staffList.forEach(n => counts[n] = 0);
         dates.forEach(d => {
@@ -105,17 +95,68 @@ async function rebalanceNightShifts() {
         return counts;
     }
 
-    function countTotalDuties() {
-        var counts = {};
-        staffList.forEach(n => counts[n] = 0);
-        dates.forEach(d => {
-            [...(schedData[d].shift1 || []), ...(schedData[d].shift2 || []), ...(schedData[d].shift3 || [])].forEach(n => {
-                if (counts[n] !== undefined) counts[n]++;
-            });
-        });
-        return counts;
+    // 1. ກວດສອບ ແລະ ຈັດຫົວໜ້າວັນທຳມະດາໃຫ້ຖືກຕ້ອງກ່ອນ (ກະ1=2, ກະ2=1, ກະ3=1)
+    dates.forEach(d => {
+        var day = schedData[d];
+        if (!day.isWeekend && !isDateInHolidayRange(d)) {
+            var lInS3 = (day.shift3 || []).filter(n => leaderNames.includes(n));
+            var lInS2 = (day.shift2 || []).filter(n => leaderNames.includes(n));
+
+            // ຖ້າກະ 3 ມີຫົວໜ້າ 2 ຄົນ ແລະ ກະ 2 ບໍ່ມີຫົວໜ້າ
+            if (lInS3.length > 1 && lInS2.length === 0) {
+                var extraLeader = lInS3[1];
+                var s2Staff = (day.shift2 || []).find(n => !leaderNames.includes(n));
+
+                if (extraLeader && s2Staff) {
+                    var idx3 = day.shift3.indexOf(extraLeader);
+                    var idx2 = day.shift2.indexOf(s2Staff);
+                    day.shift3[idx3] = s2Staff;
+                    day.shift2[idx2] = extraLeader;
+                }
+            }
+        }
+    });
+
+    // 2. Rebalance ກະ 3 ສະເພາະພະນັກງານທົ່ວໄປ (ບໍ່ແຕະຕ້ອງຫົວໜ້າ)
+    for (var iter = 0; iter < 300; iter++) {
+        var s3Counts = countStaffS3();
+        var maxStaff = staffList.reduce((a, b) => s3Counts[a] > s3Counts[b] ? a : b);
+        var minStaff = staffList.reduce((a, b) => s3Counts[a] < s3Counts[b] ? a : b);
+
+        if (s3Counts[maxStaff] - s3Counts[minStaff] <= 1) break;
+
+        var swapped = false;
+        for (var i = 0; i < dates.length; i++) {
+            var d = dates[i];
+            var day = schedData[d];
+
+            if ((day.shift3 || []).includes(maxStaff) && !(day.shift3 || []).includes(minStaff)) {
+                if ((day.shift2 || []).includes(minStaff)) {
+                    var idx3 = day.shift3.indexOf(maxStaff);
+                    var idx2 = day.shift2.indexOf(minStaff);
+                    day.shift3[idx3] = minStaff;
+                    day.shift2[idx2] = maxStaff;
+                    swapped = true;
+                    break;
+                } else if ((day.shift1 || []).includes(minStaff)) {
+                    var idx3 = day.shift3.indexOf(maxStaff);
+                    var idx1 = day.shift1.indexOf(minStaff);
+                    day.shift3[idx3] = minStaff;
+                    day.shift1[idx1] = maxStaff;
+                    swapped = true;
+                    break;
+                }
+            }
+        }
+        if (!swapped) break;
     }
 
+    await saveAll();
+    await syncScheduleToSupabase(sheet);
+    renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ປັບໂຄງສ້າງຫົວໜ້າກະ ແລະ ປັບສົມດຸນກະ 3 ຮຽບຮ້ອຍແລ້ວ!', 'success');
+}
     // ປັບສົມດຸນກະ 3
     var maxIterS3 = 300, iterS3 = 0;
     while (iterS3 < maxIterS3) {
