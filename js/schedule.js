@@ -12,7 +12,7 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// 0.1 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ພ້ອມ SAVE ໝາຍເຫດແບບປອດໄພ 100%
+// ⭐ FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກົງຖັນ 100%
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return;
     try {
@@ -22,32 +22,27 @@ async function syncScheduleToSupabase(sheet) {
             notes: sheet.notes || ''
         };
 
+        // ສົ່ງທັງ data ແລະ schedule_data ເພື່ອໃຫ້ກົງກັບຖັນ Supabase 100%
         var payload = {
-            id: sheet.id,
+            id: String(sheet.id),
             month_key: sheet.monthKey,
-            title: sheet.title,
+            title: sheet.title || '',
             notes: sheet.notes || '',
             status: sheet.status || 'DRAFT',
-            data: sheet.data
+            data: sheet.data,
+            schedule_data: sheet.data
         };
 
         var { error } = await window.supabaseClient.from('schedules').upsert(payload, { onConflict: 'id' });
         if (error) {
-            if (error.message && error.message.includes('notes')) {
-                delete payload.notes;
-                await window.supabaseClient.from('schedules').upsert(payload, { onConflict: 'id' });
-                console.log("☁️ [Supabase]: Saved notes safely inside data._meta!");
-            } else {
-                console.error("❌ [Supabase Sync Error]:", error);
-            }
+            console.error("❌ [Supabase Sync Error]:", error);
         } else {
-            console.log("☁️ [Supabase Cloud]: Sync schedule success ->", sheet.id);
+            console.log("☁️ [Supabase Cloud]: ບັນທຶກລົງ Cloud ສຳເລັດແລ້ວ ->", sheet.id);
         }
     } catch (err) {
         console.error("❌ [Supabase Exception]:", err);
     }
 }
-
 // 1. ສູດຄຳນວນອາທິດຕັດຮອບທຸກໆ "ວັນຈັນ" ແບບຕໍ່ເນື່ອງຂ້າມເດືອນ
 function getMondayBasedWeekIndex(dateObj) {
     var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026 ເປັນຈຸດອ້າງອີງ
