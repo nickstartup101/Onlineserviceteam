@@ -12,7 +12,7 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// ⭐ FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກົງຖັນ 100%
+// ⭐ FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ພ້ອມກວດສອບຄວາມສຳເລັດ 100%
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return;
     try {
@@ -22,6 +22,28 @@ async function syncScheduleToSupabase(sheet) {
             notes: sheet.notes || ''
         };
 
+        var payload = {
+            id: String(sheet.id),
+            month_key: sheet.monthKey,
+            title: sheet.title || '',
+            notes: sheet.notes || '',
+            status: sheet.status || 'DRAFT',
+            data: sheet.data,
+            schedule_data: sheet.data
+        };
+
+        var { error } = await window.supabaseClient.from('schedules').upsert(payload, { onConflict: 'id' });
+        
+        if (error) {
+            console.error("❌ [Supabase Sync Error]:", error.message);
+            showToast('ແຈ້ງເຕືອນ Cloud', 'ບໍ່ສາມາດບັນທຶກລົງ Supabase ໄດ້: ' + error.message, 'error');
+        } else {
+            console.log("☁️ [Supabase Cloud]: ບັນທຶກລົງ Supabase ສຳເລັດແລ້ວ! ->", sheet.id);
+        }
+    } catch (err) {
+        console.error("❌ [Supabase Exception]:", err);
+    }
+}
         // ສົ່ງທັງ data ແລະ schedule_data ເພື່ອໃຫ້ກົງກັບຖັນ Supabase 100%
         var payload = {
             id: String(sheet.id),
