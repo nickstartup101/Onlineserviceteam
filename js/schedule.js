@@ -14,7 +14,7 @@ function isDateInHolidayRange(dStr) {
 }
 window.isDateInHolidayRange = isDateInHolidayRange;
 
-// 0.1 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ schedule_sheets
+// 0.1 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ schedule_sheets ໃນ SUPABASE 100%
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return;
     try {
@@ -52,9 +52,9 @@ async function syncScheduleToSupabase(sheet) {
 }
 window.syncScheduleToSupabase = syncScheduleToSupabase;
 
-// 1. ສູດຄຳນວນອາທິດ ຈັນ-ສຸກ ແບບຕໍ່ເນື່ອງ (Monday-Based Week)
+// 1. ສູດຄຳນວນອາທິດ ຈັນ-ສຸກ ແບບຕໍ່ເນື່ອງ (Monday-Based Week Index)
 function getMondayBasedWeekIndex(dateObj) {
-    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026
+    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026 ເປັນຈຸດອ້າງອີງ
     var current = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
     var diffDays = Math.floor((current - epoch) / (1000 * 60 * 60 * 24));
     return Math.floor(diffDays / 7);
@@ -77,7 +77,7 @@ function getGlobalWeekendDayIndex(dateObj) {
 }
 window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
 
-// 2. REBALANCE ກະ 3 ແບບປົກປ້ອງ PATTERN (ແກ້ໄຂ syntax error ວົງເລັບເກີນແລ້ວ)
+// 2. REBALANCE ກະ 3 ແບບປົກປ້ອງ PATTERN (ປັບສະເພາະເສົາ-ອາທິດ ບໍ່ກວນຈັນ-ສຸກ)
 async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
     var schedData = sheet?.data || {};
@@ -92,6 +92,7 @@ async function rebalanceNightShifts() {
     if (leaderNames.length === 0) leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
     var staffList = allUsers.filter(function(u) { return u && u.role !== 'SUPER_ADMIN' && !leaderNames.includes(u.nameLao); }).map(function(u) { return u.nameLao; });
 
+    // ກວດສອບຫົວໜ້າວັນທຳມະດາ: ກະ 3 ຕ້ອງມີ 1 ຫົວໜ້າ, ກະ 2 ຕ້ອງມີ 1 ຫົວໜ້າ
     var leaderFixed = 0;
     dates.forEach(function(d) {
         var day = schedData[d];
@@ -115,6 +116,7 @@ async function rebalanceNightShifts() {
         }
     });
 
+    // ປັບສະເພາະເສົາ-ອາທິດ ເພື່ອຮັກສາ Pattern ຈັນ-ສຸກ
     var weekendDates = dates.filter(function(d) { return schedData[d]?.isWeekend || isDateInHolidayRange(d); });
     function countWeekendS3() {
         var counts = {};
@@ -333,11 +335,13 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
 
+            // ຫົວໜ້າ: 1A ➔ 3 ➔ 2 ➔ 1B ➔ 1A
             var l_1A = leaderNames[(W + 0) % 4];
             var l_1B = leaderNames[(W + 1) % 4];
             var l_S2 = leaderNames[(W + 2) % 4];
             var l_S3 = leaderNames[(W + 3) % 4];
 
+            // ພະນັກງານ 13 ທ່ານ: 3 ➔ 2 ➔ 1 ➔ 3
             var staffOffset = (13000 - W * 3) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
@@ -541,7 +545,7 @@ async function publishSchedule() {
 }
 window.publishSchedule = publishSchedule;
 
-// 6. RENDER ຕາຕະລາງ (ປ້ອງກັນ Crash)
+// ⭐ 6. RENDER ຕາຕະລາງປະຈຳການ (ສະແດງຫົວຂໍ້ໃຫຍ່, ຫົວຂໍ້ຖັນ ແລະ ຫົວຂໍ້ວັນພັກ ຄົບຖ້ວນ 100%)
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -574,13 +578,16 @@ function renderScheduleTable() {
     var currentTitle = sheet.title || sheet.data?._meta?.title || `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${month < 10 ? '0' + month : month}/${year}`;
     var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
+    // A. ຫົວຂໍ້ໃຫຍ່ຂອງຕາຕະລາງ (Title Header)
     var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
         titleEl.innerHTML = `
-            <span>${currentTitle}</span>
-            <span class="no-print ml-2 text-xs font-semibold ${isOfficial ? 'text-emerald-700' : 'text-amber-700'}">
-                (${isOfficial ? 'ສະບັບທາງການ' : 'ສະບັບຮ່າງລ່ວງໜ້າ'})
-            </span>
+            <div class="text-center font-bold text-sm py-1">
+                <span>${currentTitle}</span>
+                <span class="no-print ml-2 text-xs font-semibold ${isOfficial ? 'text-emerald-700' : 'text-amber-700'}">
+                    (${isOfficial ? 'ສະບັບທາງການ' : 'ສະບັບຮ່າງລ່ວງໜ້າ'})
+                </span>
+            </div>
         `;
     }
     
@@ -594,11 +601,11 @@ function renderScheduleTable() {
     if (banner && badge) {
         var g7BadgeInBanner = isG7 ? `<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🔹 ກຸ່ມ 7 ຄົນ (Rolling 5/2)</span>` : '';
         if (isOfficial) {
-            banner.className = "no-print px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs";
+            banner.className = "no-print px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs font-lao";
             badge.className = "font-bold text-emerald-800 flex items-center gap-2";
             badge.innerHTML = `<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official) ${g7BadgeInBanner}`;
         } else {
-            banner.className = "no-print px-6 py-2 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-xs";
+            banner.className = "no-print px-6 py-2 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-xs font-lao";
             badge.className = "font-bold text-amber-900 flex items-center gap-2";
             badge.innerHTML = `<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ ${g7BadgeInBanner}`;
         }
@@ -629,42 +636,50 @@ function renderScheduleTable() {
             var isWeekendOrHol = (dayOfWeek === 'SAT' || dayOfWeek === 'SUN' || isHol || dayData.isWeekend);
 
             var currentHeaderType = isWeekendOrHol ? 'HOLIDAY' : 'REGULAR';
+            
+            // ⭐ ເງື່ອນໄຂສະແດງຫົວຂໍ້ຖັນ: ວັນທີ 1, ວັນເສົາ, ວັນຈັນ ຫຼື ເມື່ອມີການປ່ຽນປະເພດວັນ
             var shouldShowHeader = (i === 1) || 
                                     (dayOfWeek === 'SAT') || 
                                     (dayOfWeek === 'MON' && !isWeekendOrHol) || 
                                     (currentHeaderType !== prevHeaderType);
 
+            // B. ແຖວຫົວຂໍ້ຖັນ (Column Headers)
             if (shouldShowHeader) {
                 if (isWeekendOrHol) {
+                    // ຫົວຂໍ້ວັນພັກ (ລວມ 2 ຊ່ອງ Colspan 2 ແບບໃນຮູບ)
                     tbody.innerHTML += `
-                        <tr class="bg-red-50/80 font-bold border-t-2 border-b border-black text-brand-red">
-                            <td colspan="2" class="p-1 text-center font-bold text-xs">${isHol ? 'ວັນພັກພິເສດ' : 'ວັນພັກ'}</td>
-                            <td class="p-1 text-center font-bold text-xs">08:00 - 13:30</td>
-                            <td class="p-1 text-center font-bold text-xs">13:30 - 19:00</td>
-                            <td class="p-1 text-center font-bold text-xs">19:00 - 08:00</td>
+                        <tr class="bg-red-50/40 border-t-2 border-b border-black text-brand-red text-center text-xs">
+                            <td colspan="2" class="p-1 text-center font-medium border-r border-black">${isHol ? 'ວັນພັກພິເສດ' : 'ວັນພັກ'}</td>
+                            <td class="p-1 text-center font-medium border-r border-black" style="width: 33%;">08:00 - 13:30</td>
+                            <td class="p-1 text-center font-medium border-r border-black" style="width: 33%;">13:30 - 19:00</td>
+                            <td class="p-1 text-center font-medium" style="width: 25%;">19:00 - 08:00</td>
                         </tr>
                     `;
                 } else {
+                    // ຫົວຂໍ້ວັນຈັນ-ສຸກ ປົກກະຕິ
                     tbody.innerHTML += `
-                        <tr class="bg-slate-100 font-bold border-t-2 border-b border-black text-slate-800">
-                            <th style="width: 75px;" class="p-1 font-bold">ວັນທີ</th>
-                            <th style="width: 48px;" class="p-1 font-bold">ວັນ</th>
-                            <th style="width: 33%;" class="p-1 font-bold">08:00 - 16:00</th>
-                            <th style="width: 33%;" class="p-1 font-bold">12:00 - 20:00</th>
-                            <th style="width: 25%;" class="p-1 font-bold">20:00 - 08:00</th>
+                        <tr class="bg-slate-50 border-t-2 border-b border-black text-slate-800 text-center text-xs">
+                            <th style="width: 75px;" class="p-1 text-center font-medium border-r border-black">ວັນທີ</th>
+                            <th style="width: 50px;" class="p-1 text-center font-medium border-r border-black">ວັນ</th>
+                            <th style="width: 33%;" class="p-1 text-center font-medium border-r border-black">08:00 - 16:00</th>
+                            <th style="width: 33%;" class="p-1 text-center font-medium border-r border-black">12:00 - 20:00</th>
+                            <th style="width: 25%;" class="p-1 text-center font-medium">20:00 - 08:00</th>
                         </tr>
                     `;
                 }
             }
             prevHeaderType = currentHeaderType;
 
+            // C. ແຖວຂໍ້ມູນປະຈຳວັນ (ຕົວໜັງສືປົກກະຕິ font-normal ບໍ່ໜາ)
+            var dayColor = isWeekendOrHol ? 'text-brand-red' : 'text-slate-800';
+
             tbody.innerHTML += `
-                <tr class="${isWeekendOrHol ? 'bg-slate-50' : 'bg-white'}">
-                    <td class="font-bold whitespace-nowrap">${i}/${mNum}/${year}</td>
-                    <td class="font-bold ${isWeekendOrHol ? 'text-brand-red' : ''}">${dayOfWeek}</td>
-                    <td class="p-0">${renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift1 || []).length / 2)), isAdmin, sheet.id)}</td>
-                    <td class="p-0">${renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift2 || []).length / 2)), isAdmin, sheet.id)}</td>
-                    <td class="p-0">${renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(2, Math.ceil((dayData.shift3 || []).length / 2)), isAdmin, sheet.id)}</td>
+                <tr class="bg-white border-b border-black text-center text-xs">
+                    <td class="p-1 text-center border-r border-black whitespace-nowrap text-slate-800 font-normal">${i}/${mNum}/${year}</td>
+                    <td class="p-1 text-center border-r border-black ${dayColor} font-normal">${dayOfWeek}</td>
+                    <td class="p-0 border-r border-black align-middle">${renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift1 || []).length / 2)), isAdmin, sheet.id)}</td>
+                    <td class="p-0 border-r border-black align-middle">${renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(3, Math.ceil((dayData.shift2 || []).length / 2)), isAdmin, sheet.id)}</td>
+                    <td class="p-0 align-middle">${renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], isWeekendOrHol ? 1 : 2, isWeekendOrHol ? 3 : Math.max(2, Math.ceil((dayData.shift3 || []).length / 2)), isAdmin, sheet.id)}</td>
                 </tr>
             `;
         }
@@ -674,14 +689,16 @@ function renderScheduleTable() {
 }
 window.renderScheduleTable = renderScheduleTable;
 
-// 7. ຊ່ອງຕາຕະລາງ (ແກ້ໄຂ Error ແລະ ປ້ອງກັນ Crash)
+// ⭐ 7. RENDER ຊ່ອງພະນັກງານ (ຕົວໜັງສືປົກກະຕິ font-normal ບໍ່ໜາ, ຈັດກາງພໍດີ)
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
-    cols = Math.max(cols, 2); rows = Math.max(rows, 1);
-    var html = `<div class="grid w-full h-full" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr)); height: 48px;">`;
+    cols = Math.max(cols, 2); 
+    rows = Math.max(rows, 1);
+    
+    var html = `<div class="grid w-full h-full text-center" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr)); min-height: 48px; height: 48px;">`;
     var total = rows * cols;
 
     for (var idx = 0; idx < total; idx++) {
-        var name = (list && list[idx]) ? String(list[idx]) : '';
+        var name = (list && list[idx]) ? String(list[idx]).trim() : '';
         var isLeader = false;
         if (name) {
             isLeader = (window.users || []).some(function(u) { return u && u.nameLao === name && u.isLeader; });
@@ -689,14 +706,18 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
 
         var clickHandler = (isAdmin && name) ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
         var isModified = (window.scheduleAuditLogs || []).some(function(l) { return l && l.sheetId === sheetId && l.date === date && l.shift === shift && l.newName === name; });
-        var highlightClass = isModified ? 'bg-amber-200/90 font-bold text-amber-950 border-2 border-amber-500 shadow-inner' : '';
+        var highlightClass = isModified ? 'bg-amber-100 font-medium text-amber-950' : '';
 
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
+        var cursorClass = (isAdmin && name) ? 'cursor-pointer hover:bg-slate-50 transition' : '';
+
+        // ຕົວໜັງສືປົກກະຕິ (font-normal ບໍ່ໜາ): ຫົວໜ້າ = ສີແດງ, ພະນັກງານ = ສີດຳ
+        var textColor = isLeader ? 'text-brand-red font-normal' : 'text-slate-800 font-normal';
 
         html += `
-            <div class="grid-cell-box ${borderR} ${borderB} ${isAdmin ? 'editable' : ''} ${highlightClass} ${isLeader ? 'text-brand-red font-semibold' : 'text-slate-800'}" ${clickHandler}>
-                ${name}
+            <div class="flex items-center justify-center text-center p-0.5 text-xs select-none ${borderR} ${borderB} ${cursorClass} ${highlightClass} ${textColor}" ${clickHandler}>
+                <span class="truncate px-0.5 font-normal">${name}</span>
             </div>
         `;
     }
@@ -1115,12 +1136,12 @@ function exportToA4PDF() {
         element.className = originalClass;
         element.setAttribute('style', originalStyle);
         if (parent) { parent.scrollTop = prevScrollTop; parent.scrollLeft = prevScrollLeft; }
-        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        noPrintEls.forEach(el => el.style.display = '');
         showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດ!', 'success');
     }).catch(function(err) {
         element.className = originalClass;
         element.setAttribute('style', originalStyle);
-        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        noPrintEls.forEach(el => el.style.display = '');
         showToast('ຜິດພາດ', 'Export ບໍ່ສຳເລັດ', 'error');
     });
 }
