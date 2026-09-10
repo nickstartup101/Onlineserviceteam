@@ -1,4 +1,4 @@
-// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (FULL MASTER) =================
+// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER) =================
 
 // 1. DEFAULT AVATAR SVG (ປ້ອງກັນຮູບແຕກ 100%)
 var DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
@@ -26,7 +26,7 @@ try {
     if (badUsers && !badUsers.trim().startsWith('[') && !badUsers.trim().startsWith('{')) localStorage.removeItem('ot_users');
 } catch (e) {}
 
-// 3. ລາຍຊື່ພະນັກງານເລີ່ມຕົ້ນ (ຄົບ 24 ທ່ານສຳຮອງ)
+// 3. ລາຍຊື່ພະນັກງານເລີ່ມຕົ້ນ (Default Users)
 var defaultSystemUsers = [
     { user: 'admin', pass: 'admin123', nameLao: 'Admin', fullName: 'Super Admin', role: 'SUPER_ADMIN', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 8877' },
     { user: 'BCEL0765', pass: 'bcel2026', nameLao: 'ແສງດາວ', fullName: 'SENGDAO DOUANGPRASEUTH', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5501 2345' },
@@ -223,18 +223,18 @@ window.toggleMobileDrawer = toggleMobileDrawer;
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         window.scheduleSheets = [{
-            id: 'sheet-2026-09',
+            id: 'sheet-1',
             monthKey: '2026-09',
             title: 'ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026',
             notes: window.defaultNotesTemplate,
             status: 'PUBLISHED',
             data: {}
         }];
-        window.activeSheetId = 'sheet-2026-09';
+        window.activeSheetId = 'sheet-1';
     }
 
     var sheet = window.scheduleSheets.find(function(s) {
-        return s && s.id === window.activeSheetId;
+        return s && String(s.id) === String(window.activeSheetId);
     });
 
     if (!sheet) {
@@ -264,7 +264,7 @@ function saveAll() {
 }
 window.saveAll = saveAll;
 
-// ⭐ 9. RENDER ROSTER SIDEBAR (ມີຮູບພາບ ແລະ Fallback ປ້ອງກັນຮູບແຕກ 100%)
+// 9. RENDER ROSTER SIDEBAR (ມີຮູບພາບ ແລະ Fallback ປ້ອງກັນຮູບແຕກ)
 function renderScheduleStaffRoster() {
     var container = document.getElementById('scheduleStaffRoster');
     var countEl = document.getElementById('rosterCountText');
@@ -323,7 +323,7 @@ function filterRosterSidebar() {
 }
 window.filterRosterSidebar = filterRosterSidebar;
 
-// ⭐ 10. RENDER EMPLOYEES TABLE (ສະແດງພະນັກງານທັງໝົດ 24 ທ່ານ ພ້ອມຮູບພາບຄົບຖ້ວນ)
+// 10. RENDER EMPLOYEES TABLE (ສະແດງພະນັກງານທັງໝົດ 24 ທ່ານ)
 function renderEmployeesTable() {
     var tbody = document.getElementById('employeesTableBody');
     var countHeader = document.getElementById('empCountHeader');
@@ -363,7 +363,7 @@ function renderEmployeesTable() {
 }
 window.renderEmployeesTable = renderEmployeesTable;
 
-// 11. IOS NOTIFICATION SOUND & LIVE CHIME
+// 11. IOS NOTIFICATION SOUND
 function playIOSNotificationSound() {
     try {
         var AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -552,7 +552,7 @@ function renderNotificationDropdownUI(notifList) {
     });
 }
 
-// ⭐ 13. MASTER CLOUD SYNC (ດຶງພະນັກງານທຸກຄົນ 24 ທ່ານ + ຮູບພາບ + ກຸ່ມ + ຕາຕະລາງ)
+// ⭐ 13. MASTER CLOUD SYNC (ດຶງຂໍ້ມູນຈາກ schedule_sheets, profiles, groups 100%)
 async function loadEverythingFromSupabase() {
     if (!window.supabaseClient) return;
 
@@ -571,7 +571,7 @@ async function loadEverythingFromSupabase() {
         }
         if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
 
-        // --- B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ (ດຶງຄົບ 24 ທ່ານ 100%) ---
+        // --- B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ (ດຶງຄົບ 24 ທ່ານ) ---
         var profRes = await window.supabaseClient.from('profiles').select('*');
         var cloudProfiles = profRes.data;
 
@@ -603,12 +603,10 @@ async function loadEverythingFromSupabase() {
                         photo: cp.photo || window.users[existingIdx].photo || ''
                     });
                 } else {
-                    // ⭐ ເພີ່ມພະນັກງານຄົນໃໝ່ຈາກ Database ເຂົ້າສູ່ລະບົບທັນທີ (ບໍ່ຕັດຖິ້ມ)!
                     window.users.push(normalizedUser);
                 }
             });
 
-            // ອັບເດດໂປຣໄຟລ໌ຕົນເອງ
             if (window.currentUser) {
                 var myProf = cloudProfiles.find(function(cp) {
                     return cp.user_code && window.currentUser.user && cp.user_code.toLowerCase() === window.currentUser.user.toLowerCase();
@@ -624,17 +622,15 @@ async function loadEverythingFromSupabase() {
                 topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
             }
 
-            // ⭐ RE-RENDER ຮູບພາບທົ່ວທັງລະບົບທັນທີ!
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
             if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
 
-        // --- C. ດຶງຕາຕະລາງປະຈຳການ ---
+        // --- C. ⭐ ດຶງຕາຕະລາງທັງໝົດຈາກ schedule_sheets (09, 10, 11, 12/2026 ຈະຂຶ້ນຄົບ) ---
         var schedRes = await window.supabaseClient
-            .from('schedules')
-            .select('*')
-            .order('month_key', { ascending: false });
+            .from('schedule_sheets')
+            .select('*');
 
         var cloudSchedules = schedRes.data;
         if (!schedRes.error && cloudSchedules && cloudSchedules.length > 0) {
@@ -644,17 +640,23 @@ async function loadEverythingFromSupabase() {
                     try { rawData = JSON.parse(rawData); } catch (e) { rawData = {}; }
                 }
 
+                var mKey = cs.monthKey || cs.month_key || '2026-09';
                 return {
                     id: String(cs.id),
-                    monthKey: cs.month_key || '2026-09',
-                    title: cs.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + (cs.month_key || '')),
+                    monthKey: String(mKey),
+                    title: cs.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
                     notes: cs.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
                     status: cs.status || 'PUBLISHED',
                     data: rawData
                 };
             });
 
-            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return s.id === window.activeSheetId; })) {
+            // ຈັດລຽງເດືອນລ່າສຸດຂຶ້ນກ່ອນ
+            window.scheduleSheets.sort(function(a, b) {
+                return String(b.monthKey).localeCompare(String(a.monthKey));
+            });
+
+            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
                 window.activeSheetId = window.scheduleSheets[0].id;
             }
 
@@ -662,6 +664,7 @@ async function loadEverythingFromSupabase() {
             if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
             if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            console.log("☁️ [Cloud Sync]: ດຶງທຸກເດືອນຈາກ schedule_sheets ສຳເລັດແລ້ວ (" + window.scheduleSheets.length + " ເດືອນ)!");
         }
 
     } catch (e) {
