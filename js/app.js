@@ -136,18 +136,40 @@ async function loadAllFromSupabase() {
             }
         }
 
-        // B. ດຶງ schedules
-        const { data: sheetsData } = await window.supabaseClient.from('schedules').select('*');
-        if (sheetsData && sheetsData.length > 0) {
-            window.scheduleSheets = sheetsData.map(s => ({
-                id: s.id,
-                monthKey: s.month_key || s.monthKey,
-                title: s.title,
-                notes: s.notes,
-                status: s.status,
-                data: s.data
-            }));
-            localStorage.setItem('ot_schedule_sheets_trial2', JSON.stringify(window.scheduleSheets));
+       // ດຶງຕາຕະລາງປະຈຳການທັງໝົດທີ່ Published ແລ້ວ
+        var { data: cloudSchedules, error: schedErr } = await window.supabaseClient
+            .from('schedules')
+            .select('*')
+            .order('month_key', { ascending: false });
+
+        if (!schedErr && cloudSchedules && cloudSchedules.length > 0) {
+            window.scheduleSheets = cloudSchedules.map(cs => {
+                // ⭐ PARSE DATA ໃຫ້ເປັນ OBJECT ສະເໝີ
+                var rawData = cs.data || cs.schedule_data || {};
+                if (typeof rawData === 'string') {
+                    try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                }
+
+                return {
+                    id: String(cs.id),
+                    monthKey: cs.month_key || '2026-09',
+                    title: cs.title || rawData?._meta?.title || `ຕາຕະລາງປະຈຳການ ${cs.month_key}`,
+                    notes: cs.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
+                    status: cs.status || 'PUBLISHED',
+                    data: rawData
+                };
+            });
+
+            if (!window.activeSheetId || !window.scheduleSheets.some(s => s.id === window.activeSheetId)) {
+                window.activeSheetId = window.scheduleSheets[0].id;
+            }
+
+            saveAll();
+            if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
+            if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            console.log("☁️ [Cloud Sync]: ດຶງ ແລະ Render ຕາຕະລາງສຳເລັດ 100%!");
+        }
         }
 
         // C. ດຶງ employee_groups
