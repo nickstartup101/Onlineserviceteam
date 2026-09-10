@@ -514,7 +514,97 @@ setTimeout(fetchLiveNotifications, 1500);
 // Auto-Refresh ທຸກໆ 20 ວິນາທີ (20000 ms)
 setInterval(fetchLiveNotifications, 20000);
 
+// ================= ⭐ MASTER CLOUD SYNC & AUTO-LOAD ON STARTUP =================
 
+// FUNCTION ດຶງຂໍ້ມູນທຸກຢ່າງຈາກ Supabase ເມື່ອເປີດເວັບ (ທຸກເຄື່ອງຈະເຫັນຄືກັນ 100%)
+async function loadEverythingFromSupabase() {
+    if (!window.supabaseClient) {
+        console.warn("⚠️ Supabase Client not found!");
+        return;
+    }
+
+    try {
+        console.log("☁️ [Cloud Sync]: ກຳລັງດຶງຂໍ້ມູນຈາກ Supabase...");
+
+        // 1. ດຶງຮູບ ແລະ ໂປຣໄຟລ໌ເພື່ອນຮ່ວມງານທຸກຄົນ
+        var { data: cloudProfiles, error: profErr } = await window.supabaseClient
+            .from('profiles')
+            .select('*');
+
+        if (!profErr && cloudProfiles && cloudProfiles.length > 0) {
+            cloudProfiles.forEach(cp => {
+                var uIdx = (window.users || []).findIndex(u => 
+                    (u.user && cp.user_code && u.user.toLowerCase() === cp.user_code.toLowerCase()) ||
+                    (u.nameLao && cp.name_lao && u.nameLao === cp.name_lao)
+                );
+                if (uIdx !== -1) {
+                    if (cp.photo) window.users[uIdx].photo = cp.photo;
+                    if (cp.dept) window.users[uIdx].dept = cp.dept;
+                    if (cp.phone) window.users[uIdx].phone = cp.phone;
+                    if (cp.full_name) window.users[uIdx].fullName = cp.full_name;
+                }
+            });
+
+            // ອັບເດດໂປຣໄຟລ໌ຂອງຕົນເອງ
+            if (window.currentUser) {
+                var myCloudProf = cloudProfiles.find(cp => cp.user_code && window.currentUser.user && cp.user_code.toLowerCase() === window.currentUser.user.toLowerCase());
+                if (myCloudProf && myCloudProf.photo) {
+                    window.currentUser.photo = myCloudProf.photo;
+                    var topAv = document.getElementById('topAvatar');
+                    var prPrev = document.getElementById('profPhotoPreview');
+                    if (topAv) topAv.src = myCloudProf.photo;
+                    if (prPrev) prPrev.src = myCloudProf.photo;
+                }
+            }
+
+            if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+            if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+            console.log("☁️ [Cloud Sync]: ດຶງຮູບ ແລະ ໂປຣໄຟລ໌ເພື່ອນຮ່ວມງານສຳເລັດ!");
+        }
+
+        // 2. ດຶງຕາຕະລາງປະຈຳການທັງໝົດທີ່ Published ແລ້ວ
+        var { data: cloudSchedules, error: schedErr } = await window.supabaseClient
+            .from('schedules')
+            .select('*')
+            .order('month_key', { ascending: false });
+
+        if (!schedErr && cloudSchedules && cloudSchedules.length > 0) {
+            window.scheduleSheets = cloudSchedules.map(cs => ({
+                id: String(cs.id),
+                monthKey: cs.month_key,
+                title: cs.title || cs.data?._meta?.title || `ຕາຕະລາງປະຈຳການ ${cs.month_key}`,
+                notes: cs.notes || cs.data?._meta?.notes || window.defaultNotesTemplate || '',
+                status: cs.status || 'PUBLISHED',
+                data: cs.data || cs.schedule_data || {}
+            }));
+
+            // ເລືອກຕາຕະລາງລ່າສຸດ
+            if (!window.activeSheetId || !window.scheduleSheets.some(s => s.id === window.activeSheetId)) {
+                window.activeSheetId = window.scheduleSheets[0].id;
+            }
+
+            saveAll();
+            if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
+            if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            console.log("☁️ [Cloud Sync]: ດຶງຕາຕະລາງປະຈຳການຈາກ Supabase ສຳເລັດ!");
+        }
+
+    } catch (e) {
+        console.error("❌ [Cloud Sync Exception]:", e);
+    }
+}
+
+// ດຶງຂໍ້ມູນທັນທີເມື່ອເປີດໜ້າເວັບ
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(loadEverythingFromSupabase, 800);
+});
+setTimeout(loadEverythingFromSupabase, 1200);
+
+// Auto-Sync ດຶງຂໍ້ມູນໃໝ່ທຸກໆ 25 ວິນາທີ
+setInterval(loadEverythingFromSupabase, 25000);
+
+window.loadEverythingFromSupabase = loadEverythingFromSupabase;
 // Global Exports
 window.safeJSONParse = safeJSONParse;
 window.switchTab = switchTab;
