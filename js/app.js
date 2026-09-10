@@ -1,10 +1,10 @@
-// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER FIX) =================
+// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (FULL MASTER) =================
 
-// 1. DEFAULT AVATAR SVG (ປ້ອງກັນຮູບແຕກ 100% ຖ້າໃຜຍັງບໍ່ທັນໃສ່ຮູບ)
+// 1. DEFAULT AVATAR SVG (ປ້ອງກັນຮູບແຕກ 100%)
 var DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
 window.DEFAULT_AVATAR = DEFAULT_AVATAR;
 
-// 2. SAFE JSON PARSE
+// 2. SAFE JSON PARSE & AUTO-CLEAN
 function safeJSONParse(str, fallback) {
     if (fallback === undefined) fallback = null;
     if (!str || typeof str !== 'string') return fallback;
@@ -18,26 +18,46 @@ function safeJSONParse(str, fallback) {
 }
 window.safeJSONParse = safeJSONParse;
 
-// 3. DEFAULT GROUPS & USERS (ກູ້ຄືນກຸ່ມ ແລະ ພະນັກງານທັນທີ)
-var defaultEmployeeGroups = [
-    {
-        id: 'grp-g7-flex',
-        name: 'ກຸ່ມທີມບໍລິການ 7 ຄົນ (G7 Flex)',
-        members: ['ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ']
-    },
-    {
-        id: 'grp-main-17',
-        name: 'ກຸ່ມທີມບໍລິການຫຼັກ (17 ຄົນ)',
-        members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ', 'ປະສັງສິນ', 'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊຸມພູ', 'ສຸລິຍະສັກ', 'ໄທສະຫວາດ']
-    }
+// ລຶບຄ່າ LocalStorage ທີ່ເຄີຍເສຍຫາຍ
+try {
+    var badKey = localStorage.getItem('ot_users_master');
+    if (badKey && !badKey.trim().startsWith('[') && !badKey.trim().startsWith('{')) localStorage.removeItem('ot_users_master');
+    var badUsers = localStorage.getItem('ot_users');
+    if (badUsers && !badUsers.trim().startsWith('[') && !badUsers.trim().startsWith('{')) localStorage.removeItem('ot_users');
+} catch (e) {}
+
+// 3. ລາຍຊື່ພະນັກງານເລີ່ມຕົ້ນ (ຄົບ 24 ທ່ານສຳຮອງ)
+var defaultSystemUsers = [
+    { user: 'admin', pass: 'admin123', nameLao: 'Admin', fullName: 'Super Admin', role: 'SUPER_ADMIN', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 8877' },
+    { user: 'BCEL0765', pass: 'bcel2026', nameLao: 'ແສງດາວ', fullName: 'SENGDAO DOUANGPRASEUTH', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5501 2345' },
+    { user: 'BCEL0272', pass: 'bcel2026', nameLao: 'ພອນສະຫວັນ', fullName: 'PHONSAVANH PHOMMAVONG', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5502 3456' },
+    { user: 'BCEL1055', pass: 'bcel2026', nameLao: 'ບຸນປະເສີດ', fullName: 'BOUNPRASEUTH VILAYPHONE', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5503 4567' },
+    { user: 'BCEL0872', pass: 'bcel2026', nameLao: 'ພັນນິກອນ', fullName: 'PHANNIKHONE PHOMMASENG', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5504 5678' },
+    { user: 'BCEL0277', pass: 'bcel2026', nameLao: 'ສົມທະຍາ', fullName: 'SOMTHAYA BOUTDAXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5505 6789' },
+    { user: 'BCEL0707', pass: 'bcel2026', nameLao: 'ມິກກີ້', fullName: 'MIKKY SAYALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5506 7890' },
+    { user: 'BCEL1431', pass: 'bcel2026', nameLao: 'ທູຮັກ', fullName: 'THOUHAK SENGCHALEUN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5507 8901' },
+    { user: 'BCEL1532', pass: 'bcel2026', nameLao: 'ແພັກກີ້', fullName: 'PACKY PHOMMALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5508 9012' },
+    { user: 'BCEL2007', pass: 'bcel2026', nameLao: 'ເອກສະຫວ່າງ', fullName: 'EKXAVANG PHANTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5509 0123' },
+    { user: 'BCEL2120', pass: 'bcel2026', nameLao: 'ໂທມິກ', fullName: 'TONICK BOUDDASIEN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 1122' },
+    { user: 'BCEL1101', pass: 'bcel2026', nameLao: 'ບຸນຮັກ', fullName: 'BOUNHAK XAYAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5510 1122' },
+    { user: 'BCEL1102', pass: 'bcel2026', nameLao: 'ປະສັງສິນ', fullName: 'PASANGSIN SOULIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5511 2233' },
+    { user: 'BCEL1103', pass: 'bcel2026', nameLao: 'ສາຍທອງ', fullName: 'SAYTHONG MANIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5512 3344' },
+    { user: 'BCEL1104', pass: 'bcel2026', nameLao: 'ສົມຊາຍ', fullName: 'SOMCHAY VONGXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5513 4455' },
+    { user: 'BCEL1105', pass: 'bcel2026', nameLao: 'ສີຊຸມພູ', fullName: 'SICHUMPHOU LATTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5514 5566' },
+    { user: 'BCEL1106', pass: 'bcel2026', nameLao: 'ສຸລິຍະສັກ', fullName: 'SOULIYASACK PHANTHAMALY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5515 6677' },
+    { user: 'BCEL1107', pass: 'bcel2026', nameLao: 'ໄທສະຫວາດ', fullName: 'THAISAVATH PHOMMAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5516 7788' }
 ];
-window.defaultEmployeeGroups = defaultEmployeeGroups;
+
+window.defaultEmployeeGroups = [
+    { id: 'grp-g7-flex', name: 'ກຸ່ມທີມບໍລິການ 7 ຄົນ (G7 Flex)', members: ['ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ'] },
+    { id: 'grp-main-17', name: 'ກຸ່ມທີມບໍລິການຫຼັກ (17 ຄົນ)', members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ', 'ປະສັງສິນ', 'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊຸມພູ', 'ສຸລິຍະສັກ', 'ໄທສະຫວາດ'] }
+];
 
 window.defaultNotesTemplate = `1. ກະ 1 (08:00 - 16:00), ກະ 2 (12:00 - 20:00), ກະ 3 (20:00 - 08:00).
 2. ວັນເສົາ-ອາທິດ: ກະ 1 (08:00 - 13:30), ກະ 2 (13:30 - 19:00), ກະ 3 (19:00 - 08:00).
 3. ຫາກມີການຂໍປ່ຽນກະ ຕ້ອງແຈ້ງ ແລະ ໄດ້ຮັບການເຫັນດີຜ່ານລະບົບລ່ວງໜ້າຢ່າງໜ້ອຍ 24 ຊົ່ວໂມງ.`;
 
-// 4. TOAST NOTIFICATION SYSTEM
+// 4. TOAST NOTIFICATION
 function showToast(title, message, type) {
     if (!type) type = 'success';
     var toast = document.getElementById('appToast');
@@ -80,7 +100,7 @@ function hideToast() {
 window.showToast = showToast;
 window.hideToast = hideToast;
 
-// 5. CONFIRM MODAL SYSTEM
+// 5. CONFIRM MODAL
 var _confirmCallback = null;
 function askConfirm(title, message, callback, icon, btnText) {
     if (!icon) icon = 'help';
@@ -199,7 +219,7 @@ function toggleMobileDrawer() {
 }
 window.toggleMobileDrawer = toggleMobileDrawer;
 
-// 7. ACTIVE SCHEDULE SHEET HELPER
+// 7. ACTIVE SCHEDULE SHEET
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         window.scheduleSheets = [{
@@ -225,7 +245,7 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// 8. SAVE ALL STATE TO LOCAL STORAGE
+// 8. SAVE STATE TO LOCAL STORAGE
 function saveAll() {
     try {
         if (window.scheduleSheets) localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
@@ -244,7 +264,7 @@ function saveAll() {
 }
 window.saveAll = saveAll;
 
-// 9. ROSTER SIDEBAR DISPLAY (ມີ Fallback ປ້ອງກັນຮູບແຕກ)
+// ⭐ 9. RENDER ROSTER SIDEBAR (ມີຮູບພາບ ແລະ Fallback ປ້ອງກັນຮູບແຕກ 100%)
 function renderScheduleStaffRoster() {
     var container = document.getElementById('scheduleStaffRoster');
     var countEl = document.getElementById('rosterCountText');
@@ -263,7 +283,7 @@ function renderScheduleStaffRoster() {
         container.innerHTML += `
             <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 transition">
                 <div class="flex items-center gap-2">
-                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-6 h-6 rounded-full object-cover border bg-red-50"/>
+                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
                     <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
                 ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono">' + u.user + '</span>'}
@@ -293,7 +313,7 @@ function filterRosterSidebar() {
         container.innerHTML += `
             <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 transition">
                 <div class="flex items-center gap-2">
-                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-6 h-6 rounded-full object-cover border bg-red-50"/>
+                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
                     <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
                 ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono">' + u.user + '</span>'}
@@ -303,7 +323,47 @@ function filterRosterSidebar() {
 }
 window.filterRosterSidebar = filterRosterSidebar;
 
-// 10. IOS NOTIFICATION SOUND
+// ⭐ 10. RENDER EMPLOYEES TABLE (ສະແດງພະນັກງານທັງໝົດ 24 ທ່ານ ພ້ອມຮູບພາບຄົບຖ້ວນ)
+function renderEmployeesTable() {
+    var tbody = document.getElementById('employeesTableBody');
+    var countHeader = document.getElementById('empCountHeader');
+    if (!tbody) return;
+
+    var allStaff = window.users || [];
+    if (countHeader) countHeader.innerText = allStaff.length;
+
+    tbody.innerHTML = '';
+    allStaff.forEach(function(u, idx) {
+        var avatarUrl = u.photo || DEFAULT_AVATAR;
+        var isLeader = u.isLeader;
+        var roleBadge = u.role === 'SUPER_ADMIN' 
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Super Admin</span>'
+            : (isLeader 
+                ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-brand-red border border-red-200">ຫົວໜ້າກະ</span>'
+                : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">ພະນັກງານ</span>');
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 font-lao text-xs">
+                <td class="p-3.5 font-mono font-bold text-slate-700">${u.user}</td>
+                <td class="p-3.5 font-semibold text-slate-800 flex items-center gap-2.5">
+                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-8 h-8 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
+                    <div>
+                        <p class="font-bold text-slate-800">${u.fullName || '-'}</p>
+                        <p class="text-[10px] text-slate-400">${u.dept || 'ຂະແໜງບໍລິການອອນລາຍ'} ${u.phone ? '• ' + u.phone : ''}</p>
+                    </div>
+                </td>
+                <td class="p-3.5 font-bold ${isLeader ? 'text-brand-red' : 'text-slate-700'}">${u.nameLao}</td>
+                <td class="p-3.5">${roleBadge}</td>
+                <td class="p-3.5 text-right space-x-1">
+                    <button type="button" onclick="if(typeof openEditEmpModal === 'function') openEditEmpModal(${idx})" class="px-2.5 py-1 text-slate-600 hover:text-brand-red hover:bg-red-50 rounded-lg font-bold transition">ແກ້ໄຂ</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+window.renderEmployeesTable = renderEmployeesTable;
+
+// 11. IOS NOTIFICATION SOUND & LIVE CHIME
 function playIOSNotificationSound() {
     try {
         var AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -338,10 +398,7 @@ window.playIOSNotificationSound = playIOSNotificationSound;
 document.addEventListener('click', function() {
     try {
         var AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx) {
-            var ctx = new AudioCtx();
-            if (ctx.state === 'suspended') ctx.resume();
-        }
+        if (AudioCtx && AudioCtx.state === 'suspended') AudioCtx.resume();
     } catch (e) {}
 }, { once: true });
 
@@ -362,7 +419,7 @@ function markAllNotificationsAsRead() {
 }
 window.markAllNotificationsAsRead = markAllNotificationsAsRead;
 
-// 11. FETCH LIVE NOTIFICATIONS
+// 12. FETCH LIVE NOTIFICATIONS
 async function fetchLiveNotifications() {
     if (!window.supabaseClient || !window.currentUser) return;
 
@@ -473,7 +530,7 @@ function renderNotificationDropdownUI(notifList) {
     }
 
     if (notifList.length === 0) {
-        container.innerHTML = '<p class="text-slate-400 text-xs text-center py-6">ບໍ່ມີການແຈ້ງເຕືອນໃໝ່</p>';
+        container.innerHTML = '<p class="text-slate-400 text-xs text-center py-6 font-lao">ບໍ່ມີການແຈ້ງເຕືອນໃໝ່</p>';
         return;
     }
 
@@ -495,50 +552,63 @@ function renderNotificationDropdownUI(notifList) {
     });
 }
 
-// ⭐ 12. MASTER CLOUD SYNC ON STARTUP (ກູ້ຄືນທັງ GROUPS, PROFILES ແລະ SCHEDULES)
+// ⭐ 13. MASTER CLOUD SYNC (ດຶງພະນັກງານທຸກຄົນ 24 ທ່ານ + ຮູບພາບ + ກຸ່ມ + ຕາຕະລາງ)
 async function loadEverythingFromSupabase() {
     if (!window.supabaseClient) return;
 
     try {
-        // --- A. ດຶງ Employee Groups (ຖ້າຫວ່າງເປົ່າ ໃຫ້ໃຊ້ Default Groups ທັນທີ) ---
+        // --- A. ດຶງ Employee Groups ---
         var grpRes = await window.supabaseClient.from('employee_groups').select('*');
         if (!grpRes.error && grpRes.data && grpRes.data.length > 0) {
             window.employeeGroups = grpRes.data.map(function(g) {
-                return {
-                    id: g.id,
-                    name: g.name,
-                    members: g.members || []
-                };
+                return { id: g.id, name: g.name, members: g.members || [] };
             });
         } else {
-            // ຖ້າໃນ Cloud ຍັງບໍ່ມີກຸ່ມ ໃຫ້ຕັ້ງກຸ່ມເລີ່ມຕົ້ນ ແລະ Sync ລົງ Supabase
             if (!window.employeeGroups || window.employeeGroups.length === 0) {
-                window.employeeGroups = defaultEmployeeGroups;
-                try {
-                    await window.supabaseClient.from('employee_groups').upsert(defaultEmployeeGroups);
-                } catch(e) {}
+                window.employeeGroups = window.defaultEmployeeGroups;
+                try { await window.supabaseClient.from('employee_groups').upsert(window.defaultEmployeeGroups); } catch(e) {}
             }
         }
         if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
 
-        // --- B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ ---
+        // --- B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ (ດຶງຄົບ 24 ທ່ານ 100%) ---
         var profRes = await window.supabaseClient.from('profiles').select('*');
         var cloudProfiles = profRes.data;
 
         if (!profRes.error && cloudProfiles && cloudProfiles.length > 0) {
             cloudProfiles.forEach(function(cp) {
-                var uIdx = (window.users || []).findIndex(function(u) {
-                    return (u.user && cp.user_code && u.user.toLowerCase() === cp.user_code.toLowerCase()) ||
-                           (u.nameLao && cp.name_lao && u.nameLao === cp.name_lao);
+                var userCode = cp.user_code || cp.username || cp.user || '';
+                var nameLao = cp.name_lao || cp.nameLao || '';
+                if (!userCode && !nameLao) return;
+
+                var existingIdx = (window.users || []).findIndex(function(u) {
+                    return (userCode && u.user && u.user.toLowerCase() === userCode.toLowerCase()) ||
+                           (nameLao && u.nameLao && u.nameLao === nameLao);
                 });
-                if (uIdx !== -1) {
-                    if (cp.photo) window.users[uIdx].photo = cp.photo;
-                    if (cp.dept) window.users[uIdx].dept = cp.dept;
-                    if (cp.phone) window.users[uIdx].phone = cp.phone;
-                    if (cp.full_name) window.users[uIdx].fullName = cp.full_name;
+
+                var normalizedUser = {
+                    user: userCode || ('BCEL' + Math.floor(1000 + Math.random() * 9000)),
+                    nameLao: nameLao || cp.full_name || userCode,
+                    fullName: cp.full_name || nameLao,
+                    role: cp.role || (cp.is_leader ? 'SUPER_ADMIN' : 'Staff'),
+                    isLeader: Boolean(cp.is_leader || cp.isLeader),
+                    dept: cp.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
+                    phone: cp.phone || '',
+                    photo: cp.photo || '',
+                    pass: cp.pass || cp.password || 'bcel2026'
+                };
+
+                if (existingIdx !== -1) {
+                    window.users[existingIdx] = Object.assign({}, window.users[existingIdx], normalizedUser, {
+                        photo: cp.photo || window.users[existingIdx].photo || ''
+                    });
+                } else {
+                    // ⭐ ເພີ່ມພະນັກງານຄົນໃໝ່ຈາກ Database ເຂົ້າສູ່ລະບົບທັນທີ (ບໍ່ຕັດຖິ້ມ)!
+                    window.users.push(normalizedUser);
                 }
             });
 
+            // ອັບເດດໂປຣໄຟລ໌ຕົນເອງ
             if (window.currentUser) {
                 var myProf = cloudProfiles.find(function(cp) {
                     return cp.user_code && window.currentUser.user && cp.user_code.toLowerCase() === window.currentUser.user.toLowerCase();
@@ -548,18 +618,19 @@ async function loadEverythingFromSupabase() {
                 }
             }
 
-            // ອັບເດດ Header Avatar
             var topAv = document.getElementById('topAvatar');
             if (topAv) {
                 topAv.src = (window.currentUser && window.currentUser.photo) ? window.currentUser.photo : DEFAULT_AVATAR;
                 topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
             }
 
+            // ⭐ RE-RENDER ຮູບພາບທົ່ວທັງລະບົບທັນທີ!
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
             if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
 
-        // --- C. ດຶງຕາຕະລາງປະຈຳການທັງໝົດ ---
+        // --- C. ດຶງຕາຕະລາງປະຈຳການ ---
         var schedRes = await window.supabaseClient
             .from('schedules')
             .select('*')
@@ -599,15 +670,16 @@ async function loadEverythingFromSupabase() {
 }
 window.loadEverythingFromSupabase = loadEverythingFromSupabase;
 
-// 13. INITIALIZE APPLICATION
+// 14. INITIALIZE APPLICATION
 document.addEventListener('DOMContentLoaded', function() {
-    window.users = safeJSONParse(localStorage.getItem('ot_users'), window.users || []);
+    var storedUsers = safeJSONParse(localStorage.getItem('ot_users'), null);
+    window.users = (storedUsers && storedUsers.length > 0) ? storedUsers : defaultSystemUsers;
+
     window.scheduleSheets = safeJSONParse(localStorage.getItem('ot_schedules_sheets'), window.scheduleSheets || []);
     window.activeSheetId = localStorage.getItem('ot_active_sheet_id') || (window.scheduleSheets[0] ? window.scheduleSheets[0].id : null);
     
-    // ຖ້າ groups ຫວ່າງເປົ່າ ໃຫ້ໃຊ້ defaultEmployeeGroups ທັນທີ
     var storedGroups = safeJSONParse(localStorage.getItem('ot_employee_groups'), null);
-    window.employeeGroups = (storedGroups && storedGroups.length > 0) ? storedGroups : defaultEmployeeGroups;
+    window.employeeGroups = (storedGroups && storedGroups.length > 0) ? storedGroups : window.defaultEmployeeGroups;
 
     window.fixedShiftsConfig = safeJSONParse(localStorage.getItem('ot_fixed_shifts_cfg'), window.fixedShiftsConfig || []);
     window.specialHolidayRanges = safeJSONParse(localStorage.getItem('ot_special_holidays'), window.specialHolidayRanges || []);
@@ -616,7 +688,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.scheduleAuditLogs = safeJSONParse(localStorage.getItem('ot_schedule_audit_logs'), window.scheduleAuditLogs || []);
     window.systemNotifications = safeJSONParse(localStorage.getItem('ot_system_notifications'), window.systemNotifications || []);
 
-    // ຕັ້ງຄ່າ Avatar ເລີ່ມຕົ້ນທັນທີ (ປ້ອງກັນຮູບແຕກຕອນເປີດເວັບ)
     var topAv = document.getElementById('topAvatar');
     if (topAv) {
         var curUser = safeJSONParse(localStorage.getItem('ot_auth_live'), null);
@@ -624,9 +695,9 @@ document.addEventListener('DOMContentLoaded', function() {
         topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
     }
 
-    setTimeout(loadEverythingFromSupabase, 800);
+    setTimeout(loadEverythingFromSupabase, 600);
     setTimeout(fetchLiveNotifications, 1500);
 
     setInterval(fetchLiveNotifications, 20000);
-    setInterval(loadEverythingFromSupabase, 30000);
+    setInterval(loadEverythingFromSupabase, 25000);
 });
