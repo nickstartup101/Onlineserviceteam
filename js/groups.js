@@ -1,139 +1,181 @@
-// ================= ⭐ GROUPS MANAGEMENT & DIRECT SUPABASE SYNC =================
+// ================= ⭐ EMPLOYEE GROUPS CONTROLLER =================
 
-function renderGroupsTab() {
-    var grid = document.getElementById('groupsListGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
+// 1. RENDER ລາຍການກຸ່ມທັງໝົດ (ປ້ອງກັນກຸ່ມຫາຍ 100%)
+function renderGroupsListGrid() {
+    var container = document.getElementById('groupsListGrid');
+    if (!container) return;
 
-    (window.employeeGroups || []).forEach((grp, idx) => {
-        grid.innerHTML += `
-            <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-4">
-                <div>
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-bold text-base text-slate-800">${grp.name}</h3>
-                        <span class="px-2.5 py-1 bg-red-50 text-brand-red rounded-xl font-bold text-[10px] border border-red-200">Zigzag Active</span>
+    // ຖ້າກຸ່ມຫວ່າງເປົ່າ ໃຫ້ດຶງກຸ່ມມາດຕະຖານມາໃສ່ທັນທີ
+    if (!window.employeeGroups || window.employeeGroups.length === 0) {
+        window.employeeGroups = [
+            {
+                id: 'grp-g7-flex',
+                name: 'ກຸ່ມທີມບໍລິການ 7 ຄົນ (G7 Flex)',
+                members: ['ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ']
+            },
+            {
+                id: 'grp-main-17',
+                name: 'ກຸ່ມທີມບໍລິການຫຼັກ (17 ຄົນ)',
+                members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ', 'ປະສັງສິນ', 'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊຸມພູ', 'ສຸລິຍະສັກ', 'ໄທສະຫວາດ']
+            }
+        ];
+        if (typeof saveAll === 'function') saveAll();
+    }
+
+    container.innerHTML = '';
+
+    window.employeeGroups.forEach(function(grp, idx) {
+        var memberBadges = (grp.members || []).map(function(m) {
+            return `<span class="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-lg text-[10px] font-bold">${m}</span>`;
+        }).join(' ');
+
+        var isG7 = (grp.members || []).length === 7;
+
+        container.innerHTML += `
+            <div class="bg-white border-2 ${isG7 ? 'border-blue-300 shadow-blue-50' : 'border-slate-200'} rounded-3xl p-5 shadow-sm hover:shadow-md transition space-y-3 font-lao">
+                <div class="flex justify-between items-start border-b pb-3">
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <h3 class="font-bold text-sm text-slate-800">${grp.name}</h3>
+                            ${isG7 ? '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 text-[9px] rounded-full font-black">G7 Rolling 5/2</span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-0.5">ຈຳນວນສະມາຊິກ: <strong>${(grp.members || []).length} ຄົນ</strong></p>
                     </div>
-                    <p class="text-xs text-slate-500 font-semibold mb-3">ສະມາຊິກໃນກຸ່ມ (${grp.members?.length || 0} ຄົນ):</p>
-                    <div class="flex flex-wrap gap-1 max-h-36 overflow-y-auto">
-                        ${(grp.members || []).map(m => `<span class="bg-slate-100 px-2 py-0.5 rounded-lg text-xs font-lao">${m}</span>`).join('')}
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="openEditGroupModal('${grp.id}')" class="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 transition" title="ແກ້ໄຂກຸ່ມ">
+                            <span class="material-symbols-outlined text-base">edit</span>
+                        </button>
+                        <button type="button" onclick="promptDeleteGroup('${grp.id}')" class="p-1.5 hover:bg-red-50 rounded-lg text-brand-red transition" title="ລຶບກຸ່ມ">
+                            <span class="material-symbols-outlined text-base">delete</span>
+                        </button>
                     </div>
                 </div>
-                <div class="flex justify-end gap-2 pt-3 border-t">
-                    <button type="button" onclick="openEditGroupModal(${idx})" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-pointer">ແກ້ໄຂ</button>
-                    <button type="button" onclick="promptDeleteGroup(${idx})" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl text-xs font-bold cursor-pointer">ລຶບ</button>
+                <div class="flex flex-wrap gap-1.5 pt-1">
+                    ${memberBadges || '<span class="text-xs text-slate-400 italic">ຍັງບໍ່ມີສະມາຊິກ</span>'}
                 </div>
             </div>
         `;
     });
 }
+window.renderGroupsListGrid = renderGroupsListGrid;
 
+// 2. ເປີດ MODAL ສ້າງກຸ່ມໃໝ່
 function openAddGroupModal() {
-    document.getElementById('groupModalTitle').innerText = 'ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່';
     document.getElementById('editGroupId').value = '';
     document.getElementById('groupNameInput').value = '';
     renderGroupMemberCheckboxes([]);
+    var modalTitle = document.getElementById('groupModalTitle');
+    if (modalTitle) modalTitle.innerText = 'ສ້າງໝວດ/ກຸ່ມພະນັກງານໃໝ່';
     document.getElementById('groupModal')?.classList.remove('hidden');
 }
+window.openAddGroupModal = openAddGroupModal;
 
-function openEditGroupModal(index) {
-    var grp = window.employeeGroups[index];
-    document.getElementById('groupModalTitle').innerText = 'ແກ້ໄຂໝວດ/ກຸ່ມພະນັກງານ';
-    document.getElementById('editGroupId').value = index;
+// 3. ເປີດ MODAL ແກ້ໄຂກຸ່ມ
+function openEditGroupModal(id) {
+    var grp = (window.employeeGroups || []).find(function(g) { return g.id === id; });
+    if (!grp) return;
+
+    document.getElementById('editGroupId').value = grp.id;
     document.getElementById('groupNameInput').value = grp.name;
     renderGroupMemberCheckboxes(grp.members || []);
+    var modalTitle = document.getElementById('groupModalTitle');
+    if (modalTitle) modalTitle.innerText = 'ແກ້ໄຂໝວດ/ກຸ່ມ: ' + grp.name;
     document.getElementById('groupModal')?.classList.remove('hidden');
 }
+window.openEditGroupModal = openEditGroupModal;
 
-function closeGroupModal() { document.getElementById('groupModal')?.classList.add('hidden'); }
+function closeGroupModal() {
+    document.getElementById('groupModal')?.classList.add('hidden');
+}
+window.closeGroupModal = closeGroupModal;
 
+// 4. ສະແດງ CHECKBOX ລາຍຊື່ພະນັກງານໃຫ້ເລືອກເຂົ້າກຸ່ມ
 function renderGroupMemberCheckboxes(selectedMembers) {
     var container = document.getElementById('groupMemberCheckboxList');
     if (!container) return;
-    container.innerHTML = '';
 
-    var staffList = window.users.filter(u => u.role !== 'SUPER_ADMIN');
-    staffList.forEach(u => {
-        var isChecked = selectedMembers && selectedMembers.includes(u.nameLao) ? 'checked' : '';
+    container.innerHTML = '';
+    var staffList = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
+
+    staffList.forEach(function(u) {
+        var isChecked = selectedMembers.includes(u.nameLao);
         container.innerHTML += `
-            <label class="flex items-center gap-2 text-xs p-1.5 hover:bg-white rounded-xl cursor-pointer border border-transparent hover:border-slate-200 transition">
-                <input type="checkbox" value="${u.nameLao}" class="group-member-checkbox rounded text-brand-red focus:ring-brand-red h-4 w-4" ${isChecked}/>
-                <span class="${u.isLeader ? 'text-brand-red font-bold' : 'text-slate-800'}">${u.nameLao} (${u.fullName})</span>
+            <label class="flex items-center gap-2 p-2 hover:bg-slate-100 rounded-xl cursor-pointer text-xs">
+                <input type="checkbox" name="groupMemberChk" value="${u.nameLao}" ${isChecked ? 'checked' : ''} class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/>
+                <span class="font-bold ${u.isLeader ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao} (${u.fullName})</span>
+                ${u.isLeader ? '<span class="text-[9px] bg-red-50 text-brand-red px-1 rounded font-bold border border-red-200">ຫົວໜ້າ</span>' : ''}
             </label>
         `;
     });
 }
 
-function toggleSelectAllGroupMembers(select) {
-    document.querySelectorAll('.group-member-checkbox').forEach(cb => cb.checked = select);
+function toggleSelectAllGroupMembers(selectAll) {
+    var chks = document.querySelectorAll('input[name="groupMemberChk"]');
+    chks.forEach(function(c) { c.checked = selectAll; });
 }
+window.toggleSelectAllGroupMembers = toggleSelectAllGroupMembers;
 
-// ⭐ ສ້າງ / ແກ້ໄຂກຸ່ມ ພ້ອມ UPSERT ລົງ SUPABASE
+// 5. ບັນທຶກກຸ່ມ ລົງ SUPABASE
 async function handleSaveGroup() {
-    var editId = document.getElementById('editGroupId')?.value;
+    var id = document.getElementById('editGroupId')?.value;
     var name = document.getElementById('groupNameInput')?.value.trim();
-
-    if (!name) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ກຸ່ມ', 'error'); return; }
-
-    var selected = [];
-    document.querySelectorAll('.group-member-checkbox:checked').forEach(cb => selected.push(cb.value));
-
-    if (selected.length === 0) {
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກສະມາຊິກໃນກຸ່ມຢ່າງໜ້ອຍ 1 ຄົນ', 'error');
+    if (!name) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ກຸ່ມ', 'error');
         return;
     }
 
-    var groupObj = null;
-    if (editId !== '') {
-        groupObj = { ...window.employeeGroups[editId], name, members: selected };
-        window.employeeGroups[editId] = groupObj;
+    var chks = document.querySelectorAll('input[name="groupMemberChk"]:checked');
+    var members = Array.from(chks).map(function(c) { return c.value; });
+
+    if (!window.employeeGroups) window.employeeGroups = [];
+
+    var newGroup = {
+        id: id || ('grp-' + Date.now()),
+        name: name,
+        members: members
+    };
+
+    var idx = window.employeeGroups.findIndex(function(g) { return g.id === newGroup.id; });
+    if (idx !== -1) {
+        window.employeeGroups[idx] = newGroup;
     } else {
-        groupObj = { id: 'grp-' + Date.now(), name, members: selected };
-        window.employeeGroups.push(groupObj);
+        window.employeeGroups.push(newGroup);
     }
 
-    await saveAll();
+    saveAll();
 
-    // ⭐ UPSERT ລົງ SUPABASE
-    if (window.supabaseClient && groupObj) {
+    // Sync ລົງ Supabase table "employee_groups"
+    if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('employee_groups').upsert({
-                id: groupObj.id,
-                name: groupObj.name,
-                members: groupObj.members
-            }, { onConflict: 'id' });
-            console.log("☁️ [Supabase]: Employee group synced to cloud!");
-        } catch (e) {
-            console.error("Supabase Group Sync Error:", e);
+            await window.supabaseClient.from('employee_groups').upsert(newGroup, { onConflict: 'id' });
+        } catch (err) {
+            console.error("Supabase Save Group Error:", err);
         }
     }
 
     closeGroupModal();
-    renderGroupsTab();
-    showToast('ສຳເລັດ', 'ບັນທຶກຂໍ້ມູນໝວດກຸ່ມລົງ Supabase ຮຽບຮ້ອຍ!', 'success');
+    renderGroupsListGrid();
+    showToast('ສຳເລັດ', `ບັນທຶກກຸ່ມ "${name}" ແລະ Sync ລົງ Supabase ແລ້ວ!`, 'success');
 }
+window.handleSaveGroup = handleSaveGroup;
 
-function promptDeleteGroup(idx) {
-    var grp = window.employeeGroups[idx];
-    askConfirm('ລຶບກຸ່ມ', `ທ່ານຕ້ອງການລຶບກຸ່ມ "${grp.name}" ແທ້ບໍ່?`, async () => {
-        var delId = grp.id;
-        window.employeeGroups.splice(idx, 1);
-        await saveAll();
+// 6. ລຶບກຸ່ມ + DELETE ຈາກ SUPABASE
+function promptDeleteGroup(id) {
+    var grp = (window.employeeGroups || []).find(function(g) { return g.id === id; });
+    if (!grp) return;
 
-        // DELETE ໃນ Supabase
+    askConfirm('ຢືນຢັນການລຶບກຸ່ມ', `ທ່ານຕ້ອງການລຶບ "${grp.name}" ແທ້ບໍ່?`, async function() {
+        window.employeeGroups = (window.employeeGroups || []).filter(function(g) { return g.id !== id; });
+        saveAll();
+
         if (window.supabaseClient) {
-            await window.supabaseClient.from('employee_groups').delete().eq('id', delId);
+            try {
+                await window.supabaseClient.from('employee_groups').delete().eq('id', id);
+            } catch (e) {}
         }
 
-        renderGroupsTab();
-        showToast('ສຳເລັດ', 'ລຶບກຸ່ມຮຽບຮ້ອຍ', 'success');
-    }, 'delete', 'ລຶບ');
+        renderGroupsListGrid();
+        showToast('ສຳເລັດ', `ລຶບກຸ່ມ "${grp.name}" ອອກຈາກລະບົບແລ້ວ`, 'success');
+    }, 'delete', 'ລຶບກຸ່ມ');
 }
-
-window.renderGroupsTab = renderGroupsTab;
-window.openAddGroupModal = openAddGroupModal;
-window.openEditGroupModal = openEditGroupModal;
-window.closeGroupModal = closeGroupModal;
-window.renderGroupMemberCheckboxes = renderGroupMemberCheckboxes;
-window.toggleSelectAllGroupMembers = toggleSelectAllGroupMembers;
-window.handleSaveGroup = handleSaveGroup;
 window.promptDeleteGroup = promptDeleteGroup;
