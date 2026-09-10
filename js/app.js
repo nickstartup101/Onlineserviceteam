@@ -367,6 +367,153 @@ function switchTab(tabId) {
         }
     }
 }
+// ================= ⭐ LIVE NOTIFICATION & AUTO-POLLING SYSTEM =================
+
+// 1. FUNCTION ດຶງຂໍ້ມູນການປ່ຽນກະ ແລະ ການລາພັກ ມາສະແດງໃນ Notification
+async function fetchLiveNotifications() {
+    if (!window.supabaseClient || !window.currentUser) return;
+
+    try {
+        var myName = window.currentUser.nameLao;
+        var isAdmin = window.currentUser.role === 'SUPER_ADMIN';
+        var notifList = [];
+
+        // --- A. ດຶງຄຳຂໍປ່ຽນກະ (Shift Swaps) ຈາກ Supabase ---
+        var { data: swaps } = await window.supabaseClient
+            .from('shift_swaps')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (swaps) {
+            swaps.forEach(sw => {
+                // ຖ້າເປັນຄຳຂໍທີ່ສົ່ງມາຫາເຮົາ ແລະ ຍັງລໍຖ້າການຕອບຮັບ
+                if (sw.to_name === myName && sw.status === 'PENDING') {
+                    notifList.push({
+                        id: `swap-${sw.id}`,
+                        type: 'SWAP_INCOMING',
+                        icon: 'sync_alt',
+                        iconBg: 'bg-amber-100 text-amber-800',
+                        title: 'ມີຄຳຂໍປ່ຽນກະໃໝ່!',
+                        message: `${sw.from_name} ຂໍແລກປ່ຽນກະ [${sw.from_shift}] ກັບ [${sw.to_shift}] ວັນທີ ${sw.start_date}`,
+                        date: sw.start_date,
+                        unread: true
+                    });
+                }
+                // ສຳລັບ Admin ຕິດຕາມການປ່ຽນກະທັງໝົດ
+                else if (isAdmin && sw.status === 'PENDING') {
+                    notifList.push({
+                        id: `swap-admin-${sw.id}`,
+                        type: 'SWAP_ADMIN',
+                        icon: 'swap_horiz',
+                        iconBg: 'bg-blue-100 text-blue-800',
+                        title: 'ການຂໍປ່ຽນກະໃນທີມ',
+                        message: `${sw.from_name} ➔ ${sw.to_name} (ວັນທີ ${sw.start_date})`,
+                        date: sw.start_date,
+                        unread: false
+                    });
+                }
+            });
+        }
+
+        // --- B. ດຶງຂໍ້ມູນການລາພັກ (Annual Leaves) ຈາກ Supabase ---
+        var { data: leaves } = await window.supabaseClient
+            .from('annual_bookings')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (leaves) {
+            leaves.forEach(lv => {
+                // ກໍລະນີລາພັກຊ້ອນກັນ 2 ຄົນ (ລໍຖ້າ Admin ອະນຸມັດ)
+                if (isAdmin && lv.status === 'PENDING_ADMIN') {
+                    notifList.push({
+                        id: `leave-pending-${lv.id}`,
+                        type: 'LEAVE_CONFLICT',
+                        icon: 'warning',
+                        iconBg: 'bg-red-100 text-brand-red',
+                        title: '⚠️ ລາພັກຊ້ອນ 2 ຄົນໃນກະດຽວ!',
+                        message: `${lv.name_lao} ຂໍລາພັກ [${lv.shift}] ວັນທີ ${lv.start_date} (ລໍຖ້າການອະນຸມັດ)`,
+                        date: lv.start_date,
+                        unread: true
+                    });
+                }
+                // ແຈ້ງເຕືອນໃຫ້ເພື່ອນຮ່ວມງານຮູ້ວ່າໃຜລາພັກ
+                else if (lv.status === 'CONFIRMED' && lv.name_lao !== myName) {
+                    notifList.push({
+                        id: `leave-info-${lv.id}`,
+                        type: 'LEAVE_INFO',
+                        icon: 'flight_takeoff',
+                        iconBg: 'bg-emerald-100 text-emerald-800',
+                        title: 'ເພື່ອນຮ່ວມງານລາພັກ',
+                        message: `${lv.name_lao} ລາພັກ [${lv.shift}] ວັນທີ ${lv.start_date} ຫາ ${lv.end_date}`,
+                        date: lv.start_date,
+                        unread: false
+                    });
+                }
+            });
+        }
+
+        // --- C. RENDER ລາຍການລົງໃນ Notification Dropdown ---
+        renderNotificationDropdownUI(notifList);
+
+    } catch (err) {
+        console.error("Error polling notifications:", err);
+    }
+}
+
+// 2. FUNCTION ສະແດງຜົນໃນ UI Dropdown & ປ້າຍຈຳນວນແຈ້ງເຕືອນ
+function renderNotificationDropdownUI(notifList) {
+    var container = document.getElementById('notifDropdownList');
+    var badge = document.getElementById('notifBadge');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // ນັບແຈ້ງເຕືອນທີ່ຍັງບໍ່ທັນອ່ານ ຫຼື ຍັງຄ້າງຄາ
+    var unreadCount = notifList.filter(n => n.unread).length;
+
+    if (badge) {
+        if (unreadCount > 0) {
+            badge.innerText = unreadCount;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+        }
+    }
+
+    if (notifList.length === 0) {
+        container.innerHTML = `<p class="text-slate-400 text-xs text-center py-6">ບໍ່ມີການແຈ້ງເຕືອນໃໝ່</p>`;
+        return;
+    }
+
+    notifList.forEach(item => {
+        container.innerHTML += `
+            <div onclick="switchTab('profile'); toggleNotificationDropdown();" class="p-2.5 hover:bg-slate-50 rounded-xl cursor-pointer flex gap-3 items-start border-b border-slate-50 transition">
+                <div class="w-7 h-7 rounded-lg ${item.iconBg} flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-sm">${item.icon}</span>
+                </div>
+                <div class="flex-1 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-800 text-[11px]">${item.title}</span>
+                        <span class="text-[9px] text-slate-400 font-mono">${item.date}</span>
+                    </div>
+                    <p class="text-slate-600 text-[10px] mt-0.5 leading-tight">${item.message}</p>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// ⭐ 3. ຕັ້ງຄ່າ AUTO-REFRESH ທຸກໆ 20 ວິນາທີ (Interval Polling)
+// ດຶງທັນທີຕອນເປີດເວັບ
+setTimeout(fetchLiveNotifications, 1500);
+
+// Auto-Refresh ທຸກໆ 20 ວິນາທີ (20000 ms)
+setInterval(fetchLiveNotifications, 20000);
+
 
 // Global Exports
 window.safeJSONParse = safeJSONParse;
@@ -383,7 +530,7 @@ window.toggleMobileDrawer = toggleMobileDrawer;
 window.toggleNotificationDropdown = toggleNotificationDropdown;
 window.updateNotificationBadge = updateNotificationBadge;
 window.markAllNotificationsAsRead = markAllNotificationsAsRead;
-
+window.fetchLiveNotifications = fetchLiveNotifications;
 // Start & Load with Cloud Sync
 window.addEventListener('DOMContentLoaded', async () => {
     if (typeof window.loadAllFromSupabase === 'function') {
