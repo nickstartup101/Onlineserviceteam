@@ -54,7 +54,7 @@ window.syncScheduleToSupabase = syncScheduleToSupabase;
 
 // 1. ສູດຄຳນວນອາທິດ ຈັນ-ສຸກ ແບບຕໍ່ເນື່ອງ (Monday-Based Week Index)
 function getMondayBasedWeekIndex(dateObj) {
-    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026 ເປັນຈຸດອ້າງອີງ
+    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026
     var current = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
     var diffDays = Math.floor((current - epoch) / (1000 * 60 * 60 * 24));
     return Math.floor(diffDays / 7);
@@ -92,7 +92,6 @@ async function rebalanceNightShifts() {
     if (leaderNames.length === 0) leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
     var staffList = allUsers.filter(function(u) { return u && u.role !== 'SUPER_ADMIN' && !leaderNames.includes(u.nameLao); }).map(function(u) { return u.nameLao; });
 
-    // ກວດສອບຫົວໜ້າວັນທຳມະດາ: ກະ 3 ຕ້ອງມີ 1 ຫົວໜ້າ, ກະ 2 ຕ້ອງມີ 1 ຫົວໜ້າ
     var leaderFixed = 0;
     dates.forEach(function(d) {
         var day = schedData[d];
@@ -116,7 +115,6 @@ async function rebalanceNightShifts() {
         }
     });
 
-    // ປັບສະເພາະເສົາ-ອາທິດ ເພື່ອຮັກສາ Pattern ຈັນ-ສຸກ
     var weekendDates = dates.filter(function(d) { return schedData[d]?.isWeekend || isDateInHolidayRange(d); });
     function countWeekendS3() {
         var counts = {};
@@ -545,7 +543,7 @@ async function publishSchedule() {
 }
 window.publishSchedule = publishSchedule;
 
-// ⭐ 6. RENDER ຕາຕະລາງປະຈຳການ (ຕົວໜັງສືບາງປົກກະຕິ ບໍ່ໜາ/ບໍ່ເຂັ້ມ ຕາມຮູບ 100%)
+// ⭐ 6. RENDER ຕາຕະລາງປະຈຳການ (ສະແດງຫົວຂໍ້ໃຫຍ່, ຫົວຂໍ້ຖັນ ແລະ ຫົວຂໍ້ວັນພັກ ຕົວໜັງສືບາງ font-normal)
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -575,7 +573,7 @@ function renderScheduleTable() {
     var isOfficial = (sheet.status === 'PUBLISHED');
     var isG7 = sheet.isG7GroupSheet || false;
 
-    var currentTitle = sheet.title || sheet.data?._meta?.title || `ຕາຕະລາງປະຈຳການ ${month < 10 ? '0' + month : month}/${year}`;
+    var currentTitle = sheet.title || sheet.data?._meta?.title || `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${month < 10 ? '0' + month : month}/${year}`;
     var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
     var titleEl = document.getElementById('scheduleTableTitle');
@@ -685,8 +683,13 @@ window.renderScheduleTable = renderScheduleTable;
 // ⭐ 7. RENDER ຊ່ອງພະນັກງານ (ຮອງຮັບທັງ Drag & Drop ແລະ Click ເພື່ອພິມ/ເລືອກ ຕົວໜັງສືບາງ font-normal)
 function handleCellDragOver(e) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
+    e.stopPropagation();
+    if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+    }
 }
+window.handleCellDragOver = handleCellDragOver;
+
 function handleCellDragEnter(e) {
     e.preventDefault();
     var cell = e.currentTarget;
@@ -694,14 +697,19 @@ function handleCellDragEnter(e) {
         cell.classList.add('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
     }
 }
+window.handleCellDragEnter = handleCellDragEnter;
+
 function handleCellDragLeave(e) {
     var cell = e.currentTarget;
     if (cell) {
         cell.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
     }
 }
+window.handleCellDragLeave = handleCellDragLeave;
+
 async function handleCellDrop(e, date, shift, index) {
     e.preventDefault();
+    e.stopPropagation();
     var cell = e.currentTarget;
     if (cell) {
         cell.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
@@ -729,6 +737,7 @@ async function handleCellDrop(e, date, shift, index) {
         }
     }
 
+    if (!sheet.data) sheet.data = {};
     if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
     if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
     sheet.data[date][shift][index] = staffName;
@@ -738,10 +747,8 @@ async function handleCellDrop(e, date, shift, index) {
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     showToast('ສຳເລັດ', `ວາງ "${staffName}" ໃສ່ [${shift}] ວັນທີ ${date} ແລ້ວ!`, 'success');
+    window.draggedStaffName = null;
 }
-window.handleCellDragOver = handleCellDragOver;
-window.handleCellDragEnter = handleCellDragEnter;
-window.handleCellDragLeave = handleCellDragLeave;
 window.handleCellDrop = handleCellDrop;
 
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
@@ -771,8 +778,8 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var textColor = isLeader ? 'text-brand-red font-normal' : 'text-slate-800 font-normal';
 
         html += `
-            <div class="flex items-center justify-center text-center p-0.5 text-xs select-none ${borderR} ${borderB} ${cursorClass} ${highlightClass} ${textColor}" ${clickHandler} ${dropHandlers} title="${isAdmin ? 'ກົດເພື່ອເລືອກ/ພິມຊື່ ຫຼື ລາກຊື່ມາວາງໃສ່ໄດ້' : ''}">
-                <span class="truncate px-0.5 font-normal">${name}</span>
+            <div class="grid-cell-box flex items-center justify-center text-center p-0.5 text-xs select-none ${borderR} ${borderB} ${cursorClass} ${highlightClass} ${textColor}" ${clickHandler} ${dropHandlers} title="${isAdmin ? 'ກົດເພື່ອເລືອກ/ພິມຊື່ ຫຼື ລາກຊື່ມາວາງໃສ່ໄດ້' : ''}">
+                <span class="truncate px-0.5 font-normal pointer-events-none">${name}</span>
             </div>
         `;
     }
@@ -1119,7 +1126,7 @@ function renderFairnessSummaryData() {
     targetUsers.forEach(function(u, idx) {
         var s1 = 0, s2 = 0, s3 = 0, totalOff = 0;
 
-        dates.forEach(function(d) {
+        dates.forEach(d => {
             var day = schedData[d] || {};
             var onS1 = (day.shift1 || []).includes(u.nameLao);
             var onS2 = (day.shift2 || []).includes(u.nameLao);
