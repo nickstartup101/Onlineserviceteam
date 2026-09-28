@@ -14,7 +14,7 @@ function isDateInHolidayRange(dStr) {
 }
 window.isDateInHolidayRange = isDateInHolidayRange;
 
-// 0.1 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ schedule_sheets ໃນ SUPABASE 100%
+// ⭐ 0.1 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ schedule_sheets ໃນ SUPABASE 100%
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return;
     try {
@@ -545,7 +545,7 @@ async function publishSchedule() {
 }
 window.publishSchedule = publishSchedule;
 
-// ⭐ 6. RENDER ຕາຕະລາງປະຈຳການ (ສະແດງຫົວຂໍ້ໃຫຍ່, ຫົວຂໍ້ຖັນ ແລະ ຫົວຂໍ້ວັນພັກ ຄົບຖ້ວນ 100%)
+// ⭐ 6. RENDER ຕາຕະລາງປະຈຳການ (ຕົວໜັງສືບາງປົກກະຕິ ບໍ່ໜາ/ບໍ່ເຂັ້ມ ຕາມຮູບ 100%)
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -575,10 +575,9 @@ function renderScheduleTable() {
     var isOfficial = (sheet.status === 'PUBLISHED');
     var isG7 = sheet.isG7GroupSheet || false;
 
-    var currentTitle = sheet.title || sheet.data?._meta?.title || `ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ ${month < 10 ? '0' + month : month}/${year}`;
+    var currentTitle = sheet.title || sheet.data?._meta?.title || `ຕາຕະລາງປະຈຳການ ${month < 10 ? '0' + month : month}/${year}`;
     var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
-    // A. ຫົວຂໍ້ໃຫຍ່ຂອງຕາຕະລາງ (Title Header)
     var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
         titleEl.innerHTML = `
@@ -636,17 +635,13 @@ function renderScheduleTable() {
             var isWeekendOrHol = (dayOfWeek === 'SAT' || dayOfWeek === 'SUN' || isHol || dayData.isWeekend);
 
             var currentHeaderType = isWeekendOrHol ? 'HOLIDAY' : 'REGULAR';
-            
-            // ⭐ ເງື່ອນໄຂສະແດງຫົວຂໍ້ຖັນ: ວັນທີ 1, ວັນເສົາ, ວັນຈັນ ຫຼື ເມື່ອມີການປ່ຽນປະເພດວັນ
             var shouldShowHeader = (i === 1) || 
                                     (dayOfWeek === 'SAT') || 
                                     (dayOfWeek === 'MON' && !isWeekendOrHol) || 
                                     (currentHeaderType !== prevHeaderType);
 
-            // B. ແຖວຫົວຂໍ້ຖັນ (Column Headers)
             if (shouldShowHeader) {
                 if (isWeekendOrHol) {
-                    // ຫົວຂໍ້ວັນພັກ (ລວມ 2 ຊ່ອງ Colspan 2 ແບບໃນຮູບ)
                     tbody.innerHTML += `
                         <tr class="bg-red-50/40 border-t-2 border-b border-black text-brand-red text-center text-xs">
                             <td colspan="2" class="p-1 text-center font-medium border-r border-black">${isHol ? 'ວັນພັກພິເສດ' : 'ວັນພັກ'}</td>
@@ -656,7 +651,6 @@ function renderScheduleTable() {
                         </tr>
                     `;
                 } else {
-                    // ຫົວຂໍ້ວັນຈັນ-ສຸກ ປົກກະຕິ
                     tbody.innerHTML += `
                         <tr class="bg-slate-50 border-t-2 border-b border-black text-slate-800 text-center text-xs">
                             <th style="width: 75px;" class="p-1 text-center font-medium border-r border-black">ວັນທີ</th>
@@ -670,7 +664,6 @@ function renderScheduleTable() {
             }
             prevHeaderType = currentHeaderType;
 
-            // C. ແຖວຂໍ້ມູນປະຈຳວັນ (ຕົວໜັງສືປົກກະຕິ font-normal ບໍ່ໜາ)
             var dayColor = isWeekendOrHol ? 'text-brand-red' : 'text-slate-800';
 
             tbody.innerHTML += `
@@ -689,7 +682,68 @@ function renderScheduleTable() {
 }
 window.renderScheduleTable = renderScheduleTable;
 
-// ⭐ 7. RENDER ຊ່ອງພະນັກງານ (ຕົວໜັງສືປົກກະຕິ font-normal ບໍ່ໜາ, ຈັດກາງພໍດີ)
+// ⭐ 7. RENDER ຊ່ອງພະນັກງານ (ຮອງຮັບທັງ Drag & Drop ແລະ Click ເພື່ອພິມ/ເລືອກ ຕົວໜັງສືບາງ font-normal)
+function handleCellDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+}
+function handleCellDragEnter(e) {
+    e.preventDefault();
+    var cell = e.currentTarget;
+    if (cell) {
+        cell.classList.add('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
+    }
+}
+function handleCellDragLeave(e) {
+    var cell = e.currentTarget;
+    if (cell) {
+        cell.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
+    }
+}
+async function handleCellDrop(e, date, shift, index) {
+    e.preventDefault();
+    var cell = e.currentTarget;
+    if (cell) {
+        cell.classList.remove('bg-blue-100', 'ring-2', 'ring-blue-500', 'ring-inset');
+    }
+
+    var staffName = e.dataTransfer.getData('text/plain') || window.draggedStaffName;
+    if (!staffName) return;
+
+    var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
+    if (!isAdmin) {
+        showToast('ແຈ້ງເຕືອນ', 'ສະເພາະ Admin ເທົ່ານັ້ນທີ່ສາມາດແກ້ໄຂຕາຕະລາງໄດ້', 'error');
+        return;
+    }
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    var currentName = (sheet.data?.[date]?.[shift]?.[index]) || '';
+    if (currentName === staffName) return;
+
+    if (sheet.status === 'PUBLISHED') {
+        if (typeof window.openEditPublishedRemarkModal === 'function') {
+            window.openEditPublishedRemarkModal({ date: date, shift: shift, index: index, currentName: currentName, newName: staffName });
+            return;
+        }
+    }
+
+    if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
+    sheet.data[date][shift][index] = staffName;
+
+    await saveAll();
+    await syncScheduleToSupabase(sheet);
+    renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', `ວາງ "${staffName}" ໃສ່ [${shift}] ວັນທີ ${date} ແລ້ວ!`, 'success');
+}
+window.handleCellDragOver = handleCellDragOver;
+window.handleCellDragEnter = handleCellDragEnter;
+window.handleCellDragLeave = handleCellDragLeave;
+window.handleCellDrop = handleCellDrop;
+
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 2); 
     rows = Math.max(rows, 1);
@@ -704,19 +758,20 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
             isLeader = (window.users || []).some(function(u) { return u && u.nameLao === name && u.isLeader; });
         }
 
-        var clickHandler = (isAdmin && name) ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
+        var clickHandler = isAdmin ? `onclick="openCellModal('${date}', '${shift}', ${idx}, '${name}')"` : '';
+        var dropHandlers = isAdmin ? `ondragover="handleCellDragOver(event)" ondragenter="handleCellDragEnter(event)" ondragleave="handleCellDragLeave(event)" ondrop="handleCellDrop(event, '${date}', '${shift}', ${idx})"` : '';
+
         var isModified = (window.scheduleAuditLogs || []).some(function(l) { return l && l.sheetId === sheetId && l.date === date && l.shift === shift && l.newName === name; });
         var highlightClass = isModified ? 'bg-amber-100 font-medium text-amber-950' : '';
 
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
-        var cursorClass = (isAdmin && name) ? 'cursor-pointer hover:bg-slate-50 transition' : '';
+        var cursorClass = isAdmin ? 'cursor-pointer hover:bg-blue-50/60 transition' : '';
 
-        // ຕົວໜັງສືປົກກະຕິ (font-normal ບໍ່ໜາ): ຫົວໜ້າ = ສີແດງ, ພະນັກງານ = ສີດຳ
         var textColor = isLeader ? 'text-brand-red font-normal' : 'text-slate-800 font-normal';
 
         html += `
-            <div class="flex items-center justify-center text-center p-0.5 text-xs select-none ${borderR} ${borderB} ${cursorClass} ${highlightClass} ${textColor}" ${clickHandler}>
+            <div class="flex items-center justify-center text-center p-0.5 text-xs select-none ${borderR} ${borderB} ${cursorClass} ${highlightClass} ${textColor}" ${clickHandler} ${dropHandlers} title="${isAdmin ? 'ກົດເພື່ອເລືອກ/ພິມຊື່ ຫຼື ລາກຊື່ມາວາງໃສ່ໄດ້' : ''}">
                 <span class="truncate px-0.5 font-normal">${name}</span>
             </div>
         `;
@@ -1136,7 +1191,7 @@ function exportToA4PDF() {
         element.className = originalClass;
         element.setAttribute('style', originalStyle);
         if (parent) { parent.scrollTop = prevScrollTop; parent.scrollLeft = prevScrollLeft; }
-        noPrintEls.forEach(el => el.style.display = '');
+        noPrintEls.forEach(function(el) { el.style.display = ''; });
         showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດ!', 'success');
     }).catch(function(err) {
         element.className = originalClass;
