@@ -26,7 +26,7 @@ try {
     if (badUsers && !badUsers.trim().startsWith('[') && !badUsers.trim().startsWith('{')) localStorage.removeItem('ot_users');
 } catch (e) {}
 
-// 3. ລາຍຊື່ພະນັກງານເລີ່ມຕົ້ນ (Default Users)
+// 3. ລາຍຊື່ພະນັກງານເລີ່ມຕົ້ນ (Default Users 24 ທ່ານ)
 var defaultSystemUsers = [
     { user: 'admin', pass: 'admin123', nameLao: 'Admin', fullName: 'Super Admin', role: 'SUPER_ADMIN', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 8877' },
     { user: 'BCEL0765', pass: 'bcel2026', nameLao: 'ແສງດາວ', fullName: 'SENGDAO DOUANGPRASEUTH', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5501 2345' },
@@ -219,7 +219,7 @@ function toggleMobileDrawer() {
 }
 window.toggleMobileDrawer = toggleMobileDrawer;
 
-// 7. ACTIVE SCHEDULE SHEET
+// 7. ACTIVE SCHEDULE SHEET HELPER
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         window.scheduleSheets = [{
@@ -264,7 +264,14 @@ function saveAll() {
 }
 window.saveAll = saveAll;
 
-// 9. RENDER ROSTER SIDEBAR (ມີຮູບພາບ ແລະ Fallback ປ້ອງກັນຮູບແຕກ)
+// ⭐ 9. DRAG & DROP ROSTER SIDEBAR (ລາກຊື່ມາວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ)
+function handleStaffDragStart(event, nameLao) {
+    event.dataTransfer.setData('text/plain', nameLao);
+    event.dataTransfer.effectAllowed = 'copy';
+    window.draggedStaffName = nameLao;
+}
+window.handleStaffDragStart = handleStaffDragStart;
+
 function renderScheduleStaffRoster() {
     var container = document.getElementById('scheduleStaffRoster');
     var countEl = document.getElementById('rosterCountText');
@@ -281,12 +288,12 @@ function renderScheduleStaffRoster() {
         var isL = u.isLeader;
         var avatarUrl = u.photo || DEFAULT_AVATAR;
         container.innerHTML += `
-            <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 transition">
-                <div class="flex items-center gap-2">
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ">
+                <div class="flex items-center gap-2 pointer-events-none">
                     <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
                     <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
-                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono">' + u.user + '</span>'}
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none">' + u.user + '</span>'}
             </div>
         `;
     });
@@ -311,12 +318,12 @@ function filterRosterSidebar() {
         var isL = u.isLeader;
         var avatarUrl = u.photo || DEFAULT_AVATAR;
         container.innerHTML += `
-            <div class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 transition">
-                <div class="flex items-center gap-2">
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ">
+                <div class="flex items-center gap-2 pointer-events-none">
                     <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
                     <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
-                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono">' + u.user + '</span>'}
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none">' + u.user + '</span>'}
             </div>
         `;
     });
@@ -398,7 +405,10 @@ window.playIOSNotificationSound = playIOSNotificationSound;
 document.addEventListener('click', function() {
     try {
         var AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx && AudioCtx.state === 'suspended') AudioCtx.resume();
+        if (AudioCtx) {
+            var ctx = new AudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+        }
     } catch (e) {}
 }, { once: true });
 
@@ -419,7 +429,7 @@ function markAllNotificationsAsRead() {
 }
 window.markAllNotificationsAsRead = markAllNotificationsAsRead;
 
-// 12. FETCH LIVE NOTIFICATIONS
+// 12. FETCH LIVE NOTIFICATIONS (AUTO POLLING 20s)
 async function fetchLiveNotifications() {
     if (!window.supabaseClient || !window.currentUser) return;
 
@@ -627,7 +637,7 @@ async function loadEverythingFromSupabase() {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
 
-        // --- C. ⭐ ດຶງຕາຕະລາງທັງໝົດຈາກ schedule_sheets (09, 10, 11, 12/2026 ຈະຂຶ້ນຄົບ) ---
+        // --- C. ດຶງຕາຕະລາງທັງໝົດຈາກ schedule_sheets ---
         var schedRes = await window.supabaseClient
             .from('schedule_sheets')
             .select('*');
