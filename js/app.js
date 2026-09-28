@@ -219,7 +219,7 @@ function toggleMobileDrawer() {
 }
 window.toggleMobileDrawer = toggleMobileDrawer;
 
-// 7. ACTIVE SCHEDULE SHEET HELPER
+// 7. ACTIVE SCHEDULE SHEET
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         window.scheduleSheets = [{
@@ -264,11 +264,14 @@ function saveAll() {
 }
 window.saveAll = saveAll;
 
-// ⭐ 9. DRAG & DROP ROSTER SIDEBAR (ລາກຊື່ມາວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ)
+// ⭐ 9. DRAG & DROP ROSTER SIDEBAR (ລາກຊື່ມາວາງໃສ່ຊ່ອງຕາຕະລາງໄດ້ເລີຍ)
 function handleStaffDragStart(event, nameLao) {
-    event.dataTransfer.setData('text/plain', nameLao);
-    event.dataTransfer.effectAllowed = 'copy';
     window.draggedStaffName = nameLao;
+    if (event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', nameLao);
+        event.dataTransfer.setData('text', nameLao);
+        event.dataTransfer.effectAllowed = 'copyMove';
+    }
 }
 window.handleStaffDragStart = handleStaffDragStart;
 
@@ -288,12 +291,12 @@ function renderScheduleStaffRoster() {
         var isL = u.isLeader;
         var avatarUrl = u.photo || DEFAULT_AVATAR;
         container.innerHTML += `
-            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ">
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs mb-1.5" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຊ່ອງໄດ້ເລີຍ">
                 <div class="flex items-center gap-2 pointer-events-none">
-                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
-                    <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
+                    <img draggable="false" src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0 select-none"/>
+                    <span class="font-bold select-none ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
-                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none">' + u.user + '</span>'}
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none select-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none select-none">' + u.user + '</span>'}
             </div>
         `;
     });
@@ -318,12 +321,12 @@ function filterRosterSidebar() {
         var isL = u.isLeader;
         var avatarUrl = u.photo || DEFAULT_AVATAR;
         container.innerHTML += `
-            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຕາຕະລາງໄດ້ເລີຍ">
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs mb-1.5" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຊ່ອງໄດ້ເລີຍ">
                 <div class="flex items-center gap-2 pointer-events-none">
-                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
-                    <span class="font-bold ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
+                    <img draggable="false" src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0 select-none"/>
+                    <span class="font-bold select-none ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
                 </div>
-                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none">' + u.user + '</span>'}
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none select-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none select-none">' + u.user + '</span>'}
             </div>
         `;
     });
@@ -429,7 +432,7 @@ function markAllNotificationsAsRead() {
 }
 window.markAllNotificationsAsRead = markAllNotificationsAsRead;
 
-// 12. FETCH LIVE NOTIFICATIONS (AUTO POLLING 20s)
+// 12. FETCH LIVE NOTIFICATIONS
 async function fetchLiveNotifications() {
     if (!window.supabaseClient || !window.currentUser) return;
 
@@ -567,7 +570,7 @@ async function loadEverythingFromSupabase() {
     if (!window.supabaseClient) return;
 
     try {
-        // --- A. ດຶງ Employee Groups ---
+        // A. ດຶງ Employee Groups
         var grpRes = await window.supabaseClient.from('employee_groups').select('*');
         if (!grpRes.error && grpRes.data && grpRes.data.length > 0) {
             window.employeeGroups = grpRes.data.map(function(g) {
@@ -581,7 +584,7 @@ async function loadEverythingFromSupabase() {
         }
         if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
 
-        // --- B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ (ດຶງຄົບ 24 ທ່ານ) ---
+        // B. ດຶງໂປຣໄຟລ໌ ແລະ ຮູບພາບເພື່ອນຮ່ວມງານ (ດຶງຄົບ 24 ທ່ານ)
         var profRes = await window.supabaseClient.from('profiles').select('*');
         var cloudProfiles = profRes.data;
 
@@ -637,7 +640,7 @@ async function loadEverythingFromSupabase() {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
 
-        // --- C. ດຶງຕາຕະລາງທັງໝົດຈາກ schedule_sheets ---
+        // C. ດຶງຕາຕະລາງທັງໝົດຈາກ schedule_sheets
         var schedRes = await window.supabaseClient
             .from('schedule_sheets')
             .select('*');
@@ -674,7 +677,6 @@ async function loadEverythingFromSupabase() {
             if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
             if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
-            console.log("☁️ [Cloud Sync]: ດຶງທຸກເດືອນຈາກ schedule_sheets ສຳເລັດແລ້ວ (" + window.scheduleSheets.length + " ເດືອນ)!");
         }
 
     } catch (e) {
