@@ -61,7 +61,7 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// ⭐ 0.2 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບ DYNAMIC (ແກ້ໄຂບັນຫາບັນທຶກບໍ່ລົງ DATABASE 100%)
+// ⭐ 0.2 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE (ແກ້ໄຂຊື່ຕາຕະລາງເປັນ 'schedule_sheets' ຕົງກັບ DB 100%)
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return false;
     try {
@@ -71,55 +71,41 @@ async function syncScheduleToSupabase(sheet) {
             notes: sheet.notes || ''
         };
 
-        // 1. ກວດສອບຖັນຂອງ Table schedules ໃນ Supabase ຕົວຈິງ
-        var tableCols = null;
-        try {
-            var { data: sample } = await window.supabaseClient.from('schedules').select('*').limit(1);
-            if (sample && sample.length > 0) {
-                tableCols = Object.keys(sample[0]);
-            }
-        } catch(e) {}
+        var payload = {
+            id: sheet.id,
+            title: sheet.title || '',
+            status: sheet.status || 'DRAFT',
+            data: sheet.data
+        };
+        if (sheet.monthKey) payload.month_key = sheet.monthKey;
+        if (sheet.notes) payload.notes = sheet.notes;
 
-        // ສ້າງ Payload ຕາມຖັນທີ່ມີແທ້ໃນ Database
-        var payload = { data: sheet.data };
-        if (!tableCols || tableCols.includes('id')) payload.id = sheet.id;
-        if (!tableCols || tableCols.includes('title')) payload.title = sheet.title || '';
-        if (!tableCols || tableCols.includes('status')) payload.status = sheet.status || 'DRAFT';
-        
-        if (tableCols) {
-            if (tableCols.includes('month_key')) payload.month_key = sheet.monthKey;
-            else if (tableCols.includes('monthKey')) payload.monthKey = sheet.monthKey;
-            if (tableCols.includes('notes')) payload.notes = sheet.notes || '';
-        } else {
-            if (sheet.monthKey) payload.month_key = sheet.monthKey;
-        }
-
-        // 2. ສັ່ງ UPDATE ຕາມ ID ໂດຍກົງ (ບໍ່ໃຊ້ onConflict ປ້ອງກັນ Error 400)
+        // 1. UPDATE ລົງຕາຕະລາງ schedule_sheets ໂດຍກົງຕາມ ID
         var { data: upData, error: upErr } = await window.supabaseClient
-            .from('schedules')
+            .from('schedule_sheets')
             .update(payload)
             .eq('id', sheet.id)
             .select();
 
         if (!upErr && upData && upData.length > 0) {
-            console.log("☁️ [Supabase Sync SUCCESS]: ບັນທຶກຕາຕະລາງລົງ Database ສຳເລັດ 100% ->", sheet.id);
+            console.log("☁️ [Supabase SUCCESS] ບັນທຶກລົງ schedule_sheets ສຳເລັດ 100% ->", sheet.id);
             return true;
         }
 
-        // 3. ຖ້າບໍ່ມີແຖວໃນ DB ໃຫ້ສັ່ງ INSERT
+        // 2. ຖ້າບໍ່ມີແຖວໃຫ້ INSERT
         var { error: inErr } = await window.supabaseClient
-            .from('schedules')
+            .from('schedule_sheets')
             .insert([payload]);
 
         if (!inErr) {
-            console.log("☁️ [Supabase Sync SUCCESS]: Inserted sheet to Database ->", sheet.id);
+            console.log("☁️ [Supabase SUCCESS] ສ້າງແຖວໃໝ່ໃນ schedule_sheets ສຳເລັດ ->", sheet.id);
+            return true;
+        } else {
+            // 3. Fallback Upsert
+            await window.supabaseClient.from('schedule_sheets').upsert(payload, { onConflict: 'id' });
+            console.log("☁️ [Supabase SUCCESS] Upsert schedule_sheets ສຳເລັດ ->", sheet.id);
             return true;
         }
-
-        // 4. Fallback ສຸດທ້າຍ: ສົ່ງສະເພາະ id ແລະ data
-        await window.supabaseClient.from('schedules').upsert({ id: sheet.id, data: sheet.data });
-        console.log("☁️ [Supabase Sync SUCCESS]: Fallback upsert success ->", sheet.id);
-        return true;
     } catch (err) {
         console.error("❌ [Supabase Sync Exception]:", err);
         return false;
@@ -819,14 +805,13 @@ function openCellModal(date, shift, index, currentName) {
     document.getElementById('cellSelectModal')?.classList.remove('hidden');
 }
 
-// ⭐ 8. ເລືອກພະນັກງານໃສ່ຊ່ອງ (ຖ້າເປັນ PUBLISHED ຈະຖາມເຫດຜົນ, ຖ້າ DRAFT ຈະອັບເດດທັນທີ)
+// ⭐ 8. ເລືອກພະນັກງານໃສ່ຊ່ອງ
 async function selectStaffForCell(nameLao) {
     if (!window.activeEditCell) return;
     var { date, shift, index, currentName } = window.activeEditCell;
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    // ຖ້າຕາຕະລາງຖືກ PUBLISH ແລ້ວ ແລະ ເປັນການປ່ຽນຄົນ: ຖາມເຫດຜົນ Remark
     if (sheet.status === 'PUBLISHED' && currentName !== nameLao) {
         closeCellModal();
         openEditPublishedRemarkModal({ 
@@ -839,7 +824,6 @@ async function selectStaffForCell(nameLao) {
         return;
     }
 
-    // ຖ້າເປັນສະບັບຮ່າງ (Draft): ບັນທຶກທັນທີ
     await applyCellUpdate(sheet, date, shift, index, nameLao);
 }
 
@@ -867,12 +851,14 @@ async function clearCurrentCell() {
 
 // ⭐ 10. FUNCTION ບັນທຶກຊື່ໃສ່ CELL ແບບປອດໄພ 100% ຕັດຊ່ອງວ່າງອອກ
 async function applyCellUpdate(sheet, date, shift, index, nameLao) {
+    if (!sheet) return;
     if (!sheet.data) sheet.data = {};
     if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
     if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
 
     var list = sheet.data[date][shift];
 
+    // ດັດແກ້ສະເພາະກະທີ່ກຳລັງເລືອກ (ປົກປ້ອງກະອື່ນໆບໍ່ໃຫ້ຫາຍ)
     if (!nameLao || nameLao === '(ວ່າງ)') {
         if (index < list.length) list.splice(index, 1);
     } else {
@@ -883,31 +869,30 @@ async function applyCellUpdate(sheet, date, shift, index, nameLao) {
         }
     }
 
-    // ກອງຊ່ອງວ່າງ ແລະ (ວ່າງ) ອອກທັງໝົດ
     sheet.data[date][shift] = list.filter(n => n && n.trim() !== '' && n !== '(ວ່າງ)');
 
+    // ອັບເດດລົງໃນ window.scheduleSheets
     if (window.scheduleSheets) {
         var sIdx = window.scheduleSheets.findIndex(s => s.id === sheet.id);
         if (sIdx !== -1) window.scheduleSheets[sIdx].data = sheet.data;
     }
 
+    // ບັນທຶກສຳຮອງລົງ LocalStorage ທັນທີ
     try {
         localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
         localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
     } catch(e) {}
 
+    // Render ໜ້າຈໍທັນທີ
     closeCellModal();
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
-    // ⭐ SYNC ລົງ DATABASE ແບບ GUARANTEED (ປ້ອງກັນ Cloud Sync ດຶງຄ່າເກົ່າມາທັບ)
+    // ⭐ SYNC ລົງ DATABASE ຕາຕະລາງ schedule_sheets ແທ້ໆ!
     await syncScheduleToSupabase(sheet);
-    try {
-        if (typeof saveAll === 'function') await saveAll();
-    } catch(err) {}
 }
 
-// ⭐ 11. ເປີດ MODAL ຖາມເຫດຜົນການດັດແກ້ຕາຕະລາງ PUBLISHED
+// 11. ເປີດ MODAL ຖາມເຫດຜົນການດັດແກ້ຕາຕະລາງ PUBLISHED
 function openEditPublishedRemarkModal(editData) {
     window.pendingPublishedCellEdit = editData;
     var targetEl = document.getElementById('remarkModalTargetInfo');
@@ -931,7 +916,7 @@ function closeEditPublishedRemarkModal() {
     window.pendingPublishedCellEdit = null;
 }
 
-// ⭐ 12. ຢືນຢັນດັດແກ້ຕາຕະລາງ PUBLISHED ພ້ອມບັນທຶກເຫດຜົນ REMARK ລົງ AUDIT LOG
+// 12. ຢືນຢັນດັດແກ້ຕາຕະລາງ PUBLISHED ພ້ອມບັນທຶກເຫດຜົນ REMARK
 async function confirmApplyPublishedCellUpdate() {
     if (!window.pendingPublishedCellEdit) return;
     var { date, shift, index, currentName, newName } = window.pendingPublishedCellEdit;
@@ -1106,7 +1091,8 @@ function promptDeleteCurrentSheet() {
         try {
             if (typeof saveAll === 'function') await saveAll();
             if (window.supabaseClient) {
-                await window.supabaseClient.from('schedules').delete().eq('id', delId);
+                // ⭐ ລຶບອອກຈາກ table schedule_sheets ໃຫ້ຖືກຕ້ອງ
+                await window.supabaseClient.from('schedule_sheets').delete().eq('id', delId);
             }
         } catch(e) {}
     }, 'delete', 'ລຶບຕາຕະລາງ');
@@ -1136,7 +1122,8 @@ function deleteAllDraftSheets() {
         try {
             if (typeof saveAll === 'function') await saveAll();
             if (window.supabaseClient && draftIds.length > 0) {
-                await window.supabaseClient.from('schedules').delete().in('id', draftIds);
+                // ⭐ ລຶບອອກຈາກ table schedule_sheets ໃຫ້ຖືກຕ້ອງ
+                await window.supabaseClient.from('schedule_sheets').delete().in('id', draftIds);
             }
         } catch(e) {}
     }, 'delete_sweep', 'ລຶບ Draft ທັງໝົດ');
