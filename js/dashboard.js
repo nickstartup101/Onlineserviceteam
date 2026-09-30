@@ -1,14 +1,5 @@
-// ================= ⭐ DASHBOARD OPERATIONAL MONITOR (CORRECT REAL-TIME SWAP) =================
+// ================= ⭐ DASHBOARD OPERATIONAL MONITOR (REAL-TIME SWAP SYNC) =================
 
-// Helper ປຽບທຽບຊື່ແບບຍືດຍຸ່ນ
-function isNameMatch(a, b) {
-    if (!a || !b) return false;
-    var cleanA = a.toString().trim().toLowerCase().replace(/\s+/g, '');
-    var cleanB = b.toString().trim().toLowerCase().replace(/\s+/g, '');
-    return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
-}
-
-// Helper ແປງວັນທີ
 function normalizeDateStr(d) {
     if (!d) return '';
     var s = d.toString().trim();
@@ -43,7 +34,7 @@ function renderDashboard() {
 
     var monthKey = targetDate.substring(0, 7);
     
-    // ດຶງທຸກ Sheet ຂອງເດືອນນັ້ນ (ສົມບູນ + ສັນຍາ)
+    // ດຶງທຸກ Sheet ຂອງເດືອນນັ້ນ (ເຊັ່ນ ຕາຕະລາງສົມບູນ ແລະ ສັນຍາ)
     var sheetsOfMonth = (window.scheduleSheets || []).filter(s => s.monthKey === monthKey);
     if (sheetsOfMonth.length === 0 && typeof getActiveSheet === 'function') {
         var act = getActiveSheet();
@@ -54,7 +45,7 @@ function renderDashboard() {
     var dayOfWeek = new Date(targetDate).getDay();
     var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6 || isHol);
 
-    // 1. Badge ປະເພດວັນ
+    // 1. ອັບເດດ Badge ປະເພດວັນ
     var dayTypeBadge = document.getElementById('dayTypeBadge');
     if (dayTypeBadge) {
         if (isHol) {
@@ -69,7 +60,7 @@ function renderDashboard() {
         }
     }
 
-    // 2. ⭐ ສະແດງລາຍຊື່ແຕ່ລະກະ ພ້ອມສະຫຼັບຊື່ແບບ REAL-TIME 100%
+    // 2. ⭐ ສະແດງລາຍຊື່ແຕ່ລະກະ (ແຍກຕາມ Sheet ພ້ອມສະຫຼັບຊື່ແບບ REAL-TIME)
     renderShiftCardsGrouped(sheetsOfMonth, targetDate, isWeekend);
 
     // 3. ສະແດງລາຍການລາພັກ
@@ -79,22 +70,8 @@ function renderDashboard() {
     renderDailySwaps(targetDate);
 }
 
-// ⭐ RENDER ກະ 1, 2, 3: ລັອກຕຳແໜ່ງປ່ຽນກະແບບ REAL-TIME ບໍ່ມີການສະຫຼັບກັບຄືນ
+// ⭐ RENDER ກະ 1, 2, 3 ແບບແຍກກຸ່ມ Sheet ແລະ ສະຫຼັບຊື່ Real-time
 function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
-    // ດຶງປະຫວັດ Swap ຫຼ້າສຸດ
-    try {
-        var localSw = localStorage.getItem('ot_swap_history');
-        if (localSw) window.swapHistory = JSON.parse(localSw);
-    } catch(e) {}
-
-    // ກອງສະເພາະ Swap ທີ່ Active ໃນມື້ນີ້
-    var activeSwapsToday = (window.swapHistory || []).filter(sw => {
-        if (sw.status !== 'COMPLETED') return false;
-        var sStart = normalizeDateStr(sw.startDate);
-        var sEnd = normalizeDateStr(sw.endDate || sw.startDate);
-        return (targetDate >= sStart && targetDate <= sEnd);
-    });
-
     ['shift1', 'shift2', 'shift3'].forEach(shiftKey => {
         var container = document.getElementById(shiftKey + 'Names');
         var badge = document.getElementById(shiftKey + 'CountBadge');
@@ -120,27 +97,23 @@ function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
             var dayData = sheet?.data?.[targetDate] || {};
             var names = [...(dayData[shiftKey] || [])];
 
-            // ⭐ REAL-TIME SWAP LOGIC: ລັອກຕາມ fromShift ແລະ toShift ຢ່າງຖືກຕ້ອງ
-            activeSwapsToday.forEach(sw => {
-                var isCover = (sw.swapType === 'COVER' || (sw.reason && sw.reason.includes('ຄວບກະ')));
-
-                if (isCover) {
-                    // ກໍລະນີ: ຍາມແທນ (Cover) -> ໃນ toShift ໃຫ້ເອົາ fromName ມາແທນ toName
-                    if (shiftKey === sw.toShift) {
-                        var tIdx = names.findIndex(n => isNameMatch(n, sw.toName));
-                        if (tIdx !== -1) names[tIdx] = sw.fromName;
-                    }
-                } else {
-                    // ກໍລະນີ: 1:1 Swap -> ຜູ້ຂໍ (fromName) ຕ້ອງໄປຢູ່ toShift, ຜູ້ຮັບ (toName) ຕ້ອງມາຢູ່ fromShift
-                    if (shiftKey === sw.toShift) {
-                        // ໃນກະ toShift: ຖ້າພົບຊື່ toName ໃຫ້ປ່ຽນເປັນ fromName ທັນທີ
-                        var tIdx = names.findIndex(n => isNameMatch(n, sw.toName));
-                        if (tIdx !== -1) names[tIdx] = sw.fromName;
-                    }
-                    if (shiftKey === sw.fromShift) {
-                        // ໃນກະ fromShift: ຖ້າພົບຊື່ fromName ໃຫ້ປ່ຽນເປັນ toName ທັນທີ
-                        var fIdx = names.findIndex(n => isNameMatch(n, sw.fromName));
-                        if (fIdx !== -1) names[fIdx] = sw.toName;
+            // ⭐ REAL-TIME SWAP CHECK: ກວດສອບ Swap ທີ່ກົງກັບມື້ນີ້ເພື່ອສະຫຼັບຊື່ທັນທີ
+            (window.swapHistory || []).forEach(sw => {
+                if (sw.status === 'COMPLETED') {
+                    var sStart = normalizeDateStr(sw.startDate);
+                    var sEnd = normalizeDateStr(sw.endDate || sw.startDate);
+                    if (targetDate >= sStart && targetDate <= sEnd) {
+                        // ຖ້າເປັນ Cover
+                        if (sw.swapType === 'COVER') {
+                            var idx = names.indexOf(sw.toName);
+                            if (idx !== -1) names[idx] = sw.fromName;
+                        } else {
+                            // ຖ້າເປັນ 1:1 Swap
+                            var fromIdx = names.indexOf(sw.fromName);
+                            var toIdx = names.indexOf(sw.toName);
+                            if (fromIdx !== -1) names[fromIdx] = sw.toName;
+                            else if (toIdx !== -1) names[toIdx] = sw.fromName;
+                        }
                     }
                 }
             });
@@ -164,19 +137,15 @@ function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
                 `;
 
                 names.forEach(name => {
-                    var u = (window.users || []).find(usr => isNameMatch(usr.nameLao, name));
+                    var u = (window.users || []).find(usr => usr.nameLao === name);
                     var isLeader = u ? u.isLeader : false;
                     var photo = u ? u.photo : '';
-
-                    // ກວດສອບວ່າຄົນນີ້ມາຂຶ້ນຍ້ອນ Swap ຫຼືບໍ່ (ຖ້າແມ່ນ ຕິດ icon ບອກ)
-                    var isSwappedPerson = activeSwapsToday.some(sw => isNameMatch(sw.fromName, name) || isNameMatch(sw.toName, name));
 
                     groupHtml += `
                         <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${isLeader ? 'bg-red-50 text-brand-red border-red-200' : 'bg-slate-50 text-slate-800 border-slate-200'}">
                             ${photo ? `<img src="${photo}" class="w-4 h-4 rounded-full object-cover"/>` : ''}
                             <span>${name}</span>
                             ${isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>' : ''}
-                            ${isSwappedPerson ? '<span class="material-symbols-outlined text-[13px] text-amber-600 font-bold" title="ປ່ຽນກະມາ">sync_alt</span>' : ''}
                         </div>
                     `;
                 });
