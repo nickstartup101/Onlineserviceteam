@@ -1,6 +1,5 @@
 // ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (FULL RECOVERED) =================
 
-// Helper ດຶງຂໍ້ມູນ User ທີ່ Login ຢ່າງປອດໄພ
 function getCurrentUserSafe() {
     if (window.currentUser) return window.currentUser;
     try {
@@ -13,7 +12,6 @@ function getCurrentUserSafe() {
     return null;
 }
 
-// Helper ດຶງ Sheet ປັດຈຸບັນຢ່າງປອດໄພ
 function getActiveSheetSafe() {
     if (typeof getActiveSheet === 'function') return getActiveSheet();
     if (window.scheduleSheets && window.scheduleSheets.length > 0) {
@@ -23,7 +21,7 @@ function getActiveSheetSafe() {
     return null;
 }
 
-// ⭐ 1. ລາຍງານ ADMIN: ສະຖິຕິປ່ຽນກະ, ກະ 3, ເສົາ-ອາທິດ ແລະ ຄົນທີ່ມາເກີນມາດຕະຖານ
+// 1. ລາຍງານ ADMIN: ສະຖິຕິປ່ຽນກະ, ກະ 3, ເສົາ-ອາທິດ ແລະ ຄົນທີ່ມາເກີນມາດຕະຖານ
 function renderAdminAllStaffReport() {
     var user = getCurrentUserSafe();
     if (!user || user.role !== 'SUPER_ADMIN') return;
@@ -99,7 +97,6 @@ function renderAdminAllStaffReport() {
 
     if (dutyCountEl) dutyCountEl.innerText = `${totalDutyCount} ກະ`;
 
-    // 1. Matrix Report
     if (matrixTbody) {
         matrixTbody.innerHTML = '';
         Object.values(stats).forEach(st => {
@@ -126,7 +123,6 @@ function renderAdminAllStaffReport() {
         });
     }
 
-    // 2. Audit Trail
     if (auditTbody) {
         auditTbody.innerHTML = '';
         var auditLogs = window.scheduleAuditLogs || [];
@@ -148,7 +144,6 @@ function renderAdminAllStaffReport() {
         }
     }
 
-    // 3. Anomaly Report
     if (anomalyTbody) {
         anomalyTbody.innerHTML = '';
         var sortedStats = Object.values(stats).sort((a, b) => b.totalDuty - a.totalDuty || b.swapsRequested - a.swapsRequested);
@@ -189,7 +184,7 @@ function renderAdminAllStaffReport() {
     }
 }
 
-// ⭐ 2. ສະແດງຂໍ້ມູນ WORKSPACE ຂອງພະນັກງານ (ດຶງຊື່, ຂະແໜງ, ເບີໂທ, ຕາຕະລາງອາທິດນີ້ 100%)
+// 2. ສະແດງຂໍ້ມູນ WORKSPACE ຂອງພະນັກງານ
 function renderUserCurrentWeekWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -198,7 +193,6 @@ function renderUserCurrentWeekWorkspace() {
     var titleEl = document.getElementById('userCurrentShiftTitle');
     var pillsContainer = document.getElementById('userWeekDaysPills');
 
-    // 1. ອັບເດດ Profile Card ດ້ານຊ້າຍ
     var nameInput = document.getElementById('profNameInput');
     var deptInput = document.getElementById('profDeptInput');
     var phoneInput = document.getElementById('profPhoneInput');
@@ -213,13 +207,11 @@ function renderUserCurrentWeekWorkspace() {
     if (codeDisplay) codeDisplay.innerText = user.user || '';
     if (photoPreview && user.photo) photoPreview.src = user.photo;
 
-    // 2. ຄິດໄລ່ກະປະຈຳການອາທິດນີ້ (Today's Week)
     if (titleEl && pillsContainer) {
         var myName = user.nameLao;
         pillsContainer.innerHTML = '';
 
         var today = new Date();
-        // ຫາກ sheet ມີ monthKey ໃຫ້ໃຊ້ອັນນັ້ນ
         var [y, m] = (sheet?.monthKey || `${today.getFullYear()}-${today.getMonth() + 1}`).split('-').map(Number);
         var myShifts = [];
 
@@ -256,7 +248,6 @@ function renderUserCurrentWeekWorkspace() {
         titleEl.innerText = myShifts.length > 0 ? `ອາທິດນີ້: ${myShifts[0]}` : 'ອາທິດນີ້: ພັກຜ່ອນ (OFF)';
     }
 
-    // 3. Dropdown ເລືອກເພື່ອນຮ່ວມງານປ່ຽນກະ
     var peerSelect = document.getElementById('swapTargetPeer');
     if (peerSelect) {
         peerSelect.innerHTML = '';
@@ -269,7 +260,6 @@ function renderUserCurrentWeekWorkspace() {
     renderSwapHistory();
 }
 
-// 3. ອັບໂຫຼດຮູບໂປຣໄຟລ໌
 function handlePhotoUploadAndCompress(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -318,7 +308,6 @@ function handlePhotoUploadAndCompress(event) {
     reader.readAsDataURL(file);
 }
 
-// 4. ບັນທຶກໂປຣໄຟລ໌ (ຊື່, ຂະແໜງ, ເບີໂທ, ລະຫັດຜ່ານ)
 async function handleUpdateProfile() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -594,7 +583,7 @@ async function adminApproveLeave(id) {
     showToast('ອະນຸມັດສຳເລັດ', `Admin ໄດ້ອະນຸມັດໃຫ້ "${b.nameLao}" ລາພັກແລ້ວ`, 'success');
 }
 
-// ⭐ 6. P2P SHIFT SWAP (ສົ່ງຄຳຮ້ອງປ່ຽນກະ)
+// ⭐ 6. P2P SHIFT SWAP: ຮອງຮັບທັງ ແລກປ່ຽນ 1:1 ແລະ ຍາມແທນຄວບກະເສົາ-ອາທິດ
 async function handleCreateSwap() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -604,6 +593,7 @@ async function handleCreateSwap() {
     var toName = document.getElementById('swapTargetPeer')?.value;
     var fromShift = document.getElementById('swapMyShift')?.value;
     var toShift = document.getElementById('swapTargetShift')?.value;
+    var swapType = document.getElementById('swapTypeSelect')?.value || 'SWAP';
     var reason = document.getElementById('swapReason')?.value.trim();
 
     if (!start || !end || !toName) { 
@@ -611,15 +601,20 @@ async function handleCreateSwap() {
         return; 
     }
 
+    var defaultReason = (swapType === 'COVER') 
+        ? `ອາສາຂຶ້ນຍາມແທນໝູ່ (ຄວບກະເສົາ-ອາທິດ)` 
+        : `ຂໍແລກປ່ຽນກະປະຈຳການ`;
+
     var newSwap = {
         id: Date.now(),
+        swapType: swapType,
         fromName: user.nameLao,
         toName: toName,
         startDate: start,
         endDate: end,
         fromShift: fromShift,
         toShift: toShift,
-        reason: reason || 'ຂໍປ່ຽນກະປະຈຳການ',
+        reason: reason || defaultReason,
         status: 'PENDING',
         createdAt: new Date().toLocaleString('lo-LA')
     };
@@ -639,7 +634,7 @@ async function handleCreateSwap() {
                 end_date: newSwap.endDate,
                 from_shift: newSwap.fromShift,
                 to_shift: newSwap.toShift,
-                reason: newSwap.reason,
+                reason: `[${newSwap.swapType}] ${newSwap.reason}`,
                 status: 'PENDING'
             }]);
         } catch (e) {}
@@ -647,10 +642,14 @@ async function handleCreateSwap() {
 
     renderSwapHistory();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-    showToast('ສຳເລັດ', `ສົ່ງຄຳຮ້ອງຂໍປ່ຽນກະຫາ "${toName}" ຮຽບຮ້ອຍແລ້ວ!`, 'success');
+    
+    var msg = (swapType === 'COVER') 
+        ? `ສົ່ງຄຳຮ້ອງອາສາ "ຍາມແທນຄວບກະ" ໃຫ້ "${toName}" ແລ້ວ!` 
+        : `ສົ່ງຄຳຮ້ອງຂໍແລກປ່ຽນກະຫາ "${toName}" ແລ້ວ!`;
+    showToast('ສຳເລັດ', msg, 'success');
 }
 
-// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (ພ້ອມປຸ່ມ ACCEPT ສຳລັບຜູ້ຮັບ ແລະ ADMIN)
+// ⭐ 7. RENDER ລາຍການ: ສະແດງປ້າຍບອກ "ແລກປ່ຽນ" ຫຼື "ຍາມແທນຄວບກະ" ພ້ອມປຸ່ມ Accept
 async function renderSwapHistory() {
     var container = document.getElementById('incomingSwapsList');
     if (!container) return;
@@ -662,18 +661,22 @@ async function renderSwapHistory() {
                 .select('*')
                 .order('created_at', { ascending: false });
             if (!error && data) {
-                window.swapHistory = data.map(d => ({
-                    id: d.id,
-                    fromName: d.from_name,
-                    toName: d.to_name,
-                    startDate: d.start_date,
-                    endDate: d.end_date,
-                    fromShift: d.from_shift,
-                    toShift: d.to_shift,
-                    reason: d.reason,
-                    status: d.status,
-                    createdAt: d.created_at
-                }));
+                window.swapHistory = data.map(d => {
+                    var isCover = (d.reason && d.reason.includes('[COVER]'));
+                    return {
+                        id: d.id,
+                        swapType: isCover ? 'COVER' : 'SWAP',
+                        fromName: d.from_name,
+                        toName: d.to_name,
+                        startDate: d.start_date,
+                        endDate: d.end_date,
+                        fromShift: d.from_shift,
+                        toShift: d.to_shift,
+                        reason: d.reason ? d.reason.replace('[COVER] ', '').replace('[SWAP] ', '') : '',
+                        status: d.status,
+                        createdAt: d.created_at
+                    };
+                });
             }
         } catch (err) {}
     }
@@ -700,28 +703,33 @@ async function renderSwapHistory() {
         var isCreatedByMe = (reqFrom === myNameLao || reqFrom === myFullName || reqFrom === myUserCode) && (req.status === 'PENDING');
         var canAccept = isForMe || (isAdmin && req.status === 'PENDING');
 
+        var isCover = (req.swapType === 'COVER');
+        var typeBadge = isCover 
+            ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">⭐ ຍາມແທນ / ຄວບກະເສົາ-ອາທິດ</span>` 
+            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🔄 ແລກປ່ຽນກະ 1:1</span>`;
+
         var statusBadge = '';
         if (req.status === 'COMPLETED') {
-            statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ສຳເລັດ (Accepted)</span>';
+            statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ສຳເລັດແລ້ວ</span>';
         } else if (req.status === 'PENDING') {
             statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">ລໍຖ້າຕອບຮັບ</span>';
         } else {
             statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">ປະຕິເສດແລ້ວ</span>';
         }
 
+        var detailText = isCover
+            ? `<span class="text-brand-red font-bold">${req.fromName}</span> ອາສາຂຶ້ນຍາມແທນ <span class="text-blue-700 font-bold">${req.toName}</span> ໃນກະ <span class="font-bold text-purple-700">[${req.toShift}]</span> (ກາຍເປັນຄວບກະ)`
+            : `<span class="text-brand-red font-bold">${req.fromName}</span> ຂໍແລກກະກັບ <span class="text-blue-700 font-bold">${req.toName}</span> (${req.fromShift} ↔ ${req.toShift})`;
+
         container.innerHTML += `
             <div class="p-3.5 bg-slate-50 border rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-lao">
-                <div class="space-y-0.5">
-                    <p class="font-bold text-slate-800 text-xs">
-                        <span class="text-brand-red">${req.fromName}</span> ➔ ຂໍແລກປ່ຽນກະກັບ 
-                        <span class="text-blue-700 font-bold">${req.toName}</span>
-                    </p>
-                    <p class="text-slate-500 text-[11px]">
-                        ຊ່ວງວັນທີ: <strong>${req.startDate} ຫາ ${req.endDate}</strong> | 
-                        <span class="font-bold text-purple-700">${req.fromShift}</span> ↔ 
-                        <span class="font-bold text-emerald-700">${req.toShift}</span>
-                    </p>
-                    ${req.reason ? `<p class="text-slate-400 text-[10px] italic">"${req.reason}"</p>` : ''}
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        ${typeBadge}
+                        <span class="text-slate-400 text-[10px]">${req.createdAt || ''}</span>
+                    </div>
+                    <p class="font-medium text-slate-800 text-xs">${detailText}</p>
+                    <p class="text-slate-500 text-[11px]">ຊ່ວງວັນທີ: <strong>${req.startDate} ຫາ ${req.endDate}</strong> ${req.reason ? `| ໝາຍເຫດ: <em>"${req.reason}"</em>` : ''}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     ${canAccept ? `
@@ -745,7 +753,7 @@ async function renderSwapHistory() {
     });
 }
 
-// ⭐ 8. ກົດຍອມຮັບ (ACCEPT) ປ່ຽນກະ + SYNC ຕາຕະລາງ ແລະ SUPABASE
+// ⭐ 8. ກົດ ACCEPT: ຮອງຮັບການປ່ຽນກະຕໍ່ເນື່ອງ (A->B->C) + ຄວບກະ 1 ຕໍ່ 2 ໃນເສົາ-ອາທິດ 100%
 async function acceptSwap(id) {
     var req = (window.swapHistory || []).find(r => r.id == id);
     if (!req) return;
@@ -755,6 +763,7 @@ async function acceptSwap(id) {
     var startD = new Date(req.startDate);
     var endD = new Date(req.endDate);
     var sheet = getActiveSheetSafe();
+    var isCover = (req.swapType === 'COVER');
 
     if (sheet && sheet.data) {
         for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
@@ -764,26 +773,65 @@ async function acceptSwap(id) {
             var dStr = `${y}-${m}-${dayN}`;
 
             if (sheet.data[dStr]) {
-                var sFrom = sheet.data[dStr][req.fromShift] || [];
-                var sTo = sheet.data[dStr][req.toShift] || [];
+                var day = sheet.data[dStr];
 
-                var idxFrom = sFrom.indexOf(req.fromName);
-                var idxTo = sTo.indexOf(req.toName);
+                if (isCover) {
+                    // ກໍລະນີ: ຍາມແທນກັນ / ຄວບກະ (fromName ຈະຂຶ້ນແທນ toName ແລະ ຄວບ 2 ກະ)
+                    var targetShiftList = day[req.toShift] || [];
+                    var idxTo = targetShiftList.indexOf(req.toName);
 
-                if (idxFrom !== -1 && idxTo !== -1) {
-                    sFrom[idxFrom] = req.toName;
-                    sTo[idxTo] = req.fromName;
-                } else if (idxFrom !== -1) {
-                    sFrom[idxFrom] = req.toName;
-                } else if (idxTo !== -1) {
-                    sTo[idxTo] = req.fromName;
+                    if (idxTo === -1) {
+                        ['shift1', 'shift2', 'shift3'].forEach(sName => {
+                            var sIdx = (day[sName] || []).indexOf(req.toName);
+                            if (sIdx !== -1) {
+                                day[sName][sIdx] = req.fromName;
+                                idxTo = sIdx;
+                            }
+                        });
+                    } else {
+                        targetShiftList[idxTo] = req.fromName;
+                    }
+
+                    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
+                    window.scheduleAuditLogs.unshift({
+                        id: Date.now(),
+                        sheetId: sheet.id,
+                        sheetTitle: sheet.title,
+                        date: dStr,
+                        shift: req.toShift,
+                        oldName: req.toName,
+                        newName: `${req.fromName} (ຄວບກະ)`,
+                        reason: `[ຍາມແທນເສົາ-ອາທິດ] ${req.fromName} ຄວບກະແທນ ${req.toName}`,
+                        adminName: window.currentUser?.fullName || 'System',
+                        timestamp: new Date().toLocaleString('lo-LA')
+                    });
+
+                } else {
+                    // ກໍລະນີ: ແລກປ່ຽນກະຕໍ່ເນື່ອງ (A->B->C) ຊອກຫາຕຳແໜ່ງຕົວຈິງໃນມື້ນັ້ນແບບ Dynamic
+                    var findPos = function(name) {
+                        for (var sName of ['shift1', 'shift2', 'shift3']) {
+                            var idx = (day[sName] || []).indexOf(name);
+                            if (idx !== -1) return { shift: sName, index: idx };
+                        }
+                        return null;
+                    };
+
+                    var posFrom = findPos(req.fromName);
+                    var posTo = findPos(req.toName);
+
+                    if (posFrom && posTo) {
+                        day[posFrom.shift][posFrom.index] = req.toName;
+                        day[posTo.shift][posTo.index] = req.fromName;
+                    } else if (posTo) {
+                        day[posTo.shift][posTo.index] = req.fromName;
+                    }
                 }
             }
         }
     }
 
     await saveAll();
-    
+
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('shift_swaps').update({ status: 'COMPLETED' }).eq('id', req.id);
@@ -797,7 +845,11 @@ async function acceptSwap(id) {
     renderUserCurrentWeekWorkspace();
     if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    showToast('ປ່ຽນກະສຳເລັດ', `ສັບປ່ຽນກະລະຫວ່າງ ${req.fromName} ແລະ ${req.toName} ຮຽບຮ້ອຍແລ້ວ!`, 'success');
+
+    var successMsg = isCover 
+        ? `ຍອມຮັບສຳເລັດ! "${req.fromName}" ໄດ້ຂຶ້ນຍາມແທນ "${req.toName}" (ຄວບກະ) ແລ້ວ` 
+        : `ສັບປ່ຽນກະລະຫວ່າງ ${req.fromName} ແລະ ${req.toName} ຮຽບຮ້ອຍແລ້ວ!`;
+    showToast('ສຳເລັດ', successMsg, 'success');
 }
 
 async function declineSwap(id) {
@@ -838,7 +890,6 @@ function initProfileWorkspace() {
     }
 }
 
-// Hook ເມື່ອມີການກົດປ່ຽນ Tab
 var _origSwitchTab = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origSwitchTab === 'function') _origSwitchTab(tab);
@@ -847,7 +898,6 @@ window.switchTab = function(tab) {
     }
 };
 
-// Auto-run ເມື່ອເປີດໜ້າເວັບ
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => setTimeout(initProfileWorkspace, 200));
 } else {
