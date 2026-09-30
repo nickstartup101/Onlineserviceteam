@@ -1,4 +1,4 @@
-// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (FULL RECOVERED) =================
+// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (FIXED & SYNCED 100%) =================
 
 function getCurrentUserSafe() {
     if (window.currentUser) return window.currentUser;
@@ -19,6 +19,14 @@ function getActiveSheetSafe() {
         return found || window.scheduleSheets[0];
     }
     return null;
+}
+
+// Helper ປຽບທຽບຊື່ແບບຍືດຍຸ່ນ (ປ້ອງກັນຊ່ອງວ່າງ ແລະ ຕົວພິມນ້ອຍ-ໃຫຍ່)
+function isNameMatch(a, b) {
+    if (!a || !b) return false;
+    var cleanA = a.toString().trim().toLowerCase().replace(/\s+/g, '');
+    var cleanB = b.toString().trim().toLowerCase().replace(/\s+/g, '');
+    return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
 }
 
 // 1. ລາຍງານ ADMIN: ສະຖິຕິປ່ຽນກະ, ກະ 3, ເສົາ-ອາທິດ ແລະ ຄົນທີ່ມາເກີນມາດຕະຖານ
@@ -368,7 +376,7 @@ async function handleUpdateProfile() {
     showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນສ່ວນຕົວ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
 }
 
-// 5. ຈອງມື້ພັກປະຈຳປີ (ກົດເຫຼັກ: 1 ກະລາພັກໄດ້ສູງສຸດ 1 ຄົນ)
+// 5. ຈອງມື້ພັກປະຈຳປີ (ພ້ອມ SYNC SUPABASE + LOCALSTORAGE)
 async function handleBookAnnualLeave() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -423,6 +431,7 @@ async function handleBookAnnualLeave() {
 
     if (!window.annualBookings) window.annualBookings = [];
     window.annualBookings.unshift(newBooking);
+    localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
 
     if (bookingStatus === 'CONFIRMED') {
         if (!window.leavesList) window.leavesList = [];
@@ -436,8 +445,6 @@ async function handleBookAnnualLeave() {
     }
 
     saveAll();
-    renderAnnualLeaveBookings();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
     if (window.supabaseClient) {
         try {
@@ -451,8 +458,13 @@ async function handleBookAnnualLeave() {
                 reason: reason,
                 status: bookingStatus
             }]);
-        } catch (e) {}
+        } catch (e) {
+            console.error("Supabase Leave Insert Error:", e);
+        }
     }
+
+    renderAnnualLeaveBookings();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
     if (bookingStatus === 'PENDING_ADMIN') {
         showToast('ສົ່ງຄຳຂໍແລ້ວ', 'ຄຳຮ້ອງກຳລັງລໍຖ້າ Admin ພິຈາລະນາ ເນື່ອງຈາກກະນີ້ມີຄົນລາພັກແລ້ວ 1 ທ່ານ', 'warning');
@@ -477,6 +489,7 @@ function promptCancelAnnualLeave(bookingId) {
             }
 
             window.annualBookings = window.annualBookings.filter(b => b.id !== bookingId);
+            localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
             window.leavesList = (window.leavesList || []).filter(l => l.date !== booking.startDate || l.empName !== booking.nameLao);
 
             saveAll();
@@ -499,12 +512,41 @@ function promptCancelAnnualLeave(bookingId) {
     );
 }
 
-function renderAnnualLeaveBookings() {
+// ⭐ RENDER ປະຕິທິນມື້ພັກ ພ້ອມ FETCH SUPABASE
+async function renderAnnualLeaveBookings() {
     var tbody = document.getElementById('annualLeaveBookingsTableBody');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
+    // 1. ດຶງຈາກ LocalStorage ກ່ອນ
+    try {
+        var localB = localStorage.getItem('ot_annual_bookings');
+        if (localB) window.annualBookings = JSON.parse(localB);
+    } catch(e) {}
+
+    // 2. ດຶງຫຼ້າສຸດຈາກ Supabase
+    if (window.supabaseClient) {
+        try {
+            var { data, error } = await window.supabaseClient.from('annual_bookings').select('*');
+            if (!error && data && data.length > 0) {
+                window.annualBookings = data.map(d => ({
+                    id: d.id || Date.now(),
+                    user: d.user_code || d.user,
+                    nameLao: d.name_lao || d.nameLao,
+                    startDate: d.start_date || d.startDate,
+                    endDate: d.end_date || d.endDate,
+                    shift: d.shift,
+                    days: d.days,
+                    reason: d.reason,
+                    status: d.status
+                }));
+                localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
+            }
+        } catch (err) {}
+    }
+
+    tbody.innerHTML = '';
     var bookings = window.annualBookings || [];
+
     if (bookings.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີລາຍການຈອງມື້ພັກປະຈຳປີ</td></tr>`;
         return;
@@ -512,7 +554,7 @@ function renderAnnualLeaveBookings() {
 
     var user = getCurrentUserSafe();
     bookings.forEach(b => {
-        var isMyBooking = (b.user === user?.user || b.nameLao === user?.nameLao) || (user?.role === 'SUPER_ADMIN');
+        var isMyBooking = (b.user === user?.user || isNameMatch(b.nameLao, user?.nameLao)) || (user?.role === 'SUPER_ADMIN');
         var isAdmin = (user?.role === 'SUPER_ADMIN');
 
         var statusBadge = '';
@@ -535,10 +577,10 @@ function renderAnnualLeaveBookings() {
                     <div class="flex items-center justify-end gap-2">
                         ${statusBadge}
                         ${(isAdmin && b.status === 'PENDING_ADMIN') ? `
-                            <button type="button" onclick="adminApproveLeave(${b.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition">ອະນຸມັດ</button>
+                            <button type="button" onclick="adminApproveLeave(${b.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer">ອະນຸມັດ</button>
                         ` : ''}
                         ${isMyBooking ? `
-                            <button type="button" onclick="promptCancelAnnualLeave(${b.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5">
+                            <button type="button" onclick="promptCancelAnnualLeave(${b.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5 cursor-pointer">
                                 <span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ
                             </button>
                         ` : ''}
@@ -554,7 +596,7 @@ async function adminApproveLeave(id) {
     if (!b) return;
 
     b.status = 'CONFIRMED';
-    var userObj = (window.users || []).find(u => u.user === b.user || u.nameLao === b.nameLao);
+    var userObj = (window.users || []).find(u => u.user === b.user || isNameMatch(u.nameLao, b.nameLao));
     if (userObj) {
         userObj.usedAnnual = (userObj.usedAnnual || 0) + b.days;
     }
@@ -569,8 +611,7 @@ async function adminApproveLeave(id) {
     });
 
     saveAll();
-    renderAnnualLeaveBookings();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
 
     if (window.supabaseClient) {
         try {
@@ -580,13 +621,19 @@ async function adminApproveLeave(id) {
                 .eq('start_date', b.startDate);
         } catch (e) {}
     }
+
+    renderAnnualLeaveBookings();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
     showToast('ອະນຸມັດສຳເລັດ', `Admin ໄດ້ອະນຸມັດໃຫ້ "${b.nameLao}" ລາພັກແລ້ວ`, 'success');
 }
 
-// ⭐ 6. P2P SHIFT SWAP: ຮອງຮັບທັງ ແລກປ່ຽນ 1:1 ແລະ ຍາມແທນຄວບກະເສົາ-ອາທິດ
+// ⭐ 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ບັນທຶກລົງທັງ SUPABASE + LOCALSTORAGE ທັນທີ)
 async function handleCreateSwap() {
     var user = getCurrentUserSafe();
-    if (!user) return;
+    if (!user) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນສົ່ງຄຳຮ້ອງ', 'error');
+        return;
+    }
 
     var start = document.getElementById('swapDateStart')?.value;
     var end = document.getElementById('swapDateEnd')?.value;
@@ -622,12 +669,14 @@ async function handleCreateSwap() {
     if (!window.swapHistory) window.swapHistory = [];
     window.swapHistory.unshift(newSwap);
 
+    // 1. ບັນທຶກລົງ LocalStorage ທັນທີ
+    localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
     await saveAll();
 
+    // 2. ສົ່ງຂຶ້ນ Supabase (ປ້ອງກັນ ID Error ຢ່າງປອດໄພ)
     if (window.supabaseClient) {
         try {
-            await window.supabaseClient.from('shift_swaps').insert([{
-                id: newSwap.id,
+            var payload = {
                 from_name: newSwap.fromName,
                 to_name: newSwap.toName,
                 start_date: newSwap.startDate,
@@ -636,10 +685,27 @@ async function handleCreateSwap() {
                 to_shift: newSwap.toShift,
                 reason: `[${newSwap.swapType}] ${newSwap.reason}`,
                 status: 'PENDING'
-            }]);
-        } catch (e) {}
+            };
+
+            var { data, error } = await window.supabaseClient.from('shift_swaps').insert([payload]).select();
+            if (!error && data && data[0] && data[0].id) {
+                newSwap.id = data[0].id;
+                localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+            } else if (error) {
+                // ລອງໃສ່ custom id ຫາກ database ຕ້ອງການ
+                payload.id = newSwap.id;
+                await window.supabaseClient.from('shift_swaps').insert([payload]);
+            }
+        } catch (e) {
+            console.error("Supabase Swap Error:", e);
+        }
     }
 
+    // ລຶບຄຳອະທິບາຍໃນ Form
+    var reasonInput = document.getElementById('swapReason');
+    if (reasonInput) reasonInput.value = '';
+
+    // Render ຄືນທັນທີ
     renderSwapHistory();
     if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
     
@@ -649,18 +715,27 @@ async function handleCreateSwap() {
     showToast('ສຳເລັດ', msg, 'success');
 }
 
-// ⭐ 7. RENDER ລາຍການ: ສະແດງປ້າຍບອກ "ແລກປ່ຽນ" ຫຼື "ຍາມແທນຄວບກະ" ພ້ອມປຸ່ມ Accept
+// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (ດຶງທັງ LOCAL + SUPABASE ແລ້ວສະແດງປຸ່ມ ACCEPT 100%)
 async function renderSwapHistory() {
     var container = document.getElementById('incomingSwapsList');
     if (!container) return;
 
+    // 1. ດຶງຈາກ LocalStorage ອອກມາກ່ອນທັນທີ
+    try {
+        var localSwaps = localStorage.getItem('ot_swap_history');
+        if (localSwaps) {
+            window.swapHistory = JSON.parse(localSwaps);
+        }
+    } catch(e) {}
+
+    // 2. ດຶງຈາກ Supabase ໂດຍບໍ່ໃຊ້ .order('created_at') ເພື່ອປ້ອງກັນ Column Error
     if (window.supabaseClient) {
         try {
-            var { data, error } = await window.supabaseClient
-                .from('shift_swaps')
-                .select('*')
-                .order('created_at', { ascending: false });
-            if (!error && data) {
+            var { data, error } = await window.supabaseClient.from('shift_swaps').select('*');
+            if (!error && data && data.length > 0) {
+                // ລຽງລຳດັບ ID ຫຼາຍສຸດຂຶ້ນກ່ອນ
+                data.sort((a, b) => (b.id || 0) - (a.id || 0));
+
                 window.swapHistory = data.map(d => {
                     var isCover = (d.reason && d.reason.includes('[COVER]'));
                     return {
@@ -674,11 +749,14 @@ async function renderSwapHistory() {
                         toShift: d.to_shift,
                         reason: d.reason ? d.reason.replace('[COVER] ', '').replace('[SWAP] ', '') : '',
                         status: d.status,
-                        createdAt: d.created_at
+                        createdAt: d.created_at || ''
                     };
                 });
+                localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
             }
-        } catch (err) {}
+        } catch (err) {
+            console.warn("Could not fetch remote swaps:", err);
+        }
     }
 
     container.innerHTML = '';
@@ -690,17 +768,17 @@ async function renderSwapHistory() {
     }
 
     var user = getCurrentUserSafe();
-    var myNameLao = (user?.nameLao || '').trim().toLowerCase();
-    var myFullName = (user?.fullName || '').trim().toLowerCase();
-    var myUserCode = (user?.user || '').trim().toLowerCase();
+    var myNameLao = user?.nameLao || '';
+    var myFullName = user?.fullName || '';
+    var myUserCode = user?.user || '';
     var isAdmin = (user?.role === 'SUPER_ADMIN');
 
     history.forEach(req => {
-        var reqTo = (req.toName || '').trim().toLowerCase();
-        var reqFrom = (req.fromName || '').trim().toLowerCase();
+        // ກວດສອບຊື່ແບບຍືດຍຸ່ນ (ບໍ່ວ່າຈະເປັນຊື່ຫຍໍ້ ຫຼື ຊື່ເຕັມ)
+        var isForMe = (isNameMatch(req.toName, myNameLao) || isNameMatch(req.toName, myFullName) || isNameMatch(req.toName, myUserCode)) && (req.status === 'PENDING');
+        var isCreatedByMe = (isNameMatch(req.fromName, myNameLao) || isNameMatch(req.fromName, myFullName) || isNameMatch(req.fromName, myUserCode)) && (req.status === 'PENDING');
 
-        var isForMe = (reqTo === myNameLao || reqTo === myFullName || reqTo === myUserCode) && (req.status === 'PENDING');
-        var isCreatedByMe = (reqFrom === myNameLao || reqFrom === myFullName || reqFrom === myUserCode) && (req.status === 'PENDING');
+        // ⭐ ຜູ້ຮັບ ຫຼື Super Admin ຈະເຫັນປຸ່ມກົດ ACCEPT ໄດ້ສະເໝີ!
         var canAccept = isForMe || (isAdmin && req.status === 'PENDING');
 
         var isCover = (req.swapType === 'COVER');
@@ -741,7 +819,7 @@ async function renderSwapHistory() {
                         </button>
                     ` : (isCreatedByMe ? `
                         ${statusBadge}
-                        <button type="button" onclick="promptCancelSwap(${req.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-xl text-xs font-bold transition">
+                        <button type="button" onclick="promptCancelSwap(${req.id})" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-xl text-xs font-bold transition cursor-pointer">
                             ຍົກເລີກ
                         </button>
                     ` : `
@@ -753,7 +831,7 @@ async function renderSwapHistory() {
     });
 }
 
-// ⭐ 8. ກົດ ACCEPT: ຮອງຮັບການປ່ຽນກະຕໍ່ເນື່ອງ (A->B->C) + ຄວບກະ 1 ຕໍ່ 2 ໃນເສົາ-ອາທິດ 100%
+// ⭐ 8. ກົດ ACCEPT: ຮອງຮັບການປ່ຽນກະຕໍ່ເນື່ອງ (A->B->C) + ຄວບກະເສົາ-ອາທິດ 100%
 async function acceptSwap(id) {
     var req = (window.swapHistory || []).find(r => r.id == id);
     if (!req) return;
@@ -778,11 +856,11 @@ async function acceptSwap(id) {
                 if (isCover) {
                     // ກໍລະນີ: ຍາມແທນກັນ / ຄວບກະ (fromName ຈະຂຶ້ນແທນ toName ແລະ ຄວບ 2 ກະ)
                     var targetShiftList = day[req.toShift] || [];
-                    var idxTo = targetShiftList.indexOf(req.toName);
+                    var idxTo = targetShiftList.findIndex(n => isNameMatch(n, req.toName));
 
                     if (idxTo === -1) {
                         ['shift1', 'shift2', 'shift3'].forEach(sName => {
-                            var sIdx = (day[sName] || []).indexOf(req.toName);
+                            var sIdx = (day[sName] || []).findIndex(n => isNameMatch(n, req.toName));
                             if (sIdx !== -1) {
                                 day[sName][sIdx] = req.fromName;
                                 idxTo = sIdx;
@@ -810,7 +888,7 @@ async function acceptSwap(id) {
                     // ກໍລະນີ: ແລກປ່ຽນກະຕໍ່ເນື່ອງ (A->B->C) ຊອກຫາຕຳແໜ່ງຕົວຈິງໃນມື້ນັ້ນແບບ Dynamic
                     var findPos = function(name) {
                         for (var sName of ['shift1', 'shift2', 'shift3']) {
-                            var idx = (day[sName] || []).indexOf(name);
+                            var idx = (day[sName] || []).findIndex(n => isNameMatch(n, name));
                             if (idx !== -1) return { shift: sName, index: idx };
                         }
                         return null;
@@ -830,8 +908,11 @@ async function acceptSwap(id) {
         }
     }
 
+    // ບັນທຶກລົງ LocalStorage
+    localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
     await saveAll();
 
+    // Sync ຂຶ້ນ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('shift_swaps').update({ status: 'COMPLETED' }).eq('id', req.id);
@@ -855,6 +936,7 @@ async function acceptSwap(id) {
 async function declineSwap(id) {
     var req = (window.swapHistory || []).find(r => r.id == id);
     if (req) req.status = 'DECLINED';
+    localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
     await saveAll();
     renderSwapHistory();
     if (window.supabaseClient && req) {
@@ -868,6 +950,7 @@ async function declineSwap(id) {
 function promptCancelSwap(swapId) {
     askConfirm('ຍົກເລີກຄຳຮ້ອງ', 'ທ່ານຕ້ອງການຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະນີ້ແທ້ບໍ່?', async () => {
         window.swapHistory = (window.swapHistory || []).filter(s => s.id !== swapId);
+        localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
         await saveAll();
         renderSwapHistory();
         if (window.supabaseClient) {
