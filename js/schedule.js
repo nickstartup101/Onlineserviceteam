@@ -84,7 +84,7 @@ function getGlobalWeekendDayIndex(dateObj) {
     return weekendCount;
 }
 
-// 2. REBALANCE ທີ່ປົກປ້ອງ PATTERN ແລະ ຂ້າມມື້ຄວບກະເສົາ-ອາທິດ
+// ⭐ 2. REBALANCE ທີ່ປົກປ້ອງ PATTERN ແລະ ຂ້າມມື້ຄວບກະເສົາ-ອາທິດ
 async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
     var schedData = sheet?.data || {};
@@ -561,7 +561,7 @@ async function publishSchedule() {
     } catch(e) {}
 }
 
-// ⭐ 6. RENDER ຕາຕະລາງ
+// ⭐ 6. RENDER ຕາຕະລາງ: ຫົວຂໍ້ວັນພັກ + ປ້າຍ [ຄວບ] ແບບ no-print
 function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -734,71 +734,28 @@ function openCellModal(date, shift, index, currentName) {
     document.getElementById('cellSelectModal')?.classList.remove('hidden');
 }
 
-// ⭐ 8. ເລືອກພະນັກງານໃສ່ຊ່ອງ (INSTANT UPDATE 100% ບໍ່ມີວັນເດັ້ງອອກ)
+// ⭐ 8. ເລືອກພະນັກງານໃສ່ຊ່ອງ (ຖ້າເປັນ PUBLISHED ຈະຖາມເຫດຜົນ, ຖ້າ DRAFT ຈະອັບເດດທັນທີ)
 async function selectStaffForCell(nameLao) {
     if (!window.activeEditCell) return;
     var { date, shift, index, currentName } = window.activeEditCell;
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    if (!sheet.data) sheet.data = {};
-    if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
-    if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
-
-    // ⭐ ແກ້ໄຂບັນຫາ Array Index: ຖ້າກົດໃສ່ຊ່ອງວ່າງໃຫ້ Push ຕໍ່ທ້າຍ, ຖ້າແທນທີ່ຄົນເກົ່າໃຫ້ແທນທີ່ຕາມ Index
-    var targetList = sheet.data[date][shift];
-    if (index < targetList.length) {
-        targetList[index] = nameLao;
-    } else {
-        targetList.push(nameLao);
-    }
-    // ລຶບຄ່າວ່າງ ຫຼື null ອອກ
-    sheet.data[date][shift] = targetList.filter(Boolean);
-
-    // ຖ້າຕາຕະລາງເປັນ Published: ບັນທຶກປະຫວັດ Audit Trail ແລະ Highlight ໃຫ້ອັດຕະໂນມັດ
+    // ⭐ ຖ້າຕາຕະລາງຖືກ PUBLISH ແລ້ວ: ປິດ Modal ເລືອກຊື່ ແລະ ເປີດ Modal ຖາມເຫດຜົນທັນທີ
     if (sheet.status === 'PUBLISHED' && currentName !== nameLao) {
-        if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
-        window.scheduleAuditLogs.unshift({
-            id: Date.now(),
-            sheetId: sheet.id,
-            sheetTitle: sheet.title,
-            date: date,
-            shift: shift,
-            oldName: currentName || '(ວ່າງ)',
-            newName: nameLao,
-            reason: 'ດັດແກ້ໂດຍ Admin',
-            adminName: window.currentUser?.fullName || 'Admin',
-            timestamp: new Date().toLocaleString('lo-LA')
+        closeCellModal();
+        openEditPublishedRemarkModal({ 
+            date: date, 
+            shift: shift, 
+            index: index, 
+            currentName: currentName, 
+            newName: nameLao 
         });
+        return; // ລໍຖ້າໃຫ້ Admin ພິມເຫດຜົນ ແລະ ກົດຢືນຢັນ
     }
 
-    // ອັບເດດລົງໃນ window.scheduleSheets
-    if (window.scheduleSheets) {
-        var sIdx = window.scheduleSheets.findIndex(s => s.id === sheet.id);
-        if (sIdx !== -1) window.scheduleSheets[sIdx].data = sheet.data;
-    }
-
-    // ບັນທຶກສຳຮອງລົງ LocalStorage ທັນທີ
-    try {
-        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-    } catch(e) {}
-
-    // ⭐ 1. ປິດ Modal ທັນທີ
-    closeCellModal();
-
-    // ⭐ 2. Render ໜ້າຈໍທັນທີ (ຊື່ຈະປາກົດໃນຊ່ອງທັນທີ 0 ວິນາທີ ບໍ່ມີລໍຖ້າ Network)
-    renderScheduleTable();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    showToast('ສຳເລັດ', `ປ່ຽນເປັນ "${nameLao}" ຮຽບຮ້ອຍແລ້ວ!`, 'success');
-
-    // ⭐ 3. Sync ຂຶ້ນ Supabase Cloud ຢູ່ເບື້ອງຫຼັງ (Background Sync) ບໍ່ໃຫ້ມາກວນໜ້າຈໍ
-    try {
-        if (typeof saveAll === 'function') await saveAll();
-        await syncScheduleToSupabase(sheet);
-    } catch(err) {
-        console.warn("Background Sync:", err);
-    }
+    // ຖ້າເປັນສະບັບຮ່າງ (Draft): ບັນທຶກທັນທີ
+    await applyCellUpdate(sheet, date, shift, index, nameLao);
 }
 
 // ⭐ 9. ລຶບຊື່ອອກຈາກຊ່ອງ (CLEAR CELL)
@@ -808,59 +765,80 @@ async function clearCurrentCell() {
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    if (sheet.data && sheet.data[date] && sheet.data[date][shift]) {
-        var targetList = sheet.data[date][shift];
-        
-        // ຕັດຊື່ອອກຈາກ Array ໂດຍກົງ (ບໍ່ປະ null ໄວ້)
-        if (index < targetList.length) {
-            targetList.splice(index, 1);
-        }
-        sheet.data[date][shift] = targetList.filter(Boolean);
-
-        if (sheet.status === 'PUBLISHED' && currentName) {
-            if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
-            window.scheduleAuditLogs.unshift({
-                id: Date.now(),
-                sheetId: sheet.id,
-                sheetTitle: sheet.title,
-                date: date,
-                shift: shift,
-                oldName: currentName,
-                newName: '(ວ່າງ)',
-                reason: 'ລຶບຊື່ອອກໂດຍ Admin',
-                adminName: window.currentUser?.fullName || 'Admin',
-                timestamp: new Date().toLocaleString('lo-LA')
-            });
-        }
-
-        if (window.scheduleSheets) {
-            var sIdx = window.scheduleSheets.findIndex(s => s.id === sheet.id);
-            if (sIdx !== -1) window.scheduleSheets[sIdx].data = sheet.data;
-        }
-
-        try {
-            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-        } catch(e) {}
-
+    if (sheet.status === 'PUBLISHED' && currentName) {
         closeCellModal();
-        renderScheduleTable();
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        showToast('ສຳເລັດ', 'ລຶບຊື່ອອກຈາກກະຮຽບຮ້ອຍແລ້ວ', 'success');
+        openEditPublishedRemarkModal({
+            date: date,
+            shift: shift,
+            index: index,
+            currentName: currentName,
+            newName: '(ວ່າງ)'
+        });
+        return;
+    }
 
-        try {
-            if (typeof saveAll === 'function') await saveAll();
-            await syncScheduleToSupabase(sheet);
-        } catch(err) {}
+    await applyCellUpdate(sheet, date, shift, index, '');
+}
+
+// ⭐ 10. FUNCTION ບັນທຶກຊື່ໃສ່ CELL ແບບປອດໄພ 100% ຕັດຊ່ອງວ່າງອອກ
+async function applyCellUpdate(sheet, date, shift, index, nameLao) {
+    if (!sheet.data) sheet.data = {};
+    if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
+
+    var list = sheet.data[date][shift];
+
+    if (!nameLao || nameLao === '(ວ່າງ)') {
+        if (index < list.length) list.splice(index, 1);
+    } else {
+        if (index < list.length) {
+            list[index] = nameLao;
+        } else {
+            list.push(nameLao);
+        }
+    }
+
+    // ກອງຊ່ອງວ່າງ ແລະ (ວ່າງ) ອອກທັງໝົດ ປ້ອງກັນ Dashboard ດຶງເປັນ BCEL0000
+    sheet.data[date][shift] = list.filter(n => n && n.trim() !== '' && n !== '(ວ່າງ)');
+
+    if (window.scheduleSheets) {
+        var sIdx = window.scheduleSheets.findIndex(s => s.id === sheet.id);
+        if (sIdx !== -1) window.scheduleSheets[sIdx].data = sheet.data;
+    }
+
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    closeCellModal();
+    renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+
+    try {
+        if (typeof saveAll === 'function') await saveAll();
+        await syncScheduleToSupabase(sheet);
+    } catch(err) {
+        console.warn("Background Sync:", err);
     }
 }
 
+// ⭐ 11. ເປີດ MODAL ຖາມເຫດຜົນການດັດແກ້ຕາຕະລາງ PUBLISHED
 function openEditPublishedRemarkModal(editData) {
     window.pendingPublishedCellEdit = editData;
-    document.getElementById('remarkModalTargetInfo').innerText = `ວັນທີ: ${editData.date} [${editData.shift} - ຊ່ອງທີ ${editData.index + 1}]`;
-    document.getElementById('remarkOldName').innerText = editData.currentName || '(ຊ່ອງວ່າງ)';
-    document.getElementById('remarkNewName').innerText = editData.newName;
-    document.getElementById('editPublishedRemarkInput').value = '';
+    var targetEl = document.getElementById('remarkModalTargetInfo');
+    var oldEl = document.getElementById('remarkOldName');
+    var newEl = document.getElementById('remarkNewName');
+    var inputEl = document.getElementById('editPublishedRemarkInput');
+
+    if (targetEl) targetEl.innerText = `ວັນທີ: ${editData.date} [${editData.shift}]`;
+    if (oldEl) oldEl.innerText = editData.currentName || '(ຊ່ອງວ່າງ)';
+    if (newEl) newEl.innerText = editData.newName;
+    if (inputEl) {
+        inputEl.value = '';
+        setTimeout(() => inputEl.focus(), 100);
+    }
+
     document.getElementById('editPublishedRemarkModal')?.classList.remove('hidden');
 }
 
@@ -869,14 +847,19 @@ function closeEditPublishedRemarkModal() {
     window.pendingPublishedCellEdit = null;
 }
 
+// ⭐ 12. ຢືນຢັນດັດແກ້ຕາຕະລາງ PUBLISHED ພ້ອມບັນທຶກເຫດຜົນ REMARK ລົງ AUDIT LOG
 async function confirmApplyPublishedCellUpdate() {
     if (!window.pendingPublishedCellEdit) return;
     var { date, shift, index, currentName, newName } = window.pendingPublishedCellEdit;
-    var reason = document.getElementById('editPublishedRemarkInput')?.value.trim() || 'ດັດແກ້ຕາມຄວາມຈຳເປັນ';
+    var reasonInput = document.getElementById('editPublishedRemarkInput');
+    var reason = reasonInput ? reasonInput.value.trim() : '';
+    if (!reason) reason = 'ດັດແກ້ຕາມຄວາມຈຳເປັນ';
+
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    var auditEntry = {
+    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
+    window.scheduleAuditLogs.unshift({
         id: Date.now(),
         sheetId: sheet.id,
         sheetTitle: sheet.title,
@@ -887,45 +870,11 @@ async function confirmApplyPublishedCellUpdate() {
         reason: reason,
         adminName: window.currentUser?.fullName || 'Admin',
         timestamp: new Date().toLocaleString('lo-LA')
-    };
-
-    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
-    window.scheduleAuditLogs.unshift(auditEntry);
-
-    if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
-    if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
-    
-    if (newName === '(ວ່າງ)' || !newName) {
-        sheet.data[date][shift].splice(index, 1);
-    } else {
-        if (index < sheet.data[date][shift].length) {
-            sheet.data[date][shift][index] = newName;
-        } else {
-            sheet.data[date][shift].push(newName);
-        }
-    }
-    sheet.data[date][shift] = sheet.data[date][shift].filter(Boolean);
-
-    if (window.scheduleSheets) {
-        var sIdx = window.scheduleSheets.findIndex(s => s.id === sheet.id);
-        if (sIdx !== -1) window.scheduleSheets[sIdx].data = sheet.data;
-    }
-
-    try {
-        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-    } catch(e) {}
+    });
 
     closeEditPublishedRemarkModal();
-    closeCellModal();
-    renderScheduleTable();
-    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-    showToast('ອັບເດດສຳເລັດ', `ດັດແກ້ຕາຕະລາງຮຽບຮ້ອຍແລ້ວ!`, 'success');
-
-    try {
-        if (typeof saveAll === 'function') await saveAll();
-        await syncScheduleToSupabase(sheet);
-    } catch(e) {}
+    await applyCellUpdate(sheet, date, shift, index, newName);
+    showToast('ສຳເລັດ', `ດັດແກ້ຕາຕະລາງ ແລະ ບັນທຶກເຫດຜົນຮຽບຮ້ອຍ!`, 'success');
 }
 
 function renderSheetDropdown() {
