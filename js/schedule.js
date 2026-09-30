@@ -12,8 +12,9 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// 0.1 FUNCTION ດຶງ SHEET ປັດຈຸບັນແບບ AUTO-HEALING
+// 0.1 FUNCTION ດຶງ SHEET ປັດຈຸບັນແບບ AUTO-HEALING (ປ້ອງກັນຕາຕະລາງຫາຍ 100%)
 function getActiveSheet() {
+    // 1. ຖ້າ window.scheduleSheets ວ່າງເປົ່າ ໃຫ້ດຶງຈາກ LocalStorage ຄືນມາກ່ອນ
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         try {
             var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
@@ -23,6 +24,7 @@ function getActiveSheet() {
         } catch(e) {}
     }
 
+    // 2. ຖ້າຍັງວ່າງເປົ່າ ໃຫ້ສ້າງຕາຕະລາງເລີ່ມຕົ້ນ 09/2026 ອັດຕະໂນມັດທັນທີ
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         var defaultSheet = {
             id: 'sheet-2026-09-all',
@@ -41,6 +43,7 @@ function getActiveSheet() {
         syncScheduleToSupabase(defaultSheet);
     }
 
+    // 3. ຄົ້ນຫາ Sheet ຕາມ Dropdown ຫຼື activeSheetId
     var select = document.getElementById('scheduleSheetSelect');
     var targetId = select?.value || window.activeSheetId;
     if (targetId && window.scheduleSheets) {
@@ -61,60 +64,95 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// ⭐ 0.2 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE (ແກ້ໄຂຊື່ຕາຕະລາງເປັນ 'schedule_sheets' ຕົງກັບ DB 100%)
+// ⭐ 0.2 FUNCTION SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກວດສອບ ERROR ຕົວຈິງ 100%
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return false;
+
+    // ຝັງ title ແລະ notes ໄວ້ໃນ data._meta
+    if (!sheet.data) sheet.data = {};
+    sheet.data._meta = {
+        title: sheet.title || '',
+        notes: sheet.notes || ''
+    };
+
+    var payload = {
+        id: sheet.id,
+        title: sheet.title || '',
+        status: sheet.status || 'DRAFT',
+        data: sheet.data
+    };
+    if (sheet.monthKey) payload.month_key = sheet.monthKey;
+    if (sheet.notes) payload.notes = sheet.notes;
+
     try {
-        if (!sheet.data) sheet.data = {};
-        sheet.data._meta = {
-            title: sheet.title || '',
-            notes: sheet.notes || ''
-        };
-
-        var payload = {
-            id: sheet.id,
-            title: sheet.title || '',
-            status: sheet.status || 'DRAFT',
-            data: sheet.data
-        };
-        if (sheet.monthKey) payload.month_key = sheet.monthKey;
-        if (sheet.notes) payload.notes = sheet.notes;
-
-        // 1. UPDATE ລົງຕາຕະລາງ schedule_sheets ໂດຍກົງຕາມ ID
-        var { data: upData, error: upErr } = await window.supabaseClient
+        // ຂັ້ນຕອນ 1: ກວດສອບວ່າ Sheet ID ນີ້ມີຢູ່ໃນ table schedule_sheets ແລ້ວຫຼືບໍ່
+        var { data: checkData, error: checkErr } = await window.supabaseClient
             .from('schedule_sheets')
-            .update(payload)
-            .eq('id', sheet.id)
-            .select();
+            .select('id')
+            .eq('id', sheet.id);
 
-        if (!upErr && upData && upData.length > 0) {
-            console.log("☁️ [Supabase SUCCESS] ບັນທຶກລົງ schedule_sheets ສຳເລັດ 100% ->", sheet.id);
-            return true;
+        if (checkErr) {
+            console.error("❌ [Supabase Check Error]:", checkErr.message);
+            showToast('Database Error', checkErr.message, 'error');
+            return false;
         }
 
-        // 2. ຖ້າບໍ່ມີແຖວໃຫ້ INSERT
-        var { error: inErr } = await window.supabaseClient
-            .from('schedule_sheets')
-            .insert([payload]);
+        if (checkData && checkData.length > 0) {
+            // ⭐ ມີແຖວຢູ່ແລ້ວ ➔ ສັ່ງ UPDATE ໂດຍກົງຕາມ ID
+            var { error: updateErr } = await window.supabaseClient
+                .from('schedule_sheets')
+                .update(payload)
+                .eq('id', sheet.id);
 
-        if (!inErr) {
-            console.log("☁️ [Supabase SUCCESS] ສ້າງແຖວໃໝ່ໃນ schedule_sheets ສຳເລັດ ->", sheet.id);
+            if (updateErr) {
+                console.error("❌ [Supabase UPDATE Error]:", updateErr.message);
+                delete payload.notes;
+                delete payload.month_key;
+                var { error: retryErr } = await window.supabaseClient
+                    .from('schedule_sheets')
+                    .update(payload)
+                    .eq('id', sheet.id);
+
+                if (retryErr) {
+                    showToast('Database Error', `Update ບໍ່ຜ່ານ: ${retryErr.message}`, 'error');
+                    return false;
+                }
+            }
+            console.log("☁️ [Supabase SUCCESS] Updated sheet in database 100%:", sheet.id);
             return true;
+
         } else {
-            // 3. Fallback Upsert
-            await window.supabaseClient.from('schedule_sheets').upsert(payload, { onConflict: 'id' });
-            console.log("☁️ [Supabase SUCCESS] Upsert schedule_sheets ສຳເລັດ ->", sheet.id);
+            // ⭐ ຍັງບໍ່ມີແຖວ ➔ ສັ່ງ INSERT ແຖວໃໝ່
+            var { error: insertErr } = await window.supabaseClient
+                .from('schedule_sheets')
+                .insert([payload]);
+
+            if (insertErr) {
+                delete payload.notes;
+                delete payload.month_key;
+                var { error: retryInsErr } = await window.supabaseClient
+                    .from('schedule_sheets')
+                    .insert([payload]);
+
+                if (retryInsErr) {
+                    showToast('Database Error', `Insert ບໍ່ຜ່ານ: ${retryInsErr.message}`, 'error');
+                    return false;
+                }
+            }
+            console.log("☁️ [Supabase SUCCESS] Inserted new sheet into database 100%:", sheet.id);
             return true;
         }
+
     } catch (err) {
         console.error("❌ [Supabase Sync Exception]:", err);
+        showToast('Database Error', 'ເກີດຂໍ້ຜິດພາດໃນການ Sync Database', 'error');
         return false;
     }
 }
 
 // 1. ສູດຄຳນວນອາທິດຕັດຮອບທຸກໆ "ວັນຈັນ" ແບບຕໍ່ເນື່ອງຂ້າມເດືອນ
 function getMondayBasedWeekIndex(dateObj) {
-    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026
+    var epoch = Date.UTC(2026, 0, 5); // ວັນຈັນ 5/01/2026 ເປັນຈຸດອ້າງອີງ
     var current = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
     var diffDays = Math.floor((current - epoch) / (1000 * 60 * 60 * 24));
     return Math.floor(diffDays / 7);
@@ -849,7 +887,7 @@ async function clearCurrentCell() {
     await applyCellUpdate(sheet, date, shift, index, '');
 }
 
-// ⭐ 10. FUNCTION ບັນທຶກຊື່ໃສ່ CELL ແບບປອດໄພ 100% ຕັດຊ່ອງວ່າງອອກ
+// ⭐ 10. FUNCTION ບັນທຶກຊື່ໃສ່ CELL ແບບປອດໄພ 100% (SYNC DATABASE ແທ້ໆ ກ່ອນ RENDER)
 async function applyCellUpdate(sheet, date, shift, index, nameLao) {
     if (!sheet) return;
     if (!sheet.data) sheet.data = {};
@@ -888,8 +926,11 @@ async function applyCellUpdate(sheet, date, shift, index, nameLao) {
     renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
-    // ⭐ SYNC ລົງ DATABASE ຕາຕະລາງ schedule_sheets ແທ້ໆ!
-    await syncScheduleToSupabase(sheet);
+    // ⭐ SYNC ລົງ DATABASE ຕາຕະລາງ schedule_sheets ແທ້ໆ (ລໍຖ້າໃຫ້ DATABASE ຢືນຢັນ)
+    var isSynced = await syncScheduleToSupabase(sheet);
+    if (isSynced) {
+        showToast('ສຳເລັດ', `ດັດແກ້ຕາຕະລາງ ແລະ ບັນທຶກລົງ Database ແລ້ວ!`, 'success');
+    }
 }
 
 // 11. ເປີດ MODAL ຖາມເຫດຜົນການດັດແກ້ຕາຕະລາງ PUBLISHED
@@ -943,7 +984,6 @@ async function confirmApplyPublishedCellUpdate() {
 
     closeEditPublishedRemarkModal();
     await applyCellUpdate(sheet, date, shift, index, newName);
-    showToast('ສຳເລັດ', `ດັດແກ້ຕາຕະລາງ ແລະ ບັນທຶກເຫດຜົນລົງ Database ຮຽບຮ້ອຍ!`, 'success');
 }
 
 function renderSheetDropdown() {
@@ -1091,7 +1131,6 @@ function promptDeleteCurrentSheet() {
         try {
             if (typeof saveAll === 'function') await saveAll();
             if (window.supabaseClient) {
-                // ⭐ ລຶບອອກຈາກ table schedule_sheets ໃຫ້ຖືກຕ້ອງ
                 await window.supabaseClient.from('schedule_sheets').delete().eq('id', delId);
             }
         } catch(e) {}
@@ -1122,7 +1161,6 @@ function deleteAllDraftSheets() {
         try {
             if (typeof saveAll === 'function') await saveAll();
             if (window.supabaseClient && draftIds.length > 0) {
-                // ⭐ ລຶບອອກຈາກ table schedule_sheets ໃຫ້ຖືກຕ້ອງ
                 await window.supabaseClient.from('schedule_sheets').delete().in('id', draftIds);
             }
         } catch(e) {}
