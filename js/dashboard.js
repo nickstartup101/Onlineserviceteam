@@ -1,4 +1,4 @@
-// ================= ⭐ DASHBOARD OPERATIONAL MONITOR (WITH STAFF INFO POPOVER) =================
+// ================= ⭐ DASHBOARD OPERATIONAL MONITOR (REAL-TIME SWAP & SAFE POPOVER) =================
 
 // Helper ປຽບທຽບຊື່ແບບຍືດຍຸ່ນ
 function isNameMatch(a, b) {
@@ -69,7 +69,7 @@ function renderDashboard() {
         }
     }
 
-    // 2. ສະແດງລາຍຊື່ແຕ່ລະກະ ພ້ອມສະຫຼັບຊື່ແບບ Real-time ແລະ ກົດເບິ່ງ Info ໄດ້
+    // 2. ⭐ ສະແດງລາຍຊື່ແຕ່ລະກະ ພ້ອມສະຫຼັບຊື່ແບບ Real-time ແລະ ກົດເບິ່ງ Info ໄດ້
     renderShiftCardsGrouped(sheetsOfMonth, targetDate, isWeekend);
 
     // 3. ສະແດງລາຍການລາພັກ
@@ -79,7 +79,7 @@ function renderDashboard() {
     renderDailySwaps(targetDate);
 }
 
-// ⭐ RENDER ກະ 1, 2, 3: ພ້ອມປຸ່ມ ONCLICK ເປີດເບິ່ງ INFO ພະນັກງານ 100%
+// ⭐ RENDER ກະ 1, 2, 3: ກອງຊ່ອງວ່າງອອກ ບໍ່ໃຫ້ກາຍເປັນ BCEL0000 + ສະຫຼັບຊື່ REAL-TIME
 function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
     try {
         var localSw = localStorage.getItem('ot_swap_history');
@@ -116,9 +116,12 @@ function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
 
         sheets.forEach(sheet => {
             var dayData = sheet?.data?.[targetDate] || {};
-            var names = [...(dayData[shiftKey] || [])];
+            var rawNames = dayData[shiftKey] || [];
 
-            // Real-time Swap
+            // ⭐ 1. ກອງຊ່ອງວ່າງ, null, undefined ແລະ "(ວ່າງ)" ອອກທັງໝົດ ປ້ອງກັນ BCEL0000
+            var names = rawNames.filter(n => n && n.trim() !== '' && n !== '(ວ່າງ)' && n !== 'null' && n !== 'undefined');
+
+            // ⭐ 2. REAL-TIME SWAP: ລັອກຕາມ fromShift ແລະ toShift ຢ່າງຖືກຕ້ອງ
             activeSwapsToday.forEach(sw => {
                 var isCover = (sw.swapType === 'COVER' || (sw.reason && sw.reason.includes('ຄວບກະ')));
 
@@ -165,7 +168,6 @@ function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
                     var isSwappedPerson = activeSwapsToday.some(sw => isNameMatch(sw.fromName, name) || isNameMatch(sw.toName, name));
                     var cleanName = (name || '').replace(/'/g, "\\'");
 
-                    // ⭐ ເພີ່ມ ONCLICK ເປີດ MODAL INFO ພະນັກງານ
                     groupHtml += `
                         <div onclick="openStaffInfoModal('${cleanName}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border cursor-pointer hover:shadow-md hover:scale-105 transition-all select-none ${isLeader ? 'bg-red-50 text-brand-red border-red-200' : 'bg-slate-50 text-slate-800 border-slate-200'}">
                             ${photo ? `<img src="${photo}" class="w-4 h-4 rounded-full object-cover"/>` : ''}
@@ -188,8 +190,12 @@ function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
     });
 }
 
-// ⭐ FUNCTION ເປີດ MODAL ຂໍ້ມູນພະນັກງານ (STAFF PROFILE POPOVER)
+// ⭐ FUNCTION ເປີດ MODAL ຂໍ້ມູນພະນັກງານ (ປ້ອງກັນບໍ່ໃຫ້ເປີດຖ້າເປັນຊ່ອງວ່າງ BCEL0000)
 function openStaffInfoModal(nameLao) {
+    if (!nameLao || !nameLao.trim() || nameLao === '(ວ່າງ)' || nameLao === 'null' || nameLao === 'undefined') {
+        return; // ຖ້າບໍ່ມີຊື່ ຫ້າມເປີດ Modal BCEL0000 ເດັດຂາດ!
+    }
+
     var modal = document.getElementById('staffInfoModal');
     if (!modal) return;
 
