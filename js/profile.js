@@ -730,7 +730,7 @@ async function renderSwapHistory() {
     });
 }
 
-// ⭐ 8. ກົດ ACCEPT ປ່ຽນກະ (DYNAMIC REAL-TIME SLOT SWAP ENGINE 100% ປ້ອງກັນຕາຕະລາງພັງ)
+// ⭐ 8. ກົດ ACCEPT ປ່ຽນກະ (ແກ້ໄຂບັນຫາບໍ່ສະລັບບ່ອນນັ່ງໃນຕາຕະລາງ 100%)
 async function acceptSwap(id) {
     var req = (window.swapHistory || []).find(function(r) { return r.id == id; });
     if (!req) return;
@@ -753,38 +753,28 @@ async function acceptSwap(id) {
     var personA = req.fromName;
     var personB = req.toName;
 
-    // ກັ່ນຕອງສະເພາະ Sheet ທີ່ກົງກັບເດືອນຂອງ targetDates (ບໍ່ແລ່ນມົ້ວທຸກ Sheet)
-    var targetMonths = new Set(targetDates.map(function(d) { return d.slice(0, 7); }));
-
+    // ວົນລູບທຸກ Sheet ທີ່ມີວັນທີນີ້ຢູ່ແທ້ໆ (ຕັດ bug monthKey ອອກ)
     (window.scheduleSheets || []).forEach(function(sheet) {
         if (!sheet || !sheet.data) return;
-        var sMonth = (sheet.monthKey || '').slice(0, 7);
-        if (!targetMonths.has(sMonth)) return; // ຂ້າມຖ້າບໍ່ແມ່ນເດືອນດຽວກັນ
 
         targetDates.forEach(function(dStr) {
             var day = sheet.data[dStr];
-            if (!day) return;
+            if (!day) return; // ຖ້າ Sheet ບໍ່ມີວັນທີນີ້ແມ່ນຂ້າມໄປ
 
             if (isCover) {
-                // ກໍລະນີຍາມແທນ (Cover): ແທນທີ່ personB ດ້ວຍ personA ໃນທຸກກະທີ່ personB ປະຈຳການ
                 ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
                     var arr = day[sName] || [];
                     for (var i = 0; i < arr.length; i++) {
-                        if (isNameMatch(arr[i], personB)) {
-                            arr[i] = personA;
-                        }
+                        if (isNameMatch(arr[i], personB)) arr[i] = personA;
                     }
                 });
             } else {
-                // ⭐ ກໍລະນີສະລັບກະ 1:1 ແບບຕໍ່ເນື່ອງ (A ➔ B ➔ C)
-                // 1. ຄົ້ນຫາກະຕົວຈິງທີ່ Person A ແລະ Person B ນັ່ງຢູ່ມື້ນັ້ນແທ້ໆ
+                // ຄົ້ນຫາກະຕົວຈິງຂອງ Person A ແລະ Person B
                 var findActualSlot = function(name) {
                     for (var sName of ['shift1', 'shift2', 'shift3']) {
                         var arr = day[sName] || [];
                         for (var i = 0; i < arr.length; i++) {
-                            if (isNameMatch(arr[i], name)) {
-                                return { shift: sName, index: i };
-                            }
+                            if (isNameMatch(arr[i], name)) return { shift: sName, index: i };
                         }
                     }
                     return null;
@@ -793,7 +783,7 @@ async function acceptSwap(id) {
                 var posA = findActualSlot(personA);
                 var posB = findActualSlot(personB);
 
-                // 2. ຖ້າທັງສອງຄົນມີກະຢູ່ມື້ນັ້ນ ແລະ ບໍ່ແມ່ນກະດຽວກັນ -> ເຮັດການສະລັບບ່ອນກັນທັນທີ
+                // ສະລັບບ່ອນກັນຕົວຈິງໃນຕາຕະລາງ
                 if (posA && posB && posA.shift !== posB.shift) {
                     day[posA.shift][posA.index] = personB;
                     day[posB.shift][posB.index] = personA;
@@ -826,35 +816,74 @@ async function acceptSwap(id) {
     } catch (e) {}
 }
 
-async function declineSwap(id) {
-    var req = (window.swapHistory || []).find(function(r) { return r.id == id; });
-    if (req) req.status = 'DECLINED';
-    localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
-    if (typeof saveAll === 'function') await saveAll();
-    renderSwapHistory();
-    if (window.supabaseClient && req) {
-        try {
-            await window.supabaseClient.from('shift_swaps').update({ status: 'DECLINED' }).eq('id', req.id);
-        } catch (e) {}
+// ⭐ ຟັງຊັນສັ່ງໃຫ້ທຸກຄູ່ທີ່ "ປ່ຽນສຳເລັດ" ແລ້ວ ແຕ່ຕາຕະລາງຍັງບໍ່ທັນສະລັບ ໃຫ້ສະລັບທັນທີ
+async function syncAllCompletedSwapsToSchedule() {
+    var completedSwaps = (window.swapHistory || []).filter(function(s) {
+        return s.status === 'COMPLETED';
+    });
+
+    if (completedSwaps.length === 0) {
+        if (typeof showToast === 'function') showToast('ແຈ້ງເຕືອນ', 'ບໍ່ມີລາຍການປ່ຽນກະທີ່ສຳເລັດ', 'info');
+        return;
     }
-    showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະ', 'info');
-}
 
-function promptCancelSwap(swapId) {
-    askConfirm('ຍົກເລີກຄຳຮ້ອງ', 'ທ່ານຕ້ອງການຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະນີ້ແທ້ບໍ່?', async function() {
-        window.swapHistory = (window.swapHistory || []).filter(function(s) { return s.id !== swapId; });
-        localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
-        if (typeof saveAll === 'function') await saveAll();
-        renderSwapHistory();
-        if (window.supabaseClient) {
-            try {
-                await window.supabaseClient.from('shift_swaps').delete().eq('id', swapId);
-            } catch (e) {}
+    completedSwaps.forEach(function(req) {
+        var start = new Date(req.startDate + 'T00:00:00Z');
+        var end = new Date((req.endDate || req.startDate) + 'T00:00:00Z');
+        var dates = [];
+        while (start <= end) {
+            dates.push(start.toISOString().split('T')[0]);
+            start.setUTCDate(start.getUTCDate() + 1);
         }
-        showToast('ສຳເລັດ', 'ຍົກເລີກຄຳຮ້ອງຮຽບຮ້ອຍແລ້ວ!', 'success');
-    }, 'delete', 'ຍົກເລີກຄຳຮ້ອງ');
-}
 
+        (window.scheduleSheets || []).forEach(function(sheet) {
+            if (!sheet || !sheet.data) return;
+            dates.forEach(function(dStr) {
+                var day = sheet.data[dStr];
+                if (!day) return;
+
+                var findSlot = function(name) {
+                    for (var sName of ['shift1', 'shift2', 'shift3']) {
+                        var arr = day[sName] || [];
+                        for (var i = 0; i < arr.length; i++) {
+                            if (isNameMatch(arr[i], name)) return { shift: sName, index: i };
+                        }
+                    }
+                    return null;
+                };
+
+                var pA = findSlot(req.fromName);
+                var pB = findSlot(req.toName);
+
+                if (pA && pB && pA.shift !== pB.shift) {
+                    day[pA.shift][pA.index] = req.toName;
+                    day[pB.shift][pB.index] = req.fromName;
+                }
+            });
+        });
+    });
+
+    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+    localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+
+    if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.renderUserCurrentWeekWorkspace === 'function') window.renderUserCurrentWeekWorkspace();
+
+    if (typeof saveAll === 'function') await saveAll();
+    if (window.supabaseClient) {
+        for (var s of (window.scheduleSheets || [])) {
+            if (typeof syncScheduleToSupabase === 'function') {
+                await syncScheduleToSupabase(s);
+            }
+        }
+    }
+
+    if (typeof showToast === 'function') {
+        showToast('ສຳເລັດ', 'ສະລັບຕຳແໜ່ງໃນຕາຕະລາງຄົບທຸກຄູ່ຮຽບຮ້ອຍແລ້ວ!', 'success');
+    }
+}
+window.syncAllCompletedSwapsToSchedule = syncAllCompletedSwapsToSchedule;
 // ⭐ 9. AUTO-INITIALIZE WORKSPACE ON TAB SWITCH
 function initProfileWorkspace() {
     var user = getCurrentUserSafe();
