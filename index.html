@@ -93,7 +93,6 @@
     </div>
 
     <!-- Mobile Drawer -->
-    <div id="mobileDrawerBackdrop" onclick="toggleMobileDrawer()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden md:hidden transition-opacity"></div>
     <aside id="mobileDrawer" class="fixed top-0 left-0 bottom-0 w-72 bg-white z-50 shadow-2xl transform -translate-x-full transition-transform duration-300 md:hidden flex flex-col p-5">
         <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
             <div class="flex items-center gap-2.5">
@@ -110,6 +109,7 @@
             <button type="button" onclick="switchTab('groups'); toggleMobileDrawer();" id="mob-side-groups" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
             <button type="button" onclick="switchTab('employees'); toggleMobileDrawer();" id="mob-side-employees" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
             <button type="button" onclick="switchTab('profile'); toggleMobileDrawer();" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
+            <button type="button" onclick="switchTab('library'); toggleMobileDrawer();" id="mob-side-library" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">menu_book</span> Library ຄວາມຮູ້</button>
         </nav>
         <div class="pt-4 border-t border-slate-100">
             <button type="button" onclick="logout()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-sm">logout</span> ອອກຈາກລະບົບ</button>
@@ -132,6 +132,7 @@
                 <button type="button" onclick="switchTab('groups')" id="top-btn-groups" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs admin-only cursor-pointer">ໝວດພະນັກງານ (Groups)</button>
                 <button type="button" onclick="switchTab('employees')" id="top-btn-employees" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs admin-only cursor-pointer">Employees</button>
                 <button type="button" onclick="switchTab('profile')" id="top-btn-profile" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs cursor-pointer"><span id="topProfileNavTitle">My Workspace & Hub</span></button>
+                <button type="button" onclick="switchTab('library')" id="top-btn-library" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">menu_book</span> Library ຄວາມຮູ້</button>
             </nav>
         </div>
         <div class="flex items-center gap-2 md:gap-3">
@@ -171,6 +172,7 @@
                 <button type="button" onclick="switchTab('groups')" id="side-groups" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
                 <button type="button" onclick="switchTab('employees')" id="side-employees" class="side-nav-btn admin-only flex items-center justify-between px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
                 <button type="button" onclick="switchTab('profile')" id="side-profile" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="sideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
+                <button type="button" onclick="switchTab('library')" id="side-library" class="side-nav-btn flex items-center gap-3 px-4 py-2.5 text-slate-600 hover:bg-slate-50 rounded-xl transition text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">menu_book</span> Library ຄວາມຮູ້</button>
             </nav>
         </aside>
 
@@ -466,7 +468,7 @@
                         </div>
                     </div>
 
-                    <!-- Operational Shift & Swap Analytics Table (Google Material Symbols) -->
+                    <!-- Operational Shift & Swap Analytics Table -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-3 gap-2">
                             <div>
@@ -525,11 +527,8 @@
                             
                             <div class="w-full space-y-3 text-left border-t border-slate-100 pt-4 mt-4 text-xs">
                                 <div><label class="block font-semibold text-slate-600 mb-1">ຊື່ເຕັມ (Full Name)</label><input type="text" id="profNameInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red"/></div>
-                                
                                 <div><label class="block font-semibold text-slate-600 mb-1">ພາກສ່ວນ / ຂະແໜງເຮັດວຽກ (Department)</label><input type="text" id="profDeptInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ເຊັ່ນ: ຂະແໜງບໍລິການອອນລາຍ"/></div>
-                                
                                 <div><label class="block font-semibold text-slate-600 mb-1">ເບີໂທຕິດຕໍ່ (Phone Number)</label><input type="text" id="profPhoneInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ເຊັ່ນ: 020 55XX XXXX"/></div>
-                                
                                 <div><label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label><input type="text" id="profPassInput" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ໃສ່ລະຫັດໃໝ່..."/></div>
                                 <button type="button" onclick="handleUpdateProfile()" class="w-full bg-brand-red hover:bg-brand-red-dark text-white py-2.5 rounded-xl font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5">
                                     <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກໂປຣໄຟລ໌
@@ -638,6 +637,50 @@
                         <div id="incomingSwapsList" class="space-y-2.5 text-xs"></div>
                     </div>
                 </div>
+            </div>
+        </main>
+
+        <!-- VIEW 6: PRODUCT & KNOWLEDGE LIBRARY -->
+        <main id="view-library" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50 font-lao">
+            <div class="max-w-7xl mx-auto w-full space-y-5">
+                
+                <!-- Header Banner -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                    <div>
+                        <h2 class="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-brand-red text-2xl">menu_book</span>
+                            Product & Fee Knowledge Library (ສູນຂໍ້ມູນຜະລິດຕະພັນ & ຄ່າທຳນຽມ)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">ແຫຼ່ງຄວາມຮູ້ຄ່າທຳນຽມ, ລະບົບໂອນເງິນ, WeChat, Alipay, PromptPay ແລະ ໂປຣໂມຊັ່ນ</p>
+                    </div>
+                    <button type="button" onclick="openAddLibraryModal()" class="px-4 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-2xl text-xs font-bold shadow-md shadow-red-900/15 flex items-center gap-1.5 transition cursor-pointer">
+                        <span class="material-symbols-outlined text-base">add_circle</span> ເພີ່ມຫົວຂໍ້ໃໝ່
+                    </button>
+                </div>
+
+                <!-- Filters & Search Bar -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between text-xs">
+                    <div class="flex-1 relative">
+                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
+                        <input type="text" id="libSearchInput" oninput="filterLibraryItems()" placeholder="ຄົ້ນຫາຫົວຂໍ້, ເນື້ອໃນ, ຄ່າທຳນຽມ..." class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-1 focus:ring-brand-red bg-slate-50 focus:bg-white text-xs"/>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="libCategoryFilter" onchange="filterLibraryItems()" class="border border-slate-200 rounded-xl px-3 py-2 outline-none bg-slate-50 font-semibold text-xs text-slate-700 cursor-pointer">
+                            <option value="ALL">ທຸກໝວດໝູ່ (All Categories)</option>
+                            <option value="ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ">ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ</option>
+                            <option value="QR ສາກົນ (WeChat, Alipay, PromptPay)">QR ສາກົນ (WeChat, Alipay, PromptPay)</option>
+                            <option value="ສູນບັດ & ຄ່າທຳນຽມບັດ">ສູນບັດ & ຄ່າທຳນຽມບັດ / ຕ່າງປະເທດ</option>
+                            <option value="ໂປຣໂມຊັ່ນການຕະຫຼາດ">ໂປຣໂມຊັ່ນການຕະຫຼາດ</option>
+                            <option value="ອື່ນໆ">ຜະລິດຕະພັນອື່ນໆ</option>
+                        </select>
+                        <button type="button" id="libToggleOutdatedBtn" onclick="toggleShowOutdated()" class="px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 transition flex items-center gap-1 cursor-pointer">
+                            <span class="material-symbols-outlined text-sm">history</span> <span id="libToggleOutdatedText">ລວມ Out of date</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Library Grid Container -->
+                <div id="libraryGridContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
         </main>
     </div>
@@ -939,6 +982,140 @@
         </div>
     </div>
 
+    <!-- Modal: ເພີ່ມ / ແກ້ໄຂ ຂໍ້ມູນ Library -->
+    <div id="libraryItemModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
+            <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-400 text-xl" id="libModalIcon">post_add</span>
+                    <h3 class="font-bold text-sm" id="libModalTitle">ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່</h3>
+                </div>
+                <button type="button" onclick="closeLibraryModal()" class="text-white/80 hover:text-white flex items-center justify-center cursor-pointer">
+                    <span class="material-symbols-outlined text-xl">close</span>
+                </button>
+            </div>
+            <div class="p-5 md:p-6 space-y-3.5 text-xs overflow-y-auto flex-1">
+                <input type="hidden" id="libItemId"/>
+                
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-700">ໝວດໝູ່ຜະລິດຕະພັນ (Category) *</label>
+                    <select id="libItemCategory" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold bg-slate-50 focus:bg-white text-xs">
+                        <option value="ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ">ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ</option>
+                        <option value="QR ສາກົນ (WeChat, Alipay, PromptPay)">QR ສາກົນ (WeChat, Alipay, PromptPay)</option>
+                        <option value="ສູນບັດ & ຄ່າທຳນຽມບັດ">ສູນບັດ & ຄ່າທຳນຽມບັດ / ຕ່າງປະເທດ</option>
+                        <option value="ໂປຣໂມຊັ່ນການຕະຫຼາດ">ໂປຣໂມຊັ່ນການຕະຫຼາດ</option>
+                        <option value="ອື່ນໆ">ຜະລິດຕະພັນອື່ນໆ</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-700">ຫົວຂໍ້ຂໍ້ມູນ (Title) *</label>
+                    <input type="text" id="libItemTitle" placeholder="ເຊັ່ນ: ຄ່າທຳນຽມການຖອນເງິນສົດຜ່ານບັດ UnionPay ຢູ່ຕ່າງປະເທດ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold text-xs"/>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold mb-1 text-slate-700">ຄ່າທຳນຽມ (Fee / Rate) [ບໍ່ບັງຄັບ]</label>
+                        <input type="text" id="libItemFee" placeholder="ເຊັ່ນ: 1.5% ຫຼື 15,000 ກີບ/ຄັ້ງ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none text-xs"/>
+                    </div>
+                    <div>
+                        <label class="block font-semibold mb-1 text-slate-700">ໄລຍະເວລາຈັດຕັ້ງປະຕິບັດ (Period)</label>
+                        <input type="text" id="libItemPeriod" placeholder="ເຊັ່ນ: 01/10/2026 ເປັນຕົ້ນໄປ ຫຼື ຕະຫຼອດໄປ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none text-xs"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-700">ເນື້ອໃນແບບກະທັດຮັດ (Content / Details) *</label>
+                    <textarea id="libItemContent" rows="4" placeholder="ຂຽນລາຍລະອຽດ ຫຼື ຂັ້ນຕອນສຳຄັນແບບເຂົ້າໃຈງ່າຍ ເພື່ອໃຫ້ຕອບລູກຄ້າໄດ້ທັນທີ..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none leading-relaxed text-xs"></textarea>
+                </div>
+
+                <!-- ຮູບພາບປະກອບ -->
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-700">ຮູບພາບປະກອບ (Image / Infographic)</label>
+                    <div class="flex items-center gap-3">
+                        <label for="libImageFileInput" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-50 rounded-xl font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-base">add_photo_alternate</span> ເລືອກຮູບພາບ
+                        </label>
+                        <input type="file" id="libImageFileInput" accept="image/*" onchange="handleLibraryImageUpload(event)" class="hidden"/>
+                        <button type="button" id="libRemoveImageBtn" onclick="removeLibraryImagePreview()" class="text-brand-red text-xs font-bold hover:underline hidden cursor-pointer">ລຶບຮູບອອກ</button>
+                    </div>
+                    <div id="libImagePreviewContainer" class="mt-2 hidden">
+                        <img id="libImagePreview" src="" class="max-h-40 rounded-xl border object-contain bg-slate-50"/>
+                    </div>
+                </div>
+
+                <!-- Outdated Checkbox -->
+                <div class="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <input type="checkbox" id="libItemIsOutdated" class="rounded text-brand-red focus:ring-brand-red h-4 w-4 cursor-pointer"/>
+                    <label for="libItemIsOutdated" class="font-bold text-rose-700 cursor-pointer">ໝາຍວ່າຂໍ້ມູນນີ້ "Out of date" ແລ້ວ (ລ້າສະໄໝ/ໝົດອາຍຸ)</label>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-3 border-t">
+                    <button type="button" onclick="closeLibraryModal()" class="px-4 py-2 border rounded-xl cursor-pointer">ຍົກເລີກ</button>
+                    <button type="button" onclick="handleSaveLibraryItem()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold shadow-md flex items-center gap-1 cursor-pointer">
+                        <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກຂໍ້ມູນ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: ເບິ່ງລາຍລະອຽດຫົວຂໍ້ເຕັມ (Detail Popover Modal) -->
+    <div id="libraryDetailModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
+            <div class="p-4 md:p-5 bg-slate-900 text-white flex justify-between items-center shrink-0">
+                <span id="libDetailCategoryBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">ໝວດໝູ່</span>
+                <button type="button" onclick="closeLibraryDetailModal()" class="text-white/80 hover:text-white flex items-center justify-center cursor-pointer">
+                    <span class="material-symbols-outlined text-xl">close</span>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs overflow-y-auto flex-1">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800" id="libDetailTitle">ຫົວຂໍ້</h3>
+                    <div class="flex flex-wrap items-center gap-2 mt-1.5 text-[11px] text-slate-500">
+                        <span id="libDetailStatusBadge"></span>
+                        <span>• ໄລຍະເວລາ: <strong id="libDetailPeriod" class="text-slate-700">-</strong></span>
+                    </div>
+                </div>
+
+                <div id="libDetailFeeBox" class="p-3 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-2 text-brand-red font-bold text-xs">
+                    <span class="material-symbols-outlined text-lg">payments</span>
+                    <span>ຄ່າທຳນຽມ: <span id="libDetailFeeText"></span></span>
+                </div>
+
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <p class="font-bold text-slate-700">ເນື້ອໃນ / ລາຍລະອຽດ:</p>
+                    <p id="libDetailContent" class="text-slate-600 leading-relaxed whitespace-pre-line text-xs"></p>
+                </div>
+
+                <div id="libDetailImageBox" class="hidden">
+                    <p class="font-bold text-slate-700 mb-1.5">ຮູບພາບປະກອບ:</p>
+                    <a id="libDetailImageLink" href="#" target="_blank">
+                        <img id="libDetailImage" src="" class="w-full max-h-80 object-contain rounded-2xl border bg-slate-50 shadow-xs"/>
+                    </a>
+                </div>
+
+                <div class="pt-3 border-t text-[11px] text-slate-400 flex flex-col sm:flex-row justify-between gap-1">
+                    <span>ອັບເດດລ່າສຸດ: <strong id="libDetailUpdatedAt" class="text-slate-600"></strong></span>
+                    <span>ໂດຍ: <strong id="libDetailAuthor" class="text-brand-red"></strong></span>
+                </div>
+            </div>
+            <div class="p-4 bg-slate-50 border-t flex justify-between items-center shrink-0">
+                <button type="button" id="libDetailToggleOutdateBtn" onclick="" class="px-3 py-1.5 border border-slate-200 rounded-xl font-bold text-xs hover:bg-slate-100 transition cursor-pointer">
+                    ໝາຍວ່າ Out of date
+                </button>
+                <div class="flex gap-2">
+                    <button type="button" id="libDetailEditBtn" onclick="" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition cursor-pointer">
+                        ແກ້ໄຂ
+                    </button>
+                    <button type="button" onclick="closeLibraryDetailModal()" class="px-4 py-1.5 bg-slate-200 text-slate-700 rounded-xl font-bold text-xs cursor-pointer">
+                        ປິດ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JS MODULES -->
     <script src="js/app.js"></script>
     <script src="js/auth.js"></script>
@@ -947,6 +1124,7 @@
     <script src="js/groups.js"></script>
     <script src="js/employees.js"></script>
     <script src="js/profile.js"></script>
+    <script src="js/library.js"></script>
     <!-- Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
