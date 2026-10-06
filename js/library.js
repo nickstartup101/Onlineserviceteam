@@ -1,4 +1,4 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (FULL FIXED) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
@@ -13,15 +13,15 @@ async function loadLibraryItems() {
 
     if (window.supabaseClient) {
         try {
-            var { data, error } = await window.supabaseClient
+            var res = await window.supabaseClient
                 .from('library_items')
                 .select('*')
                 .order('updated_at', { ascending: false });
 
-            if (!error && data) {
-                window.libraryItems = data.map(function(d) {
+            if (!res.error && res.data) {
+                window.libraryItems = res.data.map(function(d) {
                     return {
-                        id: d.id,
+                        id: String(d.id), // ແປງເປັນ String ສະເໝີເພື່ອປ້ອງກັນ Type Mismatch
                         category: d.category || 'ຜະລິດຕະພັນອື່ນໆ',
                         title: d.title,
                         content: d.content,
@@ -46,7 +46,7 @@ async function loadLibraryItems() {
     renderLibraryGrid();
 }
 
-// 2. BRAND LOGOS (ສະແດງພຽງໂລໂກ້ດຽວ ທີ່ກົງກັບຫົວຂໍ້ກ່ອນໝູ່)
+// 2. BRAND LOGOS & BADGES (ສະແດງພຽງໂລໂກ້ດຽວ ທີ່ກົງກັບຫົວຂໍ້ກ່ອນ)
 function getSingleBrandLogo(titleInput, categoryInput) {
     var title = (titleInput || '').toLowerCase();
     var cat = (categoryInput || '').toLowerCase();
@@ -90,7 +90,6 @@ function getSingleBrandLogo(titleInput, categoryInput) {
         }
     ];
 
-    // ກວດສອບ Title ກ່ອນ
     for (var i = 0; i < brands.length; i++) {
         var b = brands[i];
         for (var j = 0; j < b.keys.length; j++) {
@@ -98,7 +97,6 @@ function getSingleBrandLogo(titleInput, categoryInput) {
         }
     }
 
-    // ຖ້າ Title ບໍ່ມີ ຈຶ່ງກວດ Category
     for (var i = 0; i < brands.length; i++) {
         var b = brands[i];
         for (var j = 0; j < b.keys.length; j++) {
@@ -127,7 +125,7 @@ function renderBrandOrCategoryBadge(title, category) {
     return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ</span>';
 }
 
-// 3. ຈັດການໝວດໝູ່ (ແກ້ໄຂ / ລຶບ / ເພີ່ມ)
+// 3. ດຶງລາຍການໝວດໝູ່ທັງໝົດ
 function getUniqueCategoriesList() {
     var defaultCats = [
         'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
@@ -149,6 +147,63 @@ function getUniqueCategoriesList() {
     return Array.from(catSet);
 }
 
+// ⭐ 4. ອັບເດດ DROPDOWN ໝວດໝູ່ທັງໝົດ (ທັງໃນ FILTER ແລະ ໃນ MODAL)
+function refreshCategoryDatalistAndFilter() {
+    var allCats = getUniqueCategoriesList();
+
+    // 1. ອັບເດດ Dropdown Filter ດ້ານເທິງຕາຕະລາງ
+    var filterSelect = document.getElementById('libCategoryFilter');
+    if (filterSelect) {
+        var currentVal = filterSelect.value || 'ALL';
+        filterSelect.innerHTML = '<option value="ALL">ທຸກໝວດໝູ່ (All Categories)</option>';
+        allCats.forEach(function(cat) {
+            var opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerText = cat;
+            if (cat === currentVal) opt.selected = true;
+            filterSelect.appendChild(opt);
+        });
+    }
+
+    // 2. ⭐ ອັບເດດ Dropdown ໃນຟອມເພີ່ມ/ແກ້ໄຂ (#libItemCategorySelect)
+    var modalCatSelect = document.getElementById('libItemCategorySelect');
+    if (modalCatSelect) {
+        var currentModalVal = modalCatSelect.value;
+        modalCatSelect.innerHTML = '';
+        allCats.forEach(function(cat) {
+            var opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerText = cat;
+            modalCatSelect.appendChild(opt);
+        });
+        // ຕົວເລືອກພິມໃໝ່
+        var newOpt = document.createElement('option');
+        newOpt.value = '__NEW__';
+        newOpt.innerText = '➕ ພິມໝວດໝູ່ໃໝ່...';
+        modalCatSelect.appendChild(newOpt);
+
+        if (currentModalVal && currentModalVal !== '__NEW__') {
+            modalCatSelect.value = currentModalVal;
+        }
+    }
+}
+
+// ເມື່ອເລືອກ "+ ພິມໝວດໝູ່ໃໝ່"
+function handleCategorySelectChange() {
+    var select = document.getElementById('libItemCategorySelect');
+    var customInput = document.getElementById('libCustomCategoryInput');
+    if (!select || !customInput) return;
+
+    if (select.value === '__NEW__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+    }
+}
+
+// 5. ຈັດການໝວດໝູ່ (MODAL: ແກ້ໄຂ / ລຶບ / ເພີ່ມ)
 function openManageCategoryModal() {
     renderManageCategoryList();
     var modal = document.getElementById('manageCategoryModal');
@@ -192,7 +247,8 @@ function renderManageCategoryList() {
     container.innerHTML = html;
 }
 
-function promptEditCategorySafe(encodedCat) {
+// ⭐ ແກ້ໄຂຊື່ໝວດໝູ່ (Rename)
+async function promptEditCategorySafe(encodedCat) {
     var oldName = decodeURIComponent(encodedCat);
     var newName = prompt('ປ້ອນຊື່ໝວດໝູ່ໃໝ່ສຳລັບ "' + oldName + '":', oldName);
     if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
@@ -215,7 +271,12 @@ function promptEditCategorySafe(encodedCat) {
     localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
 
     if (window.supabaseClient) {
-        window.supabaseClient.from('library_items').update({ category: newName, updated_at: new Date().toISOString() }).eq('category', oldName).then();
+        try {
+            await window.supabaseClient.from('library_items').update({ 
+                category: newName, 
+                updated_at: new Date().toISOString() 
+            }).eq('category', oldName);
+        } catch (e) {}
     }
 
     refreshCategoryDatalistAndFilter();
@@ -223,11 +284,12 @@ function promptEditCategorySafe(encodedCat) {
     renderManageCategoryList();
 
     if (typeof showToast === 'function') {
-        showToast('ສຳເລັດ', 'ປ່ຽນຊື່ເປັນ "' + newName + '" ແລ້ວ (' + affectedCount + ' ລາຍການ)', 'success');
+        showToast('ສຳເລັດ', 'ປ່ຽນຊື່ເປັນ "' + newName + '" ແລ້ວ (ອັບເດດ ' + affectedCount + ' ລາຍການ)', 'success');
     }
 }
 
-function promptDeleteCategorySafe(encodedCat, count) {
+// ⭐ ລຶບໝວດໝູ່ (Delete)
+async function promptDeleteCategorySafe(encodedCat, count) {
     var catName = decodeURIComponent(encodedCat);
     var confirmMsg = count > 0
         ? 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບໝວດໝູ່ "' + catName + '"?\n\nບົດຄວາມທີ່ມີຢູ່ (' + count + ' ລາຍການ) ຈະຖືກຍ້າຍໄປຢູ່ໝວດ "ຜະລິດຕະພັນອື່ນໆ"'
@@ -250,7 +312,12 @@ function promptDeleteCategorySafe(encodedCat, count) {
     }
 
     if (window.supabaseClient) {
-        window.supabaseClient.from('library_items').update({ category: 'ຜະລິດຕະພັນອື່ນໆ', updated_at: new Date().toISOString() }).eq('category', catName).then();
+        try {
+            await window.supabaseClient.from('library_items').update({ 
+                category: 'ຜະລິດຕະພັນອື່ນໆ', 
+                updated_at: new Date().toISOString() 
+            }).eq('category', catName);
+        } catch (e) {}
     }
 
     var filterSelect = document.getElementById('libCategoryFilter');
@@ -282,34 +349,460 @@ function handleAddNewCategoryQuick() {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ເພີ່ມໝວດໝູ່ "' + val + '" ແລ້ວ', 'success');
 }
 
-function refreshCategoryDatalistAndFilter() {
-    var allCats = getUniqueCategoriesList();
+// 6. RENDER CARDS
+function renderLibraryGrid() {
+    var container = document.getElementById('libraryGridContainer');
+    if (!container) return;
+    container.innerHTML = '';
 
-    var datalist = document.getElementById('libCategorySuggestions');
-    if (datalist) {
-        datalist.innerHTML = '';
-        allCats.forEach(function(cat) {
-            var opt = document.createElement('option');
-            opt.value = cat;
-            datalist.appendChild(opt);
-        });
+    var inputEl = document.getElementById('libSearchInput');
+    var q = (inputEl ? inputEl.value : '').trim().toLowerCase();
+    var filterEl = document.getElementById('libCategoryFilter');
+    var cat = (filterEl ? filterEl.value : 'ALL') || 'ALL';
+
+    var filtered = (window.libraryItems || []).filter(function(item) {
+        if (!window.showOutdatedLibraryItems && item.isOutdated) return false;
+        if (cat !== 'ALL' && item.category !== cat) return false;
+        if (q) {
+            var matchText = ((item.title || '') + ' ' + (item.content || '') + ' ' + (item.fee || '') + ' ' + (item.category || '')).toLowerCase();
+            if (matchText.indexOf(q) === -1) return false;
+        }
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">' +
+                              '<span class="material-symbols-outlined text-4xl block mb-2 text-slate-300">menu_book</span>' +
+                              '<p class="font-bold text-sm text-slate-700">ບໍ່ພົບຂໍ້ມູນຜະລິດຕະພັນໃນໝວດນີ້</p>' +
+                              '<p class="text-xs text-slate-400 mt-0.5">ກົດປຸ່ມ "ເພີ່ມຫົວຂໍ້ໃໝ່" ເພື່ອສ້າງຂໍ້ມູນ</p></div>';
+        return;
     }
 
-    var filterSelect = document.getElementById('libCategoryFilter');
-    if (filterSelect) {
-        var currentVal = filterSelect.value || 'ALL';
-        filterSelect.innerHTML = '<option value="ALL">ທຸກໝວດໝູ່ (All Categories)</option>';
-        allCats.forEach(function(cat) {
-            var opt = document.createElement('option');
-            opt.value = cat;
-            opt.innerText = cat;
-            if (cat === currentVal) opt.selected = true;
-            filterSelect.appendChild(opt);
-        });
-    }
+    filtered.forEach(function(item) {
+        var isOutdated = item.isOutdated;
+        var statusBadge = isOutdated
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Out of date</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> ໃຊ້ງານຢູ່</span>';
+
+        var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+        var brandSymbolsHtml = renderBrandOrCategoryBadge(item.title, item.category);
+
+        container.innerHTML += '<div class="bg-white border ' + (isOutdated ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200') + ' rounded-3xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-3 text-xs">' +
+            '<div class="space-y-2.5">' +
+                '<div class="flex justify-between items-start gap-2">' +
+                    '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 truncate max-w-[170px]">' + item.category + '</span>' +
+                    statusBadge +
+                '</div>' +
+                '<div class="flex flex-wrap gap-1.5 pt-0.5">' + brandSymbolsHtml + '</div>' +
+                '<h3 class="font-bold text-sm text-slate-800 leading-snug cursor-pointer hover:text-brand-red transition" onclick="openLibraryDetailModal(\'' + item.id + '\')">' + item.title + '</h3>' +
+                (item.fee ? '<div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-brand-red border border-red-200 rounded-xl font-bold text-[11px]"><span class="material-symbols-outlined text-sm">payments</span> ' + item.fee + '</div>' : '') +
+                '<p class="text-slate-500 line-clamp-3 leading-relaxed text-[11px]">' + item.content + '</p>' +
+                (item.imageUrl ? '<div class="pt-1"><img src="' + item.imageUrl + '" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="h-28 w-full object-cover rounded-2xl border cursor-pointer hover:opacity-90 transition"/></div>' : '') +
+            '</div>' +
+            '<div class="pt-3 border-t border-slate-100 flex flex-col gap-2">' +
+                '<div class="flex justify-between items-center text-[10px] text-slate-400"><span>ໂດຍ: <strong class="text-slate-600">' + (item.updatedBy || item.createdBy) + '</strong></span><span>' + updatedDateStr + '</span></div>' +
+                '<div class="flex items-center justify-between gap-2 pt-1">' +
+                    '<button type="button" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] transition cursor-pointer text-center">ເບິ່ງລາຍລະອຽດ</button>' +
+                    '<button type="button" onclick="openEditLibraryModal(\'' + item.id + '\')" class="p-2 text-slate-500 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ແກ້ໄຂ"><span class="material-symbols-outlined text-base">edit</span></button>' +
+                    '<button type="button" onclick="promptDeleteLibraryItem(\'' + item.id + '\')" class="p-2 text-slate-400 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ລຶບ"><span class="material-symbols-outlined text-base">delete</span></button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    });
 }
 
-// 4. SEARCH BAR & DROPDOWN
+function filterLibraryItems() {
+    renderLibraryGrid();
+}
+
+function toggleShowOutdated() {
+    window.showOutdatedLibraryItems = !window.showOutdatedLibraryItems;
+    var btnText = document.getElementById('libToggleOutdatedText');
+    if (btnText) btnText.innerText = window.showOutdatedLibraryItems ? 'ລວມ Out of date' : 'ເຊື່ອງ Out of date';
+    renderLibraryGrid();
+}
+
+// ⭐ 7. MODAL ເພີ່ມ / ແກ້ໄຂ (DROPDOWN ໝວດໝູ່ໃຊ້ງານໄດ້ 100%)
+function openAddLibraryModal() {
+    refreshCategoryDatalistAndFilter();
+
+    document.getElementById('libItemId').value = '';
+    document.getElementById('libModalTitle').innerText = 'ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່';
+    
+    var select = document.getElementById('libItemCategorySelect');
+    if (select) select.selectedIndex = 0;
+    var customInput = document.getElementById('libCustomCategoryInput');
+    if (customInput) { customInput.value = ''; customInput.classList.add('hidden'); }
+
+    document.getElementById('libItemTitle').value = '';
+    document.getElementById('libItemFee').value = '';
+    document.getElementById('libItemPeriod').value = '';
+    document.getElementById('libItemContent').value = '';
+    document.getElementById('libItemIsOutdated').checked = false;
+    window.currentLibraryImageBase64 = '';
+    removeLibraryImagePreview();
+
+    var modal = document.getElementById('libraryItemModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+// ⭐ ແກ້ໄຂຂໍ້ມູນ (ປຽບທຽບ String(id) ເພື່ອບໍ່ໃຫ້ຫຼຸດ)
+function openEditLibraryModal(id) {
+    refreshCategoryDatalistAndFilter();
+
+    var targetId = String(id);
+    var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
+    if (!item) return;
+
+    document.getElementById('libItemId').value = item.id;
+    document.getElementById('libModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນຜະລິດຕະພັນ';
+    
+    var select = document.getElementById('libItemCategorySelect');
+    var customInput = document.getElementById('libCustomCategoryInput');
+    if (select) {
+        var exists = Array.from(select.options).some(function(opt) { return opt.value === item.category; });
+        if (exists) {
+            select.value = item.category;
+            if (customInput) customInput.classList.add('hidden');
+        } else {
+            select.value = '__NEW__';
+            if (customInput) {
+                customInput.value = item.category;
+                customInput.classList.remove('hidden');
+            }
+        }
+    }
+
+    document.getElementById('libItemTitle').value = item.title;
+    document.getElementById('libItemFee').value = item.fee || '';
+    document.getElementById('libItemPeriod').value = item.validPeriod || '';
+    document.getElementById('libItemContent').value = item.content;
+    document.getElementById('libItemIsOutdated').checked = item.isOutdated;
+
+    window.currentLibraryImageBase64 = item.imageUrl || '';
+    if (item.imageUrl) {
+        var preview = document.getElementById('libImagePreview');
+        if (preview) preview.src = item.imageUrl;
+        var pBox = document.getElementById('libImagePreviewContainer');
+        if (pBox) pBox.classList.remove('hidden');
+        var rBtn = document.getElementById('libRemoveImageBtn');
+        if (rBtn) rBtn.classList.remove('hidden');
+    } else {
+        removeLibraryImagePreview();
+    }
+
+    var modal = document.getElementById('libraryItemModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeLibraryModal() {
+    var modal = document.getElementById('libraryItemModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ⭐ 8. ບັນທຶກຂໍ້ມູນ
+async function handleSaveLibraryItem() {
+    var id = (document.getElementById('libItemId') || {}).value;
+    
+    // ດຶງໝວດໝູ່ຈາກ Dropdown ຫຼື Custom Input
+    var catSelect = document.getElementById('libItemCategorySelect');
+    var customInput = document.getElementById('libCustomCategoryInput');
+    var category = 'ຜະລິດຕະພັນອື່ນໆ';
+
+    if (catSelect) {
+        if (catSelect.value === '__NEW__' && customInput && customInput.value.trim()) {
+            category = customInput.value.trim();
+        } else if (catSelect.value && catSelect.value !== '__NEW__') {
+            category = catSelect.value.trim();
+        }
+    }
+
+    var title = ((document.getElementById('libItemTitle') || {}).value || '').trim();
+    var fee = ((document.getElementById('libItemFee') || {}).value || '').trim();
+    var period = ((document.getElementById('libItemPeriod') || {}).value || '').trim();
+    var content = ((document.getElementById('libItemContent') || {}).value || '').trim();
+    var isOutdated = (document.getElementById('libItemIsOutdated') || {}).checked || false;
+
+    if (!title || !content) {
+        if (typeof showToast === 'function') showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຫົວຂໍ້ ແລະ ເນື້ອໃນໃຫ້ຄົບຖ້ວນ', 'error');
+        return;
+    }
+
+    var user = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+    var authorName = user ? (user.nameLao || user.fullName || 'Staff') : 'Staff';
+    var isEdit = Boolean(id);
+    var itemId = id ? String(id) : ('lib-' + Date.now());
+
+    var itemObj = {
+        id: itemId,
+        category: category,
+        title: title,
+        content: content,
+        fee: fee,
+        validPeriod: period,
+        isOutdated: isOutdated,
+        imageUrl: window.currentLibraryImageBase64 || '',
+        updatedBy: authorName,
+        updatedAt: new Date().toISOString()
+    };
+
+    if (!isEdit) {
+        itemObj.createdBy = authorName;
+        itemObj.createdAt = new Date().toISOString();
+        if (!window.libraryItems) window.libraryItems = [];
+        window.libraryItems.unshift(itemObj);
+    } else {
+        var idx = window.libraryItems.findIndex(function(i) { return String(i.id) === String(id); });
+        if (idx !== -1) {
+            itemObj.createdBy = window.libraryItems[idx].createdBy;
+            itemObj.createdAt = window.libraryItems[idx].createdAt;
+            window.libraryItems[idx] = itemObj;
+        }
+    }
+
+    localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
+
+    if (window.supabaseClient) {
+        try {
+            var payload = {
+                id: itemObj.id,
+                category: itemObj.category,
+                title: itemObj.title,
+                content: itemObj.content,
+                fee: itemObj.fee,
+                valid_period: itemObj.validPeriod,
+                is_outdated: itemObj.isOutdated,
+                image_url: itemObj.imageUrl,
+                updated_by: itemObj.updatedBy,
+                updated_at: itemObj.updatedAt
+            };
+            if (!isEdit) {
+                payload.created_by = itemObj.createdBy;
+                payload.created_at = itemObj.createdAt;
+            }
+            await window.supabaseClient.from('library_items').upsert(payload, { onConflict: 'id' });
+        } catch (err) {
+            console.error("Supabase Library Sync Error:", err);
+        }
+    }
+
+    // ແຈ້ງເຕືອນ Realtime
+    var notifTitle = isEdit ? ('ອັບເດດຂໍ້ມູນ: ' + title) : ('ເພີ່ມຂໍ້ມູນໃໝ່: ' + title);
+    var notifMessage = authorName + ' ໄດ້ອັບເດດຂໍ້ມູນ "' + title + '" ໃນໝວດ [' + category + ']';
+
+    var notifEntry = {
+        id: Date.now(),
+        title: notifTitle,
+        message: notifMessage,
+        tag: 'Library ຄວາມຮູ້',
+        date: new Date().toLocaleString('lo-LA'),
+        readBy: [user ? user.user : 'me']
+    };
+    if (!window.systemNotifications) window.systemNotifications = [];
+    window.systemNotifications.unshift(notifEntry);
+    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
+
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient.from('notifications').insert([{
+                title: notifTitle,
+                message: notifMessage,
+                tag: 'Library ຄວາມຮູ້',
+                created_by: authorName,
+                created_at: new Date().toISOString(),
+                read_by: [user ? user.user : 'me']
+            }]);
+        } catch (nErr) {}
+    }
+
+    closeLibraryModal();
+    refreshCategoryDatalistAndFilter();
+    renderLibraryGrid();
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
+}
+
+// ⭐ 9. ລຶບລາຍການ (ແກ້ໄຂບັນຫາລຶບບໍ່ໄດ້ 100%)
+async function promptDeleteLibraryItem(id) {
+    var targetId = String(id);
+    var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
+    if (!item) return;
+
+    if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຫົວຂໍ້ "' + item.title + '"?')) {
+        return;
+    }
+
+    // ລຶບອອກຈາກ Local State
+    window.libraryItems = window.libraryItems.filter(function(i) { return String(i.id) !== targetId; });
+    localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
+
+    // ລຶບອອກຈາກ Supabase
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient.from('library_items').delete().eq('id', item.id);
+        } catch (err) {
+            console.error("Supabase delete error:", err);
+        }
+    }
+
+    refreshCategoryDatalistAndFilter();
+    renderLibraryGrid();
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
+}
+
+// 10. DETAIL MODAL
+function openLibraryDetailModal(id) {
+    var targetId = String(id);
+    var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
+    if (!item) return;
+
+    var catEl = document.getElementById('libDetailCategoryBadge');
+    if (catEl) catEl.innerText = item.category;
+    var titleEl = document.getElementById('libDetailTitle');
+    if (titleEl) titleEl.innerText = item.title;
+    var periodEl = document.getElementById('libDetailPeriod');
+    if (periodEl) periodEl.innerText = item.validPeriod || 'ບໍ່ກຳນົດ';
+    var contentEl = document.getElementById('libDetailContent');
+    if (contentEl) contentEl.innerText = item.content;
+    var authorEl = document.getElementById('libDetailAuthor');
+    if (authorEl) authorEl.innerText = item.updatedBy || item.createdBy || 'Staff';
+    var updatedEl = document.getElementById('libDetailUpdatedAt');
+    if (updatedEl) updatedEl.innerText = item.updatedAt ? new Date(item.updatedAt).toLocaleString('lo-LA') : '-';
+
+    var statusEl = document.getElementById('libDetailStatusBadge');
+    if (statusEl) {
+        statusEl.innerHTML = item.isOutdated
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Out of date</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">ໃຊ້ງານຢູ່</span>';
+    }
+
+    var feeBox = document.getElementById('libDetailFeeBox');
+    if (feeBox) {
+        if (item.fee) {
+            var feeTxt = document.getElementById('libDetailFeeText');
+            if (feeTxt) feeTxt.innerText = item.fee;
+            feeBox.classList.remove('hidden');
+        } else {
+            feeBox.classList.add('hidden');
+        }
+    }
+
+    var imgBox = document.getElementById('libDetailImageBox');
+    if (imgBox) {
+        if (item.imageUrl) {
+            var imgEl = document.getElementById('libDetailImage');
+            if (imgEl) imgEl.src = item.imageUrl;
+            var linkEl = document.getElementById('libDetailImageLink');
+            if (linkEl) linkEl.href = item.imageUrl;
+            imgBox.classList.remove('hidden');
+        } else {
+            imgBox.classList.add('hidden');
+        }
+    }
+
+    var outdateBtn = document.getElementById('libDetailToggleOutdateBtn');
+    if (outdateBtn) {
+        outdateBtn.innerText = item.isOutdated ? 'ປ່ຽນເປັນ: ໃຊ້ງານຢູ່' : 'ໝາຍວ່າ: Out of date';
+        outdateBtn.onclick = function() { toggleItemOutdated(item.id); };
+    }
+
+    var editBtn = document.getElementById('libDetailEditBtn');
+    if (editBtn) {
+        editBtn.onclick = function() {
+            closeLibraryDetailModal();
+            openEditLibraryModal(item.id);
+        };
+    }
+
+    var modal = document.getElementById('libraryDetailModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeLibraryDetailModal() {
+    var modal = document.getElementById('libraryDetailModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function toggleItemOutdated(id) {
+    var targetId = String(id);
+    var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
+    if (!item) return;
+
+    item.isOutdated = !item.isOutdated;
+    item.updatedAt = new Date().toISOString();
+    var user = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+    item.updatedBy = user ? (user.nameLao || 'Staff') : 'Staff';
+
+    localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
+    var statusString = item.isOutdated ? 'Out of date' : 'ໃຊ້ງານຢູ່';
+
+    if (window.supabaseClient) {
+        try {
+            await window.supabaseClient.from('library_items').update({
+                is_outdated: item.isOutdated,
+                updated_by: item.updatedBy,
+                updated_at: item.updatedAt
+            }).eq('id', item.id);
+
+            await window.supabaseClient.from('notifications').insert([{
+                title: 'ອັບເດດສະຖານະ: ' + item.title,
+                message: item.updatedBy + ' ໄດ້ປ່ຽນສະຖານະ "' + item.title + '" ເປັນ ' + statusString,
+                tag: 'Library ຄວາມຮູ້',
+                created_by: item.updatedBy,
+                created_at: new Date().toISOString(),
+                read_by: [user ? user.user : 'me']
+            }]);
+        } catch (e) {}
+    }
+
+    closeLibraryDetailModal();
+    renderLibraryGrid();
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
+}
+
+// 11. ຮູບພາບ
+function handleLibraryImageUpload(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxW = 900;
+            var w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+            canvas.width = w; canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            var compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+
+            window.currentLibraryImageBase64 = compressedBase64;
+            var preview = document.getElementById('libImagePreview');
+            if (preview) preview.src = compressedBase64;
+            var pBox = document.getElementById('libImagePreviewContainer');
+            if (pBox) pBox.classList.remove('hidden');
+            var rBtn = document.getElementById('libRemoveImageBtn');
+            if (rBtn) rBtn.classList.remove('hidden');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeLibraryImagePreview() {
+    window.currentLibraryImageBase64 = '';
+    var preview = document.getElementById('libImagePreview');
+    if (preview) preview.src = '';
+    var pBox = document.getElementById('libImagePreviewContainer');
+    if (pBox) pBox.classList.add('hidden');
+    var rBtn = document.getElementById('libRemoveImageBtn');
+    if (rBtn) rBtn.classList.add('hidden');
+    var fileInput = document.getElementById('libImageFileInput');
+    if (fileInput) fileInput.value = '';
+}
+
+// 12. ຄົ້ນຫາ
 function openSearchDropdown() {
     renderSearchDropdownList();
     var dropdown = document.getElementById('libSearchDropdown');
@@ -386,7 +879,8 @@ function renderSearchDropdownList() {
 }
 
 function selectDropdownItem(id) {
-    var item = (window.libraryItems || []).find(function(i) { return i.id === id; });
+    var targetId = String(id);
+    var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
     if (item) {
         var input = document.getElementById('libSearchInput');
         if (input) input.value = item.title;
@@ -402,413 +896,6 @@ document.addEventListener('click', function(e) {
         closeSearchDropdown();
     }
 });
-
-// 5. RENDER CARDS
-function renderLibraryGrid() {
-    var container = document.getElementById('libraryGridContainer');
-    if (!container) return;
-    container.innerHTML = '';
-
-    var inputEl = document.getElementById('libSearchInput');
-    var q = (inputEl ? inputEl.value : '').trim().toLowerCase();
-    var filterEl = document.getElementById('libCategoryFilter');
-    var cat = (filterEl ? filterEl.value : 'ALL') || 'ALL';
-
-    var filtered = (window.libraryItems || []).filter(function(item) {
-        if (!window.showOutdatedLibraryItems && item.isOutdated) return false;
-        if (cat !== 'ALL' && item.category !== cat) return false;
-        if (q) {
-            var matchText = ((item.title || '') + ' ' + (item.content || '') + ' ' + (item.fee || '') + ' ' + (item.category || '')).toLowerCase();
-            if (matchText.indexOf(q) === -1) return false;
-        }
-        return true;
-    });
-
-    if (filtered.length === 0) {
-        container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">' +
-                              '<span class="material-symbols-outlined text-4xl block mb-2 text-slate-300">menu_book</span>' +
-                              '<p class="font-bold text-sm text-slate-700">ບໍ່ພົບຂໍ້ມູນຜະລິດຕະພັນໃນໝວດນີ້</p>' +
-                              '<p class="text-xs text-slate-400 mt-0.5">ກົດປຸ່ມ "ເພີ່ມຫົວຂໍ້ໃໝ່" ເພື່ອສ້າງຂໍ້ມູນ</p></div>';
-        return;
-    }
-
-    filtered.forEach(function(item) {
-        var isOutdated = item.isOutdated;
-        var statusBadge = isOutdated
-            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Out of date</span>'
-            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> ໃຊ້ງານຢູ່</span>';
-
-        var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
-        var brandSymbolsHtml = renderBrandOrCategoryBadge(item.title, item.category);
-
-        container.innerHTML += '<div class="bg-white border ' + (isOutdated ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200') + ' rounded-3xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-3 text-xs">' +
-            '<div class="space-y-2.5">' +
-                '<div class="flex justify-between items-start gap-2">' +
-                    '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 truncate max-w-[170px]">' + item.category + '</span>' +
-                    statusBadge +
-                '</div>' +
-                '<div class="flex flex-wrap gap-1.5 pt-0.5">' + brandSymbolsHtml + '</div>' +
-                '<h3 class="font-bold text-sm text-slate-800 leading-snug cursor-pointer hover:text-brand-red transition" onclick="openLibraryDetailModal(\'' + item.id + '\')">' + item.title + '</h3>' +
-                (item.fee ? '<div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-brand-red border border-red-200 rounded-xl font-bold text-[11px]"><span class="material-symbols-outlined text-sm">payments</span> ' + item.fee + '</div>' : '') +
-                '<p class="text-slate-500 line-clamp-3 leading-relaxed text-[11px]">' + item.content + '</p>' +
-                (item.imageUrl ? '<div class="pt-1"><img src="' + item.imageUrl + '" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="h-28 w-full object-cover rounded-2xl border cursor-pointer hover:opacity-90 transition"/></div>' : '') +
-            '</div>' +
-            '<div class="pt-3 border-t border-slate-100 flex flex-col gap-2">' +
-                '<div class="flex justify-between items-center text-[10px] text-slate-400"><span>ໂດຍ: <strong class="text-slate-600">' + (item.updatedBy || item.createdBy) + '</strong></span><span>' + updatedDateStr + '</span></div>' +
-                '<div class="flex items-center justify-between gap-2 pt-1">' +
-                    '<button type="button" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] transition cursor-pointer text-center">ເບິ່ງລາຍລະອຽດ</button>' +
-                    '<button type="button" onclick="openEditLibraryModal(\'' + item.id + '\')" class="p-2 text-slate-500 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ແກ້ໄຂ"><span class="material-symbols-outlined text-base">edit</span></button>' +
-                    '<button type="button" onclick="promptDeleteLibraryItem(\'' + item.id + '\')" class="p-2 text-slate-400 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ລຶບ"><span class="material-symbols-outlined text-base">delete</span></button>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
-    });
-}
-
-function filterLibraryItems() {
-    renderLibraryGrid();
-}
-
-function toggleShowOutdated() {
-    window.showOutdatedLibraryItems = !window.showOutdatedLibraryItems;
-    var btnText = document.getElementById('libToggleOutdatedText');
-    if (btnText) btnText.innerText = window.showOutdatedLibraryItems ? 'ລວມ Out of date' : 'ເຊື່ອງ Out of date';
-    renderLibraryGrid();
-}
-
-// 6. MODAL ເພີ່ມ / ແກ້ໄຂ
-function openAddLibraryModal() {
-    document.getElementById('libItemId').value = '';
-    document.getElementById('libModalTitle').innerText = 'ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່';
-    document.getElementById('libItemCategory').value = 'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ';
-    document.getElementById('libItemTitle').value = '';
-    document.getElementById('libItemFee').value = '';
-    document.getElementById('libItemPeriod').value = '';
-    document.getElementById('libItemContent').value = '';
-    document.getElementById('libItemIsOutdated').checked = false;
-    window.currentLibraryImageBase64 = '';
-    removeLibraryImagePreview();
-    refreshCategoryDatalistAndFilter();
-    var modal = document.getElementById('libraryItemModal');
-    if (modal) modal.classList.remove('hidden');
-}
-
-function openEditLibraryModal(id) {
-    var item = (window.libraryItems || []).find(function(i) { return i.id === id; });
-    if (!item) return;
-
-    document.getElementById('libItemId').value = item.id;
-    document.getElementById('libModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນຜະລິດຕະພັນ';
-    document.getElementById('libItemCategory').value = item.category;
-    document.getElementById('libItemTitle').value = item.title;
-    document.getElementById('libItemFee').value = item.fee || '';
-    document.getElementById('libItemPeriod').value = item.validPeriod || '';
-    document.getElementById('libItemContent').value = item.content;
-    document.getElementById('libItemIsOutdated').checked = item.isOutdated;
-
-    window.currentLibraryImageBase64 = item.imageUrl || '';
-    if (item.imageUrl) {
-        var preview = document.getElementById('libImagePreview');
-        if (preview) preview.src = item.imageUrl;
-        var pBox = document.getElementById('libImagePreviewContainer');
-        if (pBox) pBox.classList.remove('hidden');
-        var rBtn = document.getElementById('libRemoveImageBtn');
-        if (rBtn) rBtn.classList.remove('hidden');
-    } else {
-        removeLibraryImagePreview();
-    }
-
-    refreshCategoryDatalistAndFilter();
-    var modal = document.getElementById('libraryItemModal');
-    if (modal) modal.classList.remove('hidden');
-}
-
-function closeLibraryModal() {
-    var modal = document.getElementById('libraryItemModal');
-    if (modal) modal.classList.add('hidden');
-}
-
-function handleLibraryImageUpload(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        var img = new Image();
-        img.onload = function() {
-            var canvas = document.createElement('canvas');
-            var maxW = 900;
-            var w = img.width, h = img.height;
-            if (w > maxW) {
-                h = Math.round((h * maxW) / w);
-                w = maxW;
-            }
-            canvas.width = w; canvas.height = h;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            var compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-
-            window.currentLibraryImageBase64 = compressedBase64;
-            var preview = document.getElementById('libImagePreview');
-            if (preview) preview.src = compressedBase64;
-            var pBox = document.getElementById('libImagePreviewContainer');
-            if (pBox) pBox.classList.remove('hidden');
-            var rBtn = document.getElementById('libRemoveImageBtn');
-            if (rBtn) rBtn.classList.remove('hidden');
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-function removeLibraryImagePreview() {
-    window.currentLibraryImageBase64 = '';
-    var preview = document.getElementById('libImagePreview');
-    if (preview) preview.src = '';
-    var pBox = document.getElementById('libImagePreviewContainer');
-    if (pBox) pBox.classList.add('hidden');
-    var rBtn = document.getElementById('libRemoveImageBtn');
-    if (rBtn) rBtn.classList.add('hidden');
-    var fileInput = document.getElementById('libImageFileInput');
-    if (fileInput) fileInput.value = '';
-}
-
-// 7. ບັນທຶກ & ແຈ້ງເຕືອນ Realtime
-async function handleSaveLibraryItem() {
-    var id = (document.getElementById('libItemId') || {}).value;
-    var category = ((document.getElementById('libItemCategory') || {}).value || '').trim();
-    var title = ((document.getElementById('libItemTitle') || {}).value || '').trim();
-    var fee = ((document.getElementById('libItemFee') || {}).value || '').trim();
-    var period = ((document.getElementById('libItemPeriod') || {}).value || '').trim();
-    var content = ((document.getElementById('libItemContent') || {}).value || '').trim();
-    var isOutdated = (document.getElementById('libItemIsOutdated') || {}).checked || false;
-
-    if (!category) category = 'ຜະລິດຕະພັນອື່ນໆ';
-
-    if (!title || !content) {
-        if (typeof showToast === 'function') showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຫົວຂໍ້ ແລະ ເນື້ອໃນໃຫ້ຄົບຖ້ວນ', 'error');
-        return;
-    }
-
-    var user = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
-    var authorName = user ? (user.nameLao || user.fullName || 'Staff') : 'Staff';
-    var isEdit = Boolean(id);
-    var itemId = id || ('lib-' + Date.now());
-
-    var itemObj = {
-        id: itemId,
-        category: category,
-        title: title,
-        content: content,
-        fee: fee,
-        validPeriod: period,
-        isOutdated: isOutdated,
-        imageUrl: window.currentLibraryImageBase64 || '',
-        updatedBy: authorName,
-        updatedAt: new Date().toISOString()
-    };
-
-    if (!isEdit) {
-        itemObj.createdBy = authorName;
-        itemObj.createdAt = new Date().toISOString();
-        if (!window.libraryItems) window.libraryItems = [];
-        window.libraryItems.unshift(itemObj);
-    } else {
-        var idx = window.libraryItems.findIndex(function(i) { return i.id === id; });
-        if (idx !== -1) {
-            itemObj.createdBy = window.libraryItems[idx].createdBy;
-            itemObj.createdAt = window.libraryItems[idx].createdAt;
-            window.libraryItems[idx] = itemObj;
-        }
-    }
-
-    localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
-
-    if (window.supabaseClient) {
-        try {
-            var payload = {
-                id: itemObj.id,
-                category: itemObj.category,
-                title: itemObj.title,
-                content: itemObj.content,
-                fee: itemObj.fee,
-                valid_period: itemObj.validPeriod,
-                is_outdated: itemObj.isOutdated,
-                image_url: itemObj.imageUrl,
-                updated_by: itemObj.updatedBy,
-                updated_at: itemObj.updatedAt
-            };
-            if (!isEdit) {
-                payload.created_by = itemObj.createdBy;
-                payload.created_at = itemObj.createdAt;
-            }
-            await window.supabaseClient.from('library_items').upsert(payload, { onConflict: 'id' });
-        } catch (err) {
-            console.error("Supabase Library Sync Error:", err);
-        }
-    }
-
-    var notifTitle = isEdit ? ('ອັບເດດຂໍ້ມູນ: ' + title) : ('ເພີ່ມຂໍ້ມູນໃໝ່: ' + title);
-    var notifMessage = authorName + ' ໄດ້ອັບເດດຂໍ້ມູນ "' + title + '" ໃນໝວດ [' + category + ']';
-
-    var notifEntry = {
-        id: Date.now(),
-        title: notifTitle,
-        message: notifMessage,
-        tag: 'Library ຄວາມຮູ້',
-        date: new Date().toLocaleString('lo-LA'),
-        readBy: [user ? user.user : 'me']
-    };
-    if (!window.systemNotifications) window.systemNotifications = [];
-    window.systemNotifications.unshift(notifEntry);
-    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
-
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('notifications').insert([{
-                title: notifTitle,
-                message: notifMessage,
-                tag: 'Library ຄວາມຮູ້',
-                created_by: authorName,
-                created_at: new Date().toISOString(),
-                read_by: [user ? user.user : 'me']
-            }]);
-        } catch (nErr) {}
-    }
-
-    closeLibraryModal();
-    refreshCategoryDatalistAndFilter();
-    renderLibraryGrid();
-    if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
-}
-
-// 8. DETAIL MODAL
-function openLibraryDetailModal(id) {
-    var item = (window.libraryItems || []).find(function(i) { return i.id === id; });
-    if (!item) return;
-
-    var catEl = document.getElementById('libDetailCategoryBadge');
-    if (catEl) catEl.innerText = item.category;
-    var titleEl = document.getElementById('libDetailTitle');
-    if (titleEl) titleEl.innerText = item.title;
-    var periodEl = document.getElementById('libDetailPeriod');
-    if (periodEl) periodEl.innerText = item.validPeriod || 'ບໍ່ກຳນົດ';
-    var contentEl = document.getElementById('libDetailContent');
-    if (contentEl) contentEl.innerText = item.content;
-    var authorEl = document.getElementById('libDetailAuthor');
-    if (authorEl) authorEl.innerText = item.updatedBy || item.createdBy || 'Staff';
-    var updatedEl = document.getElementById('libDetailUpdatedAt');
-    if (updatedEl) updatedEl.innerText = item.updatedAt ? new Date(item.updatedAt).toLocaleString('lo-LA') : '-';
-
-    var statusEl = document.getElementById('libDetailStatusBadge');
-    if (statusEl) {
-        statusEl.innerHTML = item.isOutdated
-            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700">Out of date</span>'
-            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">ໃຊ້ງານຢູ່</span>';
-    }
-
-    var feeBox = document.getElementById('libDetailFeeBox');
-    if (feeBox) {
-        if (item.fee) {
-            var feeTxt = document.getElementById('libDetailFeeText');
-            if (feeTxt) feeTxt.innerText = item.fee;
-            feeBox.classList.remove('hidden');
-        } else {
-            feeBox.classList.add('hidden');
-        }
-    }
-
-    var imgBox = document.getElementById('libDetailImageBox');
-    if (imgBox) {
-        if (item.imageUrl) {
-            var imgEl = document.getElementById('libDetailImage');
-            if (imgEl) imgEl.src = item.imageUrl;
-            var linkEl = document.getElementById('libDetailImageLink');
-            if (linkEl) linkEl.href = item.imageUrl;
-            imgBox.classList.remove('hidden');
-        } else {
-            imgBox.classList.add('hidden');
-        }
-    }
-
-    var outdateBtn = document.getElementById('libDetailToggleOutdateBtn');
-    if (outdateBtn) {
-        outdateBtn.innerText = item.isOutdated ? 'ປ່ຽນເປັນ: ໃຊ້ງານຢູ່' : 'ໝາຍວ່າ: Out of date';
-        outdateBtn.onclick = function() { toggleItemOutdated(item.id); };
-    }
-
-    var editBtn = document.getElementById('libDetailEditBtn');
-    if (editBtn) {
-        editBtn.onclick = function() {
-            closeLibraryDetailModal();
-            openEditLibraryModal(item.id);
-        };
-    }
-
-    var modal = document.getElementById('libraryDetailModal');
-    if (modal) modal.classList.remove('hidden');
-}
-
-function closeLibraryDetailModal() {
-    var modal = document.getElementById('libraryDetailModal');
-    if (modal) modal.classList.add('hidden');
-}
-
-// 9. TOGGLE OUTDATED & DELETE
-async function toggleItemOutdated(id) {
-    var item = (window.libraryItems || []).find(function(i) { return i.id === id; });
-    if (!item) return;
-
-    item.isOutdated = !item.isOutdated;
-    item.updatedAt = new Date().toISOString();
-    var user = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
-    item.updatedBy = user ? (user.nameLao || 'Staff') : 'Staff';
-
-    localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
-
-    var statusString = item.isOutdated ? 'Out of date' : 'ໃຊ້ງານຢູ່';
-
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('library_items').update({
-                is_outdated: item.isOutdated,
-                updated_by: item.updatedBy,
-                updated_at: item.updatedAt
-            }).eq('id', id);
-
-            await window.supabaseClient.from('notifications').insert([{
-                title: 'ອັບເດດສະຖານະ: ' + item.title,
-                message: item.updatedBy + ' ໄດ້ປ່ຽນສະຖານະ "' + item.title + '" ເປັນ ' + statusString,
-                tag: 'Library ຄວາມຮູ້',
-                created_by: item.updatedBy,
-                created_at: new Date().toISOString(),
-                read_by: [user ? user.user : 'me']
-            }]);
-        } catch (e) {}
-    }
-
-    closeLibraryDetailModal();
-    renderLibraryGrid();
-    if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
-}
-
-function promptDeleteLibraryItem(id) {
-    var item = (window.libraryItems || []).find(function(i) { return i.id === id; });
-    if (!item) return;
-
-    if (confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຫົວຂໍ້ "' + item.title + '"?')) {
-        window.libraryItems = window.libraryItems.filter(function(i) { return i.id !== id; });
-        localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
-
-        if (window.supabaseClient) {
-            window.supabaseClient.from('library_items').delete().eq('id', id).then();
-        }
-
-        refreshCategoryDatalistAndFilter();
-        renderLibraryGrid();
-        if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
-    }
-}
 
 // ⭐ Auto-load
 var _origTabForLib = window.switchTab;
@@ -833,6 +920,7 @@ window.promptEditCategorySafe = promptEditCategorySafe;
 window.promptDeleteCategorySafe = promptDeleteCategorySafe;
 window.handleAddNewCategoryQuick = handleAddNewCategoryQuick;
 window.refreshCategoryDatalistAndFilter = refreshCategoryDatalistAndFilter;
+window.handleCategorySelectChange = handleCategorySelectChange;
 window.openSearchDropdown = openSearchDropdown;
 window.closeSearchDropdown = closeSearchDropdown;
 window.handleSearchInput = handleSearchInput;
