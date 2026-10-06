@@ -1,337 +1,402 @@
-// ================= ⭐ DASHBOARD OPERATIONAL MONITOR (REAL-TIME SWAP & SAFE POPOVER) =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & SWAP CHAIN INSPECTOR =================
 
-// Helper ປຽບທຽບຊື່ແບບຍືດຍຸ່ນ
-function isNameMatch(a, b) {
+// 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
+function isDashNameMatch(a, b) {
     if (!a || !b) return false;
     var cleanA = a.toString().trim().toLowerCase().replace(/\s+/g, '');
     var cleanB = b.toString().trim().toLowerCase().replace(/\s+/g, '');
-    return cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+    return cleanA === cleanB;
 }
 
-// Helper ແປງວັນທີ
-function normalizeDateStr(d) {
-    if (!d) return '';
-    var s = d.toString().trim();
-    if (s.includes('T')) s = s.split('T')[0];
-    if (s.includes('/')) {
-        var p = s.split('/');
-        if (p.length === 3 && p[2].length === 4) {
-            return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
-        }
+// 0.1 HELPER ດຶງຮູບ Avatar ຫຼື Icon
+function getStaffPhotoHtml(nameLao) {
+    var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
+    if (user && user.photo) {
+        return '<img src="' + user.photo + '" class="w-4 h-4 rounded-full object-cover inline-block mr-1 border border-slate-300" alt="' + nameLao + '"/>';
     }
-    var parts = s.split('-');
-    if (parts.length === 3) {
-        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-    }
-    return s;
+    return '';
 }
 
-function getShiftLabelShort(s) {
-    if (s === 'shift1') return 'ກະ 1';
-    if (s === 'shift2') return 'ກະ 2';
-    if (s === 'shift3') return 'ກະ 3';
-    return s || '';
+// 0.2 HELPER ກວດສອບວ່າແມ່ນຫົວໜ້າກະບໍ່
+function isStaffLeader(nameLao) {
+    var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
+    return user ? Boolean(user.isLeader) : false;
 }
 
-function renderDashboard() {
-    var dateInput = document.getElementById('dashDateInput');
-    var rawDate = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
-    var targetDate = normalizeDateStr(rawDate);
-
-    var actLabel = document.getElementById('dashActivityDateLabel');
-    if (actLabel) actLabel.innerText = `ວັນທີ ${targetDate}`;
-
-    var monthKey = targetDate.substring(0, 7);
-    
-    // ດຶງທຸກ Sheet ຂອງເດືອນນັ້ນ (ສົມບູນ + ສັນຍາ)
-    var sheetsOfMonth = (window.scheduleSheets || []).filter(s => s.monthKey === monthKey);
-    if (sheetsOfMonth.length === 0 && typeof getActiveSheet === 'function') {
-        var act = getActiveSheet();
-        if (act) sheetsOfMonth = [act];
-    }
-
-    var isHol = typeof isDateInHolidayRange === 'function' ? isDateInHolidayRange(targetDate) : false;
-    var dayOfWeek = new Date(targetDate).getDay();
-    var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6 || isHol);
-
-    // 1. Badge ປະເພດວັນ
-    var dayTypeBadge = document.getElementById('dayTypeBadge');
-    if (dayTypeBadge) {
-        if (isHol) {
-            dayTypeBadge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5";
-            dayTypeBadge.innerHTML = `<span class="material-symbols-outlined text-sm">celebration</span> ວັນພັກພິເສດ`;
-        } else if (isWeekend) {
-            dayTypeBadge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-red-50 text-brand-red border border-red-200 flex items-center gap-1.5";
-            dayTypeBadge.innerHTML = `<span class="material-symbols-outlined text-sm">weekend</span> ວັນພັກທ້າຍອາທິດ`;
-        } else {
-            dayTypeBadge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5";
-            dayTypeBadge.innerHTML = `<span class="material-symbols-outlined text-sm">wb_sunny</span> ວັນທຳມະດາ (Weekday)`;
-        }
-    }
-
-    // 2. ⭐ ສະແດງລາຍຊື່ແຕ່ລະກະ ພ້ອມສະຫຼັບຊື່ແບບ Real-time ແລະ ກົດເບິ່ງ Info ໄດ້
-    renderShiftCardsGrouped(sheetsOfMonth, targetDate, isWeekend);
-
-    // 3. ສະແດງລາຍການລາພັກ
-    renderDailyLeaves(targetDate);
-
-    // 4. ສະແດງລາຍການປ່ຽນກະຂອງມື້ນີ້
-    renderDailySwaps(targetDate);
-}
-
-// ⭐ RENDER ກະ 1, 2, 3: ກອງຊ່ອງວ່າງອອກ ບໍ່ໃຫ້ກາຍເປັນ BCEL0000 + ສະຫຼັບຊື່ REAL-TIME
-function renderShiftCardsGrouped(sheets, targetDate, isWeekend) {
-    try {
-        var localSw = localStorage.getItem('ot_swap_history');
-        if (localSw) window.swapHistory = JSON.parse(localSw);
-    } catch(e) {}
-
-    var activeSwapsToday = (window.swapHistory || []).filter(sw => {
-        if (sw.status !== 'COMPLETED') return false;
-        var sStart = normalizeDateStr(sw.startDate);
-        var sEnd = normalizeDateStr(sw.endDate || sw.startDate);
-        return (targetDate >= sStart && targetDate <= sEnd);
+// 0.3 ດຶງ Sheet ທັງໝົດທີ່ກ່ຽວຂ້ອງກັບເດືອນທີ່ເລືອກ
+function getSheetsForMonth(dateStr) {
+    var monthKey = dateStr.slice(0, 7); // YYYY-MM
+    var sheets = (window.scheduleSheets || []).filter(function(s) {
+        var sMKey = (s.monthKey || s.month_key || '').slice(0, 7);
+        return sMKey === monthKey;
     });
 
-    ['shift1', 'shift2', 'shift3'].forEach(shiftKey => {
-        var container = document.getElementById(shiftKey + 'Names');
-        var badge = document.getElementById(shiftKey + 'CountBadge');
-        var timeText = document.getElementById(shiftKey + 'TimeText');
+    if (sheets.length === 0 && window.activeSheetId) {
+        var active = (window.scheduleSheets || []).find(function(s) { return s.id === window.activeSheetId; });
+        if (active) sheets = [active];
+    }
+    return sheets;
+}
+
+// ⭐ 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
+function renderDashboard() {
+    var dateInput = document.getElementById('dashDateInput');
+    var targetDate = dateInput ? dateInput.value : '';
+    if (!targetDate) {
+        targetDate = new Date().toISOString().split('T')[0];
+        if (dateInput) dateInput.value = targetDate;
+    }
+
+    // 1. ອັບເດດ Badge ປະເພດວັນ (ວັນທຳມະດາ ຫຼື ວັນພັກ)
+    updateDayTypeBadge(targetDate);
+
+    // 2. ດຶງ Sheet ຂອງເດືອນນັ້ນ
+    var sheets = getSheetsForMonth(targetDate);
+
+    // 3. ດຶງລາຍການຄົນທີ່ປ່ຽນກະມື້ນີ້ມາໄວ້ກວດສອບ Badge ⇄
+    var swapsToday = (window.swapHistory || []).filter(function(s) {
+        return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
+    });
+    var swappedStaffSet = new Set();
+    swapsToday.forEach(function(s) {
+        swappedStaffSet.add(s.fromName);
+        swappedStaffSet.add(s.toName);
+    });
+
+    // 4. Render 3 ກະ (Shift 1, Shift 2, Shift 3)
+    renderShiftCards(targetDate, sheets, swappedStaffSet);
+
+    // 5. Render ລາຍການລາພັກມື້ນີ້
+    renderLeavesToday(targetDate);
+
+    // 6. ⭐ Render ລາຍການປ່ຽນກະ & Swap Chain Inspector
+    renderDashboardSwapsWithChains(targetDate, swapsToday);
+}
+
+// 2. ອັບເດດ BADGE ວັນທີ
+function updateDayTypeBadge(dateStr) {
+    var badge = document.getElementById('dayTypeBadge');
+    if (!badge) return;
+
+    var parts = dateStr.split('-').map(Number);
+    var dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+    var dayOfWeek = dObj.getDay();
+    var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    var isHol = typeof isDateInHolidayRange === 'function' ? isDateInHolidayRange(dateStr) : false;
+
+    if (isHol) {
+        badge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1.5";
+        badge.innerHTML = '<span class="material-symbols-outlined text-sm text-purple-700">celebration</span> ວັນພັກພິເສດ (Holiday)';
+    } else if (isWeekend) {
+        badge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1.5";
+        badge.innerHTML = '<span class="material-symbols-outlined text-sm text-amber-700">wb_twilight</span> ວັນພັກ (Weekend)';
+    } else {
+        badge.className = "px-3.5 py-1.5 rounded-full text-xs font-bold bg-red-50 text-brand-red border border-red-200 flex items-center gap-1.5";
+        badge.innerHTML = '<span class="material-symbols-outlined text-sm text-brand-red">wb_sunny</span> ວັນທຳມະດາ (Weekday)';
+    }
+
+    var actDateLabel = document.getElementById('dashActivityDateLabel');
+    if (actDateLabel) {
+        actDateLabel.innerText = 'ວັນທີ ' + parts[2] + '/' + (parts[1] < 10 ? '0' + parts[1] : parts[1]) + '/' + parts[0];
+    }
+}
+
+// 3. RENDER CARDS ທັງ 3 ກະ (ຮອງຮັບການແຍກຫຼາຍ SHEET ດັ່ງໃນຮູບ)
+function renderShiftCards(targetDate, sheets, swappedStaffSet) {
+    var shifts = [
+        { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
+        { key: 'shift2', containerId: 'shift2Names', badgeId: 'shift2CountBadge', timeTextId: 'shift2TimeText', defaultTime: '12:00 - 20:00', weekendTime: '13:30 - 19:00' },
+        { key: 'shift3', containerId: 'shift3Names', badgeId: 'shift3CountBadge', timeTextId: 'shift3TimeText', defaultTime: '20:00 - 08:00', weekendTime: '19:00 - 08:00' }
+    ];
+
+    var dObj = new Date(targetDate + 'T00:00:00Z');
+    var isWeekendOrHol = (dObj.getUTCDay() === 0 || dObj.getUTCDay() === 6) || (typeof isDateInHolidayRange === 'function' && isDateInHolidayRange(targetDate));
+
+    shifts.forEach(function(s) {
+        var container = document.getElementById(s.containerId);
+        var badge = document.getElementById(s.badgeId);
+        var timeText = document.getElementById(s.timeTextId);
 
         if (timeText) {
-            if (isWeekend) {
-                if (shiftKey === 'shift1') timeText.innerText = '08:00 - 13:30';
-                if (shiftKey === 'shift2') timeText.innerText = '13:30 - 19:00';
-                if (shiftKey === 'shift3') timeText.innerText = '19:00 - 08:00';
-            } else {
-                if (shiftKey === 'shift1') timeText.innerText = '08:00 - 16:00';
-                if (shiftKey === 'shift2') timeText.innerText = '12:00 - 20:00';
-                if (shiftKey === 'shift3') timeText.innerText = '20:00 - 08:00';
-            }
+            timeText.innerText = isWeekendOrHol ? s.weekendTime : s.defaultTime;
         }
 
         if (!container) return;
         container.innerHTML = '';
-        var totalPeopleInShift = 0;
+        var totalShiftCount = 0;
 
-        sheets.forEach(sheet => {
-            var dayData = sheet?.data?.[targetDate] || {};
-            var rawNames = dayData[shiftKey] || [];
+        if (sheets.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">ບໍ່ພົບຕາຕະລາງໃນເດືອນນີ້</p>';
+            if (badge) badge.innerText = '0 ຄົນ';
+            return;
+        }
 
-            // ⭐ 1. ກອງຊ່ອງວ່າງ, null, undefined ແລະ "(ວ່າງ)" ອອກທັງໝົດ ປ້ອງກັນ BCEL0000
-            var names = rawNames.filter(n => n && n.trim() !== '' && n !== '(ວ່າງ)' && n !== 'null' && n !== 'undefined');
+        sheets.forEach(function(sheet) {
+            var dayData = (sheet.data && sheet.data[targetDate]) ? sheet.data[targetDate] : null;
+            var staffInSlot = dayData ? (dayData[s.key] || []) : [];
+            totalShiftCount += staffInSlot.length;
 
-            // ⭐ 2. REAL-TIME SWAP: ລັອກຕາມ fromShift ແລະ toShift ຢ່າງຖືກຕ້ອງ
-            activeSwapsToday.forEach(sw => {
-                var isCover = (sw.swapType === 'COVER' || (sw.reason && sw.reason.includes('ຄວບກະ')));
+            if (staffInSlot.length > 0 || sheets.length > 1) {
+                var sheetTitle = sheet.title || sheet.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ';
 
-                if (isCover) {
-                    if (shiftKey === sw.toShift) {
-                        var tIdx = names.findIndex(n => isNameMatch(n, sw.toName));
-                        if (tIdx !== -1) names[tIdx] = sw.fromName;
-                    }
-                } else {
-                    if (shiftKey === sw.toShift) {
-                        var tIdx = names.findIndex(n => isNameMatch(n, sw.toName));
-                        if (tIdx !== -1) names[tIdx] = sw.fromName;
-                    }
-                    if (shiftKey === sw.fromShift) {
-                        var fIdx = names.findIndex(n => isNameMatch(n, sw.fromName));
-                        if (fIdx !== -1) names[fIdx] = sw.toName;
-                    }
-                }
-            });
+                var sheetHeader = '<div class="pt-1.5 pb-1 flex justify-between items-center text-[11px] text-slate-500 font-bold border-b border-slate-100">' +
+                                    '<span class="truncate max-w-[210px] flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span> ' + sheetTitle + '</span>' +
+                                    '<span class="text-slate-400 text-[10px]">' + staffInSlot.length + ' ຄົນ</span>' +
+                                  '</div>';
 
-            totalPeopleInShift += names.length;
+                var pillsHtml = '<div class="flex flex-wrap gap-1.5 pt-1.5 pb-2">';
+                staffInSlot.forEach(function(name) {
+                    var isLeader = isStaffLeader(name);
+                    var isSwapped = swappedStaffSet.has(name);
+                    var avatarHtml = getStaffPhotoHtml(name);
 
-            if (names.length > 0) {
-                var sheetTitle = sheet.title || 'ຕາຕະລາງ';
-                var isMain = !sheetTitle.includes('ສັນຍາ');
+                    var leaderDot = isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : '';
+                    var swapIcon = isSwapped ? '<span class="text-amber-600 text-[11px] ml-0.5 font-bold" title="ປ່ຽນກະມາ">⇄</span>' : '';
 
-                var groupHtml = `
-                    <div class="pt-2 first:pt-0">
-                        <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1.5">
-                            <span class="flex items-center gap-1">
-                                <span class="w-1.5 h-1.5 rounded-full ${isMain ? 'bg-red-500' : 'bg-slate-400'}"></span>
-                                ${sheetTitle}
-                            </span>
-                            <span>${names.length} ຄົນ</span>
-                        </div>
-                        <div class="flex flex-wrap gap-1.5">
-                `;
+                    var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200 bg-slate-50';
+                    var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
 
-                names.forEach(name => {
-                    var u = (window.users || []).find(usr => isNameMatch(usr.nameLao, name));
-                    var isLeader = u ? u.isLeader : false;
-                    var photo = u ? u.photo : '';
-
-                    var isSwappedPerson = activeSwapsToday.some(sw => isNameMatch(sw.fromName, name) || isNameMatch(sw.toName, name));
-                    var cleanName = (name || '').replace(/'/g, "\\'");
-
-                    groupHtml += `
-                        <div onclick="openStaffInfoModal('${cleanName}')" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border cursor-pointer hover:shadow-md hover:scale-105 transition-all select-none ${isLeader ? 'bg-red-50 text-brand-red border-red-200' : 'bg-slate-50 text-slate-800 border-slate-200'}">
-                            ${photo ? `<img src="${photo}" class="w-4 h-4 rounded-full object-cover"/>` : ''}
-                            <span>${name}</span>
-                            ${isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span>' : ''}
-                            ${isSwappedPerson ? '<span class="material-symbols-outlined text-[13px] text-amber-600 font-bold" title="ປ່ຽນກະມາ">sync_alt</span>' : ''}
-                        </div>
-                    `;
+                    pillsHtml += '<span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs ' + borderClass + ' ' + textClass + '">' +
+                                    avatarHtml + '<span>' + name + '</span>' + leaderDot + swapIcon +
+                                 '</span>';
                 });
+                pillsHtml += '</div>';
 
-                groupHtml += `</div></div>`;
-                container.innerHTML += groupHtml;
+                container.innerHTML += sheetHeader + pillsHtml;
             }
         });
 
-        if (badge) badge.innerText = `${totalPeopleInShift} ຄົນ`;
-        if (totalPeopleInShift === 0) {
-            container.innerHTML = `<span class="text-xs text-slate-400 italic">ບໍ່ມີຄົນປະຈຳການ</span>`;
+        if (totalShiftCount === 0) {
+            container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">ບໍ່ມີພະນັກງານໃນກະນີ້</p>';
         }
+
+        if (badge) badge.innerText = totalShiftCount + ' ຄົນ';
     });
 }
 
-// ⭐ FUNCTION ເປີດ MODAL ຂໍ້ມູນພະນັກງານ (ປ້ອງກັນບໍ່ໃຫ້ເປີດຖ້າເປັນຊ່ອງວ່າງ BCEL0000)
-function openStaffInfoModal(nameLao) {
-    if (!nameLao || !nameLao.trim() || nameLao === '(ວ່າງ)' || nameLao === 'null' || nameLao === 'undefined') {
-        return; // ຖ້າບໍ່ມີຊື່ ຫ້າມເປີດ Modal BCEL0000 ເດັດຂາດ!
-    }
-
-    var modal = document.getElementById('staffInfoModal');
-    if (!modal) return;
-
-    var u = (window.users || []).find(usr => isNameMatch(usr.nameLao, nameLao));
-    if (!u) {
-        u = (window.users || []).find(usr => usr.fullName && isNameMatch(usr.fullName, nameLao));
-    }
-
-    var nameEl = document.getElementById('staffInfoModalName');
-    var fullNameEl = document.getElementById('staffInfoModalFullName');
-    var codeEl = document.getElementById('staffInfoModalCode');
-    var deptEl = document.getElementById('staffInfoModalDept');
-    var posEl = document.getElementById('staffInfoModalPos');
-    var phoneEl = document.getElementById('staffInfoModalPhone');
-    var photoEl = document.getElementById('staffInfoModalPhoto');
-    var leaderBadge = document.getElementById('staffInfoModalLeaderBadge');
-    var callBtn = document.getElementById('staffInfoModalCallBtn');
-
-    var defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
-
-    if (nameEl) nameEl.innerText = u ? u.nameLao : nameLao;
-    if (fullNameEl) fullNameEl.innerText = u ? (u.fullName || u.nameLao) : nameLao;
-    if (codeEl) codeEl.innerText = u ? (u.user || 'BCEL0000') : 'BCEL0000';
-    if (deptEl) deptEl.innerText = u ? (u.dept || u.department || 'ຂະແໜງບໍລິການອອນລາຍ') : 'ຂະແໜງບໍລິການອອນລາຍ';
-    if (posEl) posEl.innerText = u ? (u.isLeader ? 'ຫົວໜ້າໜ່ວຍງານ / ຫົວໜ້າກະ' : (u.position || 'ພະນັກງານວິຊາການ')) : 'ພະນັກງານວິຊາການ';
-    
-    var phone = u ? (u.phone || '020 5599 8877') : '020 5599 8877';
-    if (phoneEl) phoneEl.innerText = phone;
-    if (callBtn) callBtn.href = 'tel:' + phone.replace(/\s+/g, '');
-
-    if (photoEl) photoEl.src = (u && u.photo) ? u.photo : defaultAvatar;
-
-    if (leaderBadge) {
-        if (u && u.isLeader) leaderBadge.classList.remove('hidden');
-        else leaderBadge.classList.add('hidden');
-    }
-
-    modal.classList.remove('hidden');
-}
-
-function closeStaffInfoModal() {
-    var modal = document.getElementById('staffInfoModal');
-    if (modal) modal.classList.add('hidden');
-}
-
-function renderDailyLeaves(targetDate) {
+// 4. RENDER ພະນັກງານລາພັກມື້ນີ້
+function renderLeavesToday(targetDate) {
     var container = document.getElementById('dashLeavesContainer');
     if (!container) return;
     container.innerHTML = '';
 
-    try {
-        var localB = localStorage.getItem('ot_annual_bookings');
-        if (localB) window.annualBookings = JSON.parse(localB);
-    } catch(e) {}
-
-    var activeLeaves = (window.annualBookings || []).filter(b => {
-        if (b.status === 'REJECTED') return false;
-        var start = normalizeDateStr(b.startDate);
-        var end = normalizeDateStr(b.endDate || b.startDate);
-        return (targetDate >= start && targetDate <= end);
+    var leaves = (window.annualBookings || []).filter(function(b) {
+        return b.status === 'CONFIRMED' && (targetDate >= b.startDate && targetDate <= b.endDate);
     });
 
-    if (activeLeaves.length === 0) {
-        container.innerHTML = `<p class="text-slate-400 text-xs italic py-1 font-lao">ບໍ່ມີພະນັກງານລາພັກໃນວັນທີນີ້</p>`;
+    if (leaves.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-xs italic py-1 font-lao">ບໍ່ມີພະນັກງານລາພັກໃນວັນທີນີ້</p>';
         return;
     }
 
-    activeLeaves.forEach(b => {
-        var cleanName = (b.nameLao || '').replace(/'/g, "\\'");
-        container.innerHTML += `
-            <div onclick="openStaffInfoModal('${cleanName}')" class="p-2 bg-red-50/70 border border-red-200 rounded-xl flex items-center justify-between text-xs font-lao cursor-pointer hover:bg-red-100/70 transition">
-                <div>
-                    <span class="font-bold text-brand-red">${b.nameLao}</span>
-                    <span class="text-slate-500 text-[11px] ml-1">(${b.shift || 'ທຸກກະ'})</span>
-                </div>
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-brand-red text-white">ລາພັກ</span>
-            </div>
-        `;
+    leaves.forEach(function(l) {
+        container.innerHTML += '<div class="p-2.5 bg-red-50/60 border border-red-100 rounded-xl flex justify-between items-center text-xs font-lao">' +
+            '<div>' +
+                '<span class="font-bold text-brand-red">' + l.nameLao + '</span>' +
+                '<span class="text-slate-500 text-[11px] ml-2">[' + (l.shift || 'ທຸກກະ') + ']</span>' +
+                (l.reason ? '<p class="text-[10px] text-slate-400 italic mt-0.5">"' + l.reason + '"</p>' : '') +
+            '</div>' +
+            '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-brand-red">ລາພັກ</span>' +
+        '</div>';
     });
 }
 
-function renderDailySwaps(targetDate) {
+// ⭐ 5. RENDER ລາຍການປ່ຽນກະ & ປຸ່ມກວດສອບ CHAINED SWAP INSPECTOR
+function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
-    container.innerHTML = '';
 
-    try {
-        var localSw = localStorage.getItem('ot_swap_history');
-        if (localSw) window.swapHistory = JSON.parse(localSw);
-    } catch(e) {}
-
-    var activeSwaps = (window.swapHistory || []).filter(sw => {
-        if (sw.status !== 'COMPLETED') return false;
-        var start = normalizeDateStr(sw.startDate);
-        var end = normalizeDateStr(sw.endDate || sw.startDate);
-        return (targetDate >= start && targetDate <= end);
-    });
-
-    if (activeSwaps.length === 0) {
-        container.innerHTML = `<p class="text-slate-400 text-xs italic py-1 font-lao">ບໍ່ມີການປ່ຽນກະໃນວັນທີນີ້</p>`;
+    if (!swapsToday || swapsToday.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-xs italic py-1 font-lao">ບໍ່ມີການປ່ຽນກະໃນວັນທີນີ້</p>';
         return;
     }
 
-    activeSwaps.forEach(sw => {
-        var isCover = (sw.swapType === 'COVER' || (sw.reason && sw.reason.includes('ຄວບກະ')));
-        var cleanFrom = (sw.fromName || '').replace(/'/g, "\\'");
-        var cleanTo = (sw.toName || '').replace(/'/g, "\\'");
-
-        if (isCover) {
-            container.innerHTML += `
-                <div class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center justify-between text-xs font-lao">
-                    <div>
-                        <span onclick="openStaffInfoModal('${cleanFrom}')" class="font-bold text-brand-red cursor-pointer hover:underline">${sw.fromName}</span> 
-                        <span class="text-slate-600">ຍາມແທນ</span> 
-                        <span onclick="openStaffInfoModal('${cleanTo}')" class="font-bold text-slate-800 cursor-pointer hover:underline">${sw.toName}</span> 
-                        <span class="text-purple-700 font-bold ml-1">(${getShiftLabelShort(sw.toShift)})</span>
-                    </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-200 text-amber-900 border border-amber-300">ຄວບກະ</span>
-                </div>
-            `;
-        } else {
-            container.innerHTML += `
-                <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs font-lao">
-                    <div class="flex items-center gap-1.5">
-                        <span onclick="openStaffInfoModal('${cleanFrom}')" class="font-bold text-brand-red cursor-pointer hover:underline">${sw.fromName}</span> 
-                        <span class="material-symbols-outlined text-xs text-slate-400">arrow_forward</span>
-                        <span onclick="openStaffInfoModal('${cleanTo}')" class="font-bold text-blue-700 cursor-pointer hover:underline">${sw.toName}</span> 
-                    </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">ປ່ຽນສຳເລັດ</span>
-                </div>
-            `;
-        }
+    // ກວດສອບວ່າໃຜມີການປ່ຽນຕໍ່ເນື່ອງ (Chained Swap)
+    var countMap = {};
+    swapsToday.forEach(function(s) {
+        countMap[s.fromName] = (countMap[s.fromName] || 0) + 1;
+        countMap[s.toName] = (countMap[s.toName] || 0) + 1;
     });
+
+    var formatShiftTag = function(shift) {
+        if (!shift) return '';
+        if (shift.includes('shift1') || shift.includes('ກະ 1')) return 'ກະ 1';
+        if (shift.includes('shift2') || shift.includes('ກະ 2')) return 'ກະ 2';
+        if (shift.includes('shift3') || shift.includes('ກະ 3')) return 'ກະ 3';
+        return shift;
+    };
+
+    var html = '';
+
+    // ປຸ່ມ Route Inspector
+    html += '<div class="flex justify-between items-center pb-1 mb-1">' +
+                '<span class="text-[11px] text-slate-500 font-bold">ສຳເລັດ ' + swapsToday.length + ' ລາຍການ</span>' +
+                '<button type="button" onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition">' +
+                    '<span class="material-symbols-outlined text-[13px] text-amber-400">route</span> ເບິ່ງເສັ້ນທາງການປ່ຽນກະທຸກຄົນ' +
+                '</button>' +
+            '</div>';
+
+    swapsToday.forEach(function(s) {
+        var isChained = (countMap[s.fromName] > 1 || countMap[s.toName] > 1);
+        var sA = formatShiftTag(s.fromShift);
+        var sB = formatShiftTag(s.toShift);
+        var remarkTag = (sA && sB) ? ('[' + sA + ' ⇄ ' + sB + ']') : '';
+
+        var chainedBadge = isChained 
+            ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">🔄 ປ່ຽນຕໍ່ເນື່ອງ</span>' 
+            : '';
+
+        html += '<div onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="p-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 rounded-2xl flex justify-between items-center gap-2 cursor-pointer transition shadow-2xs font-lao group">' +
+                    '<div class="flex-1 min-w-0">' +
+                        '<div class="flex items-center gap-1.5 flex-wrap text-xs">' +
+                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.fromName + '</span>' +
+                            '<span class="text-slate-400 text-[10px]">➔</span>' +
+                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.toName + '</span>' +
+                            (remarkTag ? '<span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">' + remarkTag + '</span>' : '') +
+                            chainedBadge +
+                        '</div>' +
+                        (s.reason ? '<p class="text-[10px] text-slate-400 truncate mt-0.5 italic">"' + s.reason + '"</p>' : '') +
+                    '</div>' +
+                    '<div class="flex items-center gap-1 shrink-0">' +
+                        '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ປ່ຽນສຳເລັດ</span>' +
+                        '<span class="material-symbols-outlined text-slate-300 group-hover:text-slate-600 text-sm">chevron_right</span>' +
+                    '</div>' +
+                '</div>';
+    });
+
+    container.innerHTML = html;
 }
 
-// ຜູກເຂົ້າ Window ທັງໝົດ
+// ⭐ 6. MODAL ສະແດງ TIMELINE ແລະ ຕຳແໜ່ງສຸດທ້າຍມື້ນີ້ (FINAL DESTINATION SHIFTS)
+function openSwapChainInspectorModal(dateStr) {
+    var sheets = getSheetsForMonth(dateStr);
+    var swapsToday = (window.swapHistory || []).filter(function(s) {
+        return s.status === 'COMPLETED' && (dateStr >= s.startDate && dateStr <= s.endDate);
+    }).sort(function(a, b) { return (a.id || 0) - (b.id || 0); }); // ລຽງແຕ່ຕົ້ນຫາທ້າຍ
+
+    if (swapsToday.length === 0) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ມີປະຫວັດການປ່ຽນກະໃນວັນທີນີ້', 'info');
+        return;
+    }
+
+    var involvedStaff = new Set();
+    swapsToday.forEach(function(s) {
+        involvedStaff.add(s.fromName);
+        involvedStaff.add(s.toName);
+    });
+
+    var modal = document.getElementById('swapChainInspectorModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'swapChainInspectorModal';
+        modal.className = 'fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 font-lao';
+        document.body.appendChild(modal);
+    }
+
+    var timelineHtml = '';
+    swapsToday.forEach(function(s, idx) {
+        timelineHtml += '<div class="flex items-start gap-3 relative">' +
+                            '<div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 z-10">' + (idx + 1) + '</div>' +
+                            '<div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">' +
+                                '<div class="flex justify-between items-center mb-1">' +
+                                    '<span class="font-bold text-slate-800">' + s.fromName + ' ⇄ ' + s.toName + '</span>' +
+                                    '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">ສຳເລັດ</span>' +
+                                '</div>' +
+                                '<p class="text-slate-600 text-[11px] leading-relaxed">' +
+                                    '• <strong>' + s.fromName + '</strong> ສະລັບກະກັບ <strong>' + s.toName + '</strong> (' + (s.fromShift || 'ກະເດີມ') + ' ↔ ' + (s.toShift || 'ກະເດີມ') + ')' +
+                                '</p>' +
+                                (s.reason ? '<p class="text-slate-400 text-[10px] mt-1 italic">ໝາຍເຫດ: "' + s.reason + '"</p>' : '') +
+                            '</div>' +
+                        '</div>';
+    });
+
+    // ຄົ້ນຫາຕຳແໜ່ງສຸດທ້າຍຕົວຈິງໃນຕາຕະລາງມື້ນີ້ (Real-time Final Location)
+    var finalLocationHtml = '';
+    involvedStaff.forEach(function(name) {
+        var currentSlot = 'ພັກຜ່ອນ (OFF)';
+        var slotTime = '-';
+        var slotBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+
+        sheets.forEach(function(sheet) {
+            var dayData = (sheet.data && sheet.data[dateStr]) ? sheet.data[dateStr] : null;
+            if (dayData) {
+                if ((dayData.shift1 || []).includes(name)) {
+                    currentSlot = 'ກະ 1';
+                    slotTime = '08:00 - 16:00';
+                    slotBadgeClass = 'bg-red-50 text-brand-red border-red-200';
+                } else if ((dayData.shift2 || []).includes(name)) {
+                    currentSlot = 'ກະ 2';
+                    slotTime = '12:00 - 20:00';
+                    slotBadgeClass = 'bg-purple-50 text-purple-800 border-purple-200';
+                } else if ((dayData.shift3 || []).includes(name)) {
+                    currentSlot = 'ກະ 3';
+                    slotTime = '20:00 - 08:00';
+                    slotBadgeClass = 'bg-slate-800 text-white border-slate-900';
+                }
+            }
+        });
+
+        finalLocationHtml += '<div class="p-3 bg-white border border-slate-200 rounded-2xl flex justify-between items-center shadow-2xs">' +
+                                '<div>' +
+                                    '<h5 class="font-bold text-slate-800 text-xs">' + name + '</h5>' +
+                                    '<p class="text-[10px] text-slate-400 mt-0.5">ເວລາເຂົ້າວຽກ: ' + slotTime + '</p>' +
+                                '</div>' +
+                                '<span class="px-2.5 py-1 rounded-xl text-[11px] font-bold border ' + slotBadgeClass + '">' + currentSlot + '</span>' +
+                             '</div>';
+    });
+
+    modal.innerHTML = '<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col font-lao animate-in fade-in zoom-in-95 duration-150">' +
+        '<div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">' +
+            '<div class="flex items-center gap-2">' +
+                '<span class="material-symbols-outlined text-amber-400 text-xl">route</span>' +
+                '<div>' +
+                    '<h3 class="font-bold text-sm">ເສັ້ນທາງການປ່ຽນກະ & ຜົນຮັບຕົວຈິງ</h3>' +
+                    '<p class="text-[10px] text-slate-300">ປະຈຳວັນທີ: ' + dateStr + '</p>' +
+                '</div>' +
+            '</div>' +
+            '<button type="button" onclick="closeSwapChainInspectorModal()" class="text-white/80 hover:text-white cursor-pointer"><span class="material-symbols-outlined text-xl">close</span></button>' +
+        '</div>' +
+        '<div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">' +
+            '<div>' +
+                '<h4 class="font-bold text-slate-700 mb-2.5 flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-brand-red">timeline</span> ລຳດັບການສະລັບກະ (Swap Steps):</h4>' +
+                '<div class="space-y-2.5 relative pl-1">' + timelineHtml + '</div>' +
+            '</div>' +
+            '<div class="pt-3 border-t border-slate-100">' +
+                '<h4 class="font-bold text-slate-700 mb-2.5 flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-emerald-600">verified</span> ຕຳແໜ່ງກະສຸດທ້າຍຕົວຈິງມື້ນີ້ (Final Destination Shifts):</h4>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' + finalLocationHtml + '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="p-3 bg-slate-50 border-t flex justify-end">' +
+            '<button type="button" onclick="closeSwapChainInspectorModal()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs cursor-pointer">ປິດໜ້າຕ່າງ</button>' +
+        '</div>' +
+    '</div>';
+
+    modal.classList.remove('hidden');
+}
+
+function closeSwapChainInspectorModal() {
+    var modal = document.getElementById('swapChainInspectorModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// ⭐ Auto-load ເມື່ອກົດ Tab 'dashboard'
+var _origTabForDash = window.switchTab;
+window.switchTab = function(tab) {
+    if (typeof _origTabForDash === 'function') _origTabForDash(tab);
+    if (tab === 'dashboard') {
+        setTimeout(renderDashboard, 50);
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(renderDashboard, 100);
+});
+
+// ຜູກທຸກ Function ເຂົ້າ Window
 window.renderDashboard = renderDashboard;
-window.openStaffInfoModal = openStaffInfoModal;
-window.closeStaffInfoModal = closeStaffInfoModal;
+window.updateDayTypeBadge = updateDayTypeBadge;
+window.renderShiftCards = renderShiftCards;
+window.renderLeavesToday = renderLeavesToday;
+window.renderDashboardSwapsWithChains = renderDashboardSwapsWithChains;
+window.openSwapChainInspectorModal = openSwapChainInspectorModal;
+window.closeSwapChainInspectorModal = closeSwapChainInspectorModal;
