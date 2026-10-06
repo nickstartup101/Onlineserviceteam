@@ -1,8 +1,17 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (FULL FIXED) =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (FULLY FIXED & ROBUST) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
 window.currentLibraryImageBase64 = '';
+
+// ໝວດໝູ່ເລີ່ມຕົ້ນຂອງລະບົບ
+var DEFAULT_LIBRARY_CATEGORIES = [
+    'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
+    'QR ສາກົນ (WeChat, Alipay, PromptPay)',
+    'ບັດ & ຄ່າທຳນຽມບັດ (UnionPay, Visa, Mastercard)',
+    'ໂປຣໂມຊັ່ນການຕະຫຼາດ',
+    'ຜະລິດຕະພັນອື່ນໆ'
+];
 
 // 1. ດຶງຂໍ້ມູນ Library ຈາກ Supabase (ພ້ອມ LocalStorage Fallback)
 async function loadLibraryItems() {
@@ -21,10 +30,10 @@ async function loadLibraryItems() {
             if (!res.error && res.data) {
                 window.libraryItems = res.data.map(function(d) {
                     return {
-                        id: String(d.id), // ແປງເປັນ String ສະເໝີເພື່ອປ້ອງກັນ Type Mismatch
+                        id: String(d.id),
                         category: d.category || 'ຜະລິດຕະພັນອື່ນໆ',
-                        title: d.title,
-                        content: d.content,
+                        title: d.title || '',
+                        content: d.content || '',
                         fee: d.fee || '',
                         validPeriod: d.valid_period || '',
                         isOutdated: d.is_outdated || false,
@@ -46,7 +55,7 @@ async function loadLibraryItems() {
     renderLibraryGrid();
 }
 
-// 2. BRAND LOGOS & BADGES (ສະແດງພຽງໂລໂກ້ດຽວ ທີ່ກົງກັບຫົວຂໍ້ກ່ອນ)
+// 2. BRAND LOGOS & BADGES
 function getSingleBrandLogo(titleInput, categoryInput) {
     var title = (titleInput || '').toLowerCase();
     var cat = (categoryInput || '').toLowerCase();
@@ -125,33 +134,43 @@ function renderBrandOrCategoryBadge(title, category) {
     return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ</span>';
 }
 
-// 3. ດຶງລາຍການໝວດໝູ່ທັງໝົດ
+// ⭐ 3. ດຶງ ແລະ ບັນທຶກໝວດໝູ່ແບບຄົງທີ່ (RESOLVED STORAGE)
 function getUniqueCategoriesList() {
-    var defaultCats = [
-        'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
-        'QR ສາກົນ (WeChat, Alipay, PromptPay)',
-        'ສູນບັດ & ຄ່າທຳນຽມບັດ (UnionPay, Visa, Mastercard)',
-        'ໂປຣໂມຊັ່ນການຕະຫຼາດ',
-        'ຜະລິດຕະພັນອື່ນໆ'
-    ];
+    var catList = [];
+    try {
+        var stored = localStorage.getItem('ot_all_categories');
+        if (stored) catList = JSON.parse(stored);
+    } catch(e) {}
 
-    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
-    var catSet = new Set(defaultCats.filter(function(c) { return !deletedCats.includes(c); }));
+    if (!catList || catList.length === 0) {
+        catList = DEFAULT_LIBRARY_CATEGORIES.slice();
+    }
 
+    // ດຶງໝວດໝູ່ທີ່ຕິດມາກັບບົດຄວາມ
     (window.libraryItems || []).forEach(function(item) {
-        if (item.category && item.category.trim() && !deletedCats.includes(item.category.trim())) {
-            catSet.add(item.category.trim());
+        var c = (item.category || '').trim();
+        if (c && catList.indexOf(c) === -1) {
+            catList.push(c);
         }
     });
 
-    return Array.from(catSet);
+    // ຕັດໝວດໝູ່ທີ່ຖືກລຶບອອກ
+    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
+    catList = catList.filter(function(c) { return deletedCats.indexOf(c) === -1; });
+
+    if (catList.indexOf('ຜະລິດຕະພັນອື່ນໆ') === -1) {
+        catList.push('ຜະລິດຕະພັນອື່ນໆ');
+    }
+
+    localStorage.setItem('ot_all_categories', JSON.stringify(catList));
+    return catList;
 }
 
-// ⭐ 4. ອັບເດດ DROPDOWN ໝວດໝູ່ທັງໝົດ (ທັງໃນ FILTER ແລະ ໃນ MODAL)
+// ⭐ 4. ອັບເດດ DROPDOWN ໝວດໝູ່ທັງໝົດ
 function refreshCategoryDatalistAndFilter() {
     var allCats = getUniqueCategoriesList();
 
-    // 1. ອັບເດດ Dropdown Filter ດ້ານເທິງຕາຕະລາງ
+    // 1. Dropdown Filter ດ້ານເທິງ
     var filterSelect = document.getElementById('libCategoryFilter');
     if (filterSelect) {
         var currentVal = filterSelect.value || 'ALL';
@@ -165,7 +184,7 @@ function refreshCategoryDatalistAndFilter() {
         });
     }
 
-    // 2. ⭐ ອັບເດດ Dropdown ໃນຟອມເພີ່ມ/ແກ້ໄຂ (#libItemCategorySelect)
+    // 2. Dropdown ໃນ Modal ເພີ່ມ/ແກ້ໄຂ (#libItemCategorySelect)
     var modalCatSelect = document.getElementById('libItemCategorySelect');
     if (modalCatSelect) {
         var currentModalVal = modalCatSelect.value;
@@ -176,7 +195,7 @@ function refreshCategoryDatalistAndFilter() {
             opt.innerText = cat;
             modalCatSelect.appendChild(opt);
         });
-        // ຕົວເລືອກພິມໃໝ່
+        
         var newOpt = document.createElement('option');
         newOpt.value = '__NEW__';
         newOpt.innerText = '➕ ພິມໝວດໝູ່ໃໝ່...';
@@ -188,7 +207,6 @@ function refreshCategoryDatalistAndFilter() {
     }
 }
 
-// ເມື່ອເລືອກ "+ ພິມໝວດໝູ່ໃໝ່"
 function handleCategorySelectChange() {
     var select = document.getElementById('libItemCategorySelect');
     var customInput = document.getElementById('libCustomCategoryInput');
@@ -203,7 +221,7 @@ function handleCategorySelectChange() {
     }
 }
 
-// 5. ຈັດການໝວດໝູ່ (MODAL: ແກ້ໄຂ / ລຶບ / ເພີ່ມ)
+// ⭐ 5. ຈັດການໝວດໝູ່ (MODAL: ເພີ່ມ, ແກ້ໄຂ, ລຶບ)
 function openManageCategoryModal() {
     renderManageCategoryList();
     var modal = document.getElementById('manageCategoryModal');
@@ -223,7 +241,7 @@ function renderManageCategoryList() {
     var items = window.libraryItems || [];
 
     if (cats.length === 0) {
-        container.innerHTML = '<p class="text-slate-400 text-center py-4">ບໍ່ມີໝວດໝູ່</p>';
+        container.innerHTML = '<p class="text-slate-400 text-center py-4 font-lao">ບໍ່ມີໝວດໝູ່</p>';
         return;
     }
 
@@ -232,7 +250,7 @@ function renderManageCategoryList() {
         var count = items.filter(function(i) { return (i.category || '').trim() === cat; }).length;
         var safeCat = encodeURIComponent(cat);
 
-        html += '<div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs">' +
+        html += '<div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl shadow-2xs font-lao">' +
                 '<div class="flex-1 min-w-0 pr-2">' +
                 '<span class="font-bold text-slate-800 text-xs block truncate">' + cat + '</span>' +
                 '<span class="text-[10px] text-slate-400">ມີ ' + count + ' ບົດຄວາມ</span>' +
@@ -247,15 +265,51 @@ function renderManageCategoryList() {
     container.innerHTML = html;
 }
 
-// ⭐ ແກ້ໄຂຊື່ໝວດໝູ່ (Rename)
+// ⭐ ເພີ່ມໝວດໝູ່ໃໝ່ (ບັນທຶກເຂົ້າ STORAGE 100%)
+function handleAddNewCategoryQuick() {
+    var input = document.getElementById('newCategoryQuickInput');
+    var val = (input ? input.value : '').trim();
+    if (!val) {
+        if (typeof showToast === 'function') showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຊື່ໝວດໝູ່ກ່ອນ', 'warning');
+        return;
+    }
+
+    var cats = getUniqueCategoriesList();
+    if (cats.indexOf(val) === -1) {
+        cats.push(val);
+        localStorage.setItem('ot_all_categories', JSON.stringify(cats));
+    }
+
+    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
+    deletedCats = deletedCats.filter(function(c) { return c !== val; });
+    localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
+
+    if (input) input.value = '';
+    refreshCategoryDatalistAndFilter();
+    renderManageCategoryList();
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ເພີ່ມໝວດໝູ່ "' + val + '" ຮຽບຮ້ອຍແລ້ວ!', 'success');
+}
+
+// ⭐ ແກ້ໄຂຊື່ໝວດໝູ່ (RENAME ໄດ້ 100%)
 async function promptEditCategorySafe(encodedCat) {
     var oldName = decodeURIComponent(encodedCat);
     var newName = prompt('ປ້ອນຊື່ໝວດໝູ່ໃໝ່ສຳລັບ "' + oldName + '":', oldName);
     if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
 
     newName = newName.trim();
-    var affectedCount = 0;
 
+    // 1. ອັບເດດລາຍການໝວດໝູ່
+    var cats = getUniqueCategoriesList().map(function(c) { return c === oldName ? newName : c; });
+    if (cats.indexOf(newName) === -1) cats.push(newName);
+    localStorage.setItem('ot_all_categories', JSON.stringify(cats));
+
+    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
+    if (deletedCats.indexOf(oldName) === -1) deletedCats.push(oldName);
+    deletedCats = deletedCats.filter(function(c) { return c !== newName; });
+    localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
+
+    // 2. ອັບເດດທຸກບົດຄວາມທີ່ໃຊ້ໝວດນີ້
+    var affectedCount = 0;
     (window.libraryItems || []).forEach(function(item) {
         if ((item.category || '').trim() === oldName) {
             item.category = newName;
@@ -263,20 +317,16 @@ async function promptEditCategorySafe(encodedCat) {
             affectedCount++;
         }
     });
-
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
-    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
-    deletedCats = deletedCats.filter(function(c) { return c !== newName; });
-    localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
-
+    // 3. ອັບເດດຂຶ້ນ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('library_items').update({ 
                 category: newName, 
                 updated_at: new Date().toISOString() 
             }).eq('category', oldName);
-        } catch (e) {}
+        } catch(e) {}
     }
 
     refreshCategoryDatalistAndFilter();
@@ -288,7 +338,7 @@ async function promptEditCategorySafe(encodedCat) {
     }
 }
 
-// ⭐ ລຶບໝວດໝູ່ (Delete)
+// ⭐ ລຶບໝວດໝູ່
 async function promptDeleteCategorySafe(encodedCat, count) {
     var catName = decodeURIComponent(encodedCat);
     var confirmMsg = count > 0
@@ -296,6 +346,15 @@ async function promptDeleteCategorySafe(encodedCat, count) {
         : 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບໝວດໝູ່ "' + catName + '"?';
 
     if (!confirm(confirmMsg)) return;
+
+    var cats = getUniqueCategoriesList().filter(function(c) { return c !== catName; });
+    localStorage.setItem('ot_all_categories', JSON.stringify(cats));
+
+    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
+    if (deletedCats.indexOf(catName) === -1) {
+        deletedCats.push(catName);
+        localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
+    }
 
     (window.libraryItems || []).forEach(function(item) {
         if ((item.category || '').trim() === catName) {
@@ -305,19 +364,13 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     });
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
-    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
-    if (!deletedCats.includes(catName)) {
-        deletedCats.push(catName);
-        localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
-    }
-
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('library_items').update({ 
                 category: 'ຜະລິດຕະພັນອື່ນໆ', 
                 updated_at: new Date().toISOString() 
             }).eq('category', catName);
-        } catch (e) {}
+        } catch(e) {}
     }
 
     var filterSelect = document.getElementById('libCategoryFilter');
@@ -334,22 +387,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     }
 }
 
-function handleAddNewCategoryQuick() {
-    var input = document.getElementById('newCategoryQuickInput');
-    var val = (input ? input.value : '').trim();
-    if (!val) return;
-
-    var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
-    deletedCats = deletedCats.filter(function(c) { return c !== val; });
-    localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
-
-    input.value = '';
-    refreshCategoryDatalistAndFilter();
-    renderManageCategoryList();
-    if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ເພີ່ມໝວດໝູ່ "' + val + '" ແລ້ວ', 'success');
-}
-
-// 6. RENDER CARDS
+// 6. RENDER CARDS GRID
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -422,23 +460,33 @@ function toggleShowOutdated() {
     renderLibraryGrid();
 }
 
-// ⭐ 7. MODAL ເພີ່ມ / ແກ້ໄຂ (DROPDOWN ໝວດໝູ່ໃຊ້ງານໄດ້ 100%)
+// ⭐ 7. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່ (NULL-SAFE 100%)
 function openAddLibraryModal() {
     refreshCategoryDatalistAndFilter();
 
-    document.getElementById('libItemId').value = '';
-    document.getElementById('libModalTitle').innerText = 'ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່';
-    
+    var idEl = document.getElementById('libItemId');
+    if (idEl) idEl.value = '';
+
+    var modalTitle = document.getElementById('libModalTitle');
+    if (modalTitle) modalTitle.innerText = 'ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່';
+
     var select = document.getElementById('libItemCategorySelect');
-    if (select) select.selectedIndex = 0;
+    if (select && select.options.length > 0) select.selectedIndex = 0;
+
     var customInput = document.getElementById('libCustomCategoryInput');
     if (customInput) { customInput.value = ''; customInput.classList.add('hidden'); }
 
-    document.getElementById('libItemTitle').value = '';
-    document.getElementById('libItemFee').value = '';
-    document.getElementById('libItemPeriod').value = '';
-    document.getElementById('libItemContent').value = '';
-    document.getElementById('libItemIsOutdated').checked = false;
+    var titleEl = document.getElementById('libItemTitle');
+    if (titleEl) titleEl.value = '';
+    var feeEl = document.getElementById('libItemFee');
+    if (feeEl) feeEl.value = '';
+    var periodEl = document.getElementById('libItemPeriod');
+    if (periodEl) periodEl.value = '';
+    var contentEl = document.getElementById('libItemContent');
+    if (contentEl) contentEl.value = '';
+    var outEl = document.getElementById('libItemIsOutdated');
+    if (outEl) outEl.checked = false;
+
     window.currentLibraryImageBase64 = '';
     removeLibraryImagePreview();
 
@@ -446,7 +494,7 @@ function openAddLibraryModal() {
     if (modal) modal.classList.remove('hidden');
 }
 
-// ⭐ ແກ້ໄຂຂໍ້ມູນ (ປຽບທຽບ String(id) ເພື່ອບໍ່ໃຫ້ຫຼຸດ)
+// ⭐ 8. MODAL ແກ້ໄຂຫົວຂໍ້ (NULL-SAFE 100% + ເປີດຂຶ້ນແນ່ນອນ)
 function openEditLibraryModal(id) {
     refreshCategoryDatalistAndFilter();
 
@@ -454,13 +502,20 @@ function openEditLibraryModal(id) {
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
     if (!item) return;
 
-    document.getElementById('libItemId').value = item.id;
-    document.getElementById('libModalTitle').innerText = 'ແກ້ໄຂຂໍ້ມູນຜະລິດຕະພັນ';
-    
+    var idEl = document.getElementById('libItemId');
+    if (idEl) idEl.value = item.id;
+
+    var modalTitle = document.getElementById('libModalTitle');
+    if (modalTitle) modalTitle.innerText = 'ແກ້ໄຂຂໍ້ມູນຜະລິດຕະພັນ';
+
     var select = document.getElementById('libItemCategorySelect');
     var customInput = document.getElementById('libCustomCategoryInput');
+
     if (select) {
-        var exists = Array.from(select.options).some(function(opt) { return opt.value === item.category; });
+        var exists = false;
+        for (var i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === item.category) { exists = true; break; }
+        }
         if (exists) {
             select.value = item.category;
             if (customInput) customInput.classList.add('hidden');
@@ -473,11 +528,16 @@ function openEditLibraryModal(id) {
         }
     }
 
-    document.getElementById('libItemTitle').value = item.title;
-    document.getElementById('libItemFee').value = item.fee || '';
-    document.getElementById('libItemPeriod').value = item.validPeriod || '';
-    document.getElementById('libItemContent').value = item.content;
-    document.getElementById('libItemIsOutdated').checked = item.isOutdated;
+    var titleEl = document.getElementById('libItemTitle');
+    if (titleEl) titleEl.value = item.title || '';
+    var feeEl = document.getElementById('libItemFee');
+    if (feeEl) feeEl.value = item.fee || '';
+    var periodEl = document.getElementById('libItemPeriod');
+    if (periodEl) periodEl.value = item.validPeriod || '';
+    var contentEl = document.getElementById('libItemContent');
+    if (contentEl) contentEl.value = item.content || '';
+    var outEl = document.getElementById('libItemIsOutdated');
+    if (outEl) outEl.checked = Boolean(item.isOutdated);
 
     window.currentLibraryImageBase64 = item.imageUrl || '';
     if (item.imageUrl) {
@@ -500,11 +560,11 @@ function closeLibraryModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ 8. ບັນທຶກຂໍ້ມູນ
+// ⭐ 9. ບັນທຶກຂໍ້ມູນ
 async function handleSaveLibraryItem() {
-    var id = (document.getElementById('libItemId') || {}).value;
-    
-    // ດຶງໝວດໝູ່ຈາກ Dropdown ຫຼື Custom Input
+    var idEl = document.getElementById('libItemId');
+    var id = idEl ? idEl.value : '';
+
     var catSelect = document.getElementById('libItemCategorySelect');
     var customInput = document.getElementById('libCustomCategoryInput');
     var category = 'ຜະລິດຕະພັນອື່ນໆ';
@@ -581,9 +641,7 @@ async function handleSaveLibraryItem() {
                 payload.created_at = itemObj.createdAt;
             }
             await window.supabaseClient.from('library_items').upsert(payload, { onConflict: 'id' });
-        } catch (err) {
-            console.error("Supabase Library Sync Error:", err);
-        }
+        } catch (err) {}
     }
 
     // ແຈ້ງເຕືອນ Realtime
@@ -621,27 +679,21 @@ async function handleSaveLibraryItem() {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
 }
 
-// ⭐ 9. ລຶບລາຍການ (ແກ້ໄຂບັນຫາລຶບບໍ່ໄດ້ 100%)
+// ⭐ 10. ລຶບຫົວຂໍ້ບົດຄວາມ
 async function promptDeleteLibraryItem(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
     if (!item) return;
 
-    if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຫົວຂໍ້ "' + item.title + '"?')) {
-        return;
-    }
+    if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຫົວຂໍ້ "' + item.title + '"?')) return;
 
-    // ລຶບອອກຈາກ Local State
     window.libraryItems = window.libraryItems.filter(function(i) { return String(i.id) !== targetId; });
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
-    // ລຶບອອກຈາກ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('library_items').delete().eq('id', item.id);
-        } catch (err) {
-            console.error("Supabase delete error:", err);
-        }
+        } catch (err) {}
     }
 
     refreshCategoryDatalistAndFilter();
@@ -649,7 +701,7 @@ async function promptDeleteLibraryItem(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
 }
 
-// 10. DETAIL MODAL
+// 11. DETAIL MODAL
 function openLibraryDetailModal(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -759,7 +811,7 @@ async function toggleItemOutdated(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
 }
 
-// 11. ຮູບພາບ
+// 12. ຮູບພາບ
 function handleLibraryImageUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -802,7 +854,7 @@ function removeLibraryImagePreview() {
     if (fileInput) fileInput.value = '';
 }
 
-// 12. ຄົ້ນຫາ
+// 13. SEARCH BAR
 function openSearchDropdown() {
     renderSearchDropdownList();
     var dropdown = document.getElementById('libSearchDropdown');
@@ -851,7 +903,7 @@ function renderSearchDropdownList() {
     });
 
     if (matches.length === 0) {
-        listContainer.innerHTML = '<div class="p-6 text-center text-slate-400"><span class="material-symbols-outlined text-3xl text-slate-300 block mb-1">search_off</span><p class="font-bold text-xs text-slate-600">ບໍ່ພົບຂໍ້ມູນທີ່ກົງກັບ "' + q + '"</p></div>';
+        listContainer.innerHTML = '<div class="p-6 text-center text-slate-400 font-lao"><span class="material-symbols-outlined text-3xl text-slate-300 block mb-1">search_off</span><p class="font-bold text-xs text-slate-600">ບໍ່ພົບຂໍ້ມູນທີ່ກົງກັບ "' + q + '"</p></div>';
         dropdown.classList.remove('hidden');
         return;
     }
@@ -864,7 +916,7 @@ function renderSearchDropdownList() {
         var brandBadge = getSingleBrandLogo(item.title, item.category) || '';
         var feeTag = item.fee ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-brand-red font-bold rounded-md text-[10px] shrink-0 border border-red-100">' + item.fee + '</span>' : '';
 
-        html += '<div onclick="selectDropdownItem(\'' + item.id + '\')" class="p-2.5 hover:bg-red-50/60 rounded-xl cursor-pointer transition flex items-center justify-between gap-3 group border border-transparent hover:border-red-100">' +
+        html += '<div onclick="selectDropdownItem(\'' + item.id + '\')" class="p-2.5 hover:bg-red-50/60 rounded-xl cursor-pointer transition flex items-center justify-between gap-3 group border border-transparent hover:border-red-100 font-lao">' +
                 '<div class="flex-1 min-w-0">' +
                 '<div class="flex items-center gap-1.5 flex-wrap mb-1">' + brandBadge + '<span class="text-[10px] text-slate-400 font-semibold">• ' + item.category + '</span></div>' +
                 '<h4 class="font-bold text-xs text-slate-800 group-hover:text-brand-red transition truncate">' + item.title + '</h4>' +
@@ -897,7 +949,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ⭐ Auto-load
+// ⭐ Auto-load ເມື່ອກົດ Tab
 var _origTabForLib = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForLib === 'function') _origTabForLib(tab);
