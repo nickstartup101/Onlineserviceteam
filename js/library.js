@@ -1,4 +1,3 @@
-
 // ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE =================
 
 window.libraryItems = [];
@@ -45,104 +44,277 @@ async function loadLibraryItems() {
     renderLibraryGrid();
 }
 
-// ⭐ 2. ສ້າງ BRAND BADGES & GOOGLE MATERIAL SYMBOLS ແບບອັດຕະໂນມັດ
-function renderBrandOrCategoryBadge(title, category) {
-    var text = `${title} ${category}`.toLowerCase();
+// ⭐ 2. BRAND LOGOS & BADGES (VECTOR SVG ຕົ້ນສະບັບຄົມຊັດ)
+function getBrandLogos(textInput) {
+    var text = (textInput || '').toLowerCase();
     var badges = [];
 
-    // 1. WeChat Pay
-    if (text.includes('wechat') || text.includes('ວີແຊັດ') || text.includes('ວິແຊັດ')) {
+    // 1. WeChat Pay Logo (Official Green + Chat Bubble SVG)
+    if (text.includes('wechat') || text.includes('ວີແຊັດ') || text.includes('ວິແຊັດ') || text.includes('ວີແຊດ')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <span class="material-symbols-outlined text-[13px]">qr_code_2</span> WeChat Pay
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#07C160]/10 text-[#07C160] border border-[#07C160]/25 shadow-2xs">
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.69 3C4.44 3 1 6.01 1 9.72c0 2.12 1.1 3.99 2.82 5.22l-.72 2.17 2.53-.84c.94.3 1.98.46 3.06.46.28 0 .56-.01.84-.04a6.45 6.45 0 0 1-.22-1.68c0-3.71 3.44-6.72 7.69-6.72.39 0 .78.03 1.15.08C17.3 5.37 13.34 3 8.69 3zM6.5 7.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm4.5 0a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5zm4.88 4.78c-3.53 0-6.38 2.51-6.38 5.61 0 1.76.92 3.33 2.36 4.35l-.6 1.81 2.12-.7c.78.25 1.63.38 2.5.38 3.52 0 6.38-2.51 6.38-5.61s-2.86-5.61-6.38-5.61zm-1.88 3.44a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm3.75 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                </svg>
+                <span>WeChat Pay</span>
             </span>
         `);
     }
 
-    // 2. Alipay
-    if (text.includes('alipay') || text.includes('ອາລີເພ')) {
+    // 2. Alipay Logo (Official Light Blue + 支 Character SVG)
+    if (text.includes('alipay') || text.includes('ອາລີເພ') || text.includes('ອາລິເພ')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                <span class="material-symbols-outlined text-[13px]">contactless</span> Alipay
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#1677FF]/10 text-[#1677FF] border border-[#1677FF]/25 shadow-2xs">
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm3.4 15.2c-.75.76-1.88 1.14-3.2 1.14-1.79 0-3.3-.76-3.96-2l1.42-.95c.38.76 1.32 1.33 2.55 1.33.95 0 1.7-.28 2.08-.76.47-.57.38-1.23-.19-1.71l-1.8-1.33c-1.23-.85-1.7-1.9-1.7-2.95 0-1.71 1.32-3.04 3.31-3.04 1.61 0 2.74.66 3.4 1.71l-1.32 1.04c-.47-.66-1.13-1.04-2.08-1.04-1.04 0-1.61.57-1.61 1.33 0 .57.28 1.04 1.13 1.61l1.8 1.33c1.51 1.04 2.08 2.18 2.08 3.51.1 1.14-.38 2.18-1.4 3z"/>
+                </svg>
+                <span>Alipay</span>
             </span>
         `);
     }
 
-    // 3. PromptPay
-    if (text.includes('promptpay') || text.includes('promtpay') || text.includes('ພຣອມເພ')) {
+    // 3. PromptPay Logo (Official Deep Navy/Cyan Badge)
+    if (text.includes('promptpay') || text.includes('promtpay') || text.includes('ພຣອມເພ') || text.includes('ພ້ອມເພ') || text.includes('ພຣ້ອມເພ')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                <span class="material-symbols-outlined text-[13px]">qr_code_scanner</span> PromptPay
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[#005689]/10 text-[#005689] border border-[#005689]/25 shadow-2xs">
+                <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                    <rect width="24" height="24" rx="4" fill="#005689"/>
+                    <path d="M6 14.5L10 8.5H14L10 14.5H6Z" fill="#00A3E0"/>
+                    <path d="M11 15.5L14 11H18L15 15.5H11Z" fill="#FFFFFF"/>
+                </svg>
+                <span>PromptPay</span>
             </span>
         `);
     }
 
-    // 4. UnionPay
-    if (text.includes('unionpay') || text.includes('ຢູນຽນເພ') || text.includes('cup')) {
+    // 4. UnionPay Logo (Official Tricolor Red/Blue/Green Card Flag)
+    if (text.includes('unionpay') || text.includes('ຢູນຽນເພ') || text.includes('ຢູນ້ຽນເພ') || text.includes('cup') || text.includes('union pay')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                <span class="material-symbols-outlined text-[13px]">credit_card</span> UnionPay
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs">
+                <svg class="h-3.5 w-5 shrink-0" viewBox="0 0 32 20" fill="none">
+                    <rect width="32" height="20" rx="3" fill="#004A80"/>
+                    <path d="M5 4H11L8.5 16H2.5L5 4Z" fill="#DA291C"/>
+                    <path d="M10 4H16L13.5 16H7.5L10 4Z" fill="#004A80"/>
+                    <path d="M15 4H21L18.5 16H12.5L15 4Z" fill="#007934"/>
+                    <text x="22" y="14" fill="#FFFFFF" font-size="7" font-weight="900" font-family="sans-serif">UP</text>
+                </svg>
+                <span>UnionPay</span>
             </span>
         `);
     }
 
-    // 5. Mastercard
-    if (text.includes('mastercard') || text.includes('master card') || text.includes('ມາສເຕີ')) {
+    // 5. Mastercard Logo (Iconic Overlapping Red & Gold Spheres)
+    if (text.includes('mastercard') || text.includes('master card') || text.includes('ມາສເຕີ') || text.includes('ມາສເຕີ້')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                <span class="material-symbols-outlined text-[13px]">credit_card</span> Mastercard
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#222222] text-white shadow-2xs">
+                <svg class="h-3.5 w-5 shrink-0" viewBox="0 0 32 20" fill="none">
+                    <rect width="32" height="20" rx="3" fill="#1C1C1C"/>
+                    <circle cx="12" cy="10" r="6" fill="#EB001B"/>
+                    <circle cx="20" cy="10" r="6" fill="#F79E1B"/>
+                    <path d="M16 5.8A6 6 0 0 0 13.8 10A6 6 0 0 0 16 14.2A6 6 0 0 0 18.2 10A6 6 0 0 0 16 5.8Z" fill="#FF5F00"/>
+                </svg>
+                <span>Mastercard</span>
             </span>
         `);
     }
 
-    // 6. Visa
-    if (text.includes('visa') || text.includes('ວີຊາ')) {
+    // 6. VISA Logo (Official Navy Blue + Gold Serif 'V')
+    if (text.includes('visa') || text.includes('ວີຊາ') || text.includes('ວິຊາ')) {
         badges.push(`
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                <span class="material-symbols-outlined text-[13px]">credit_card</span> VISA
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#1A1F71] text-white shadow-2xs">
+                <svg class="h-3.5 w-6 shrink-0" viewBox="0 0 36 14" fill="none">
+                    <rect width="36" height="14" rx="2" fill="#1A1F71"/>
+                    <text x="3" y="11" fill="#FFFFFF" font-family="'Inter', sans-serif" font-weight="900" font-style="italic" font-size="11" letter-spacing="0.5">VISA</text>
+                    <path d="M4 3L7 3L5.5 6L4 3Z" fill="#F7B600"/>
+                </svg>
+                <span>VISA</span>
             </span>
         `);
     }
 
-    // ⭐ ຖ້າບໍ່ກົງກັບ Brand ຂ້າງເທິງ: ດຶງ Google Material Symbols ທົ່ວໄປມາສະແດງຕາມເນື້ອໃນ
-    if (badges.length === 0) {
-        if (text.includes('ໂອນ') || text.includes('transfer') || text.includes('swift')) {
-            badges.push(`
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
-                    <span class="material-symbols-outlined text-[13px] text-brand-red">currency_exchange</span> ໂອນເງິນ
-                </span>
-            `);
-        } else if (text.includes('ບັດ') || text.includes('card')) {
-            badges.push(`
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
-                    <span class="material-symbols-outlined text-[13px] text-purple-700">credit_card</span> ສູນບັດ
-                </span>
-            `);
-        } else if (text.includes('ໂປຣ') || text.includes('promo') || text.includes('ຕະຫຼາດ')) {
-            badges.push(`
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
-                    <span class="material-symbols-outlined text-[13px] text-amber-600">campaign</span> ການຕະຫຼາດ
-                </span>
-            `);
-        } else if (text.includes('ຖອນ') || text.includes('atm') || text.includes('ສົດ')) {
-            badges.push(`
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
-                    <span class="material-symbols-outlined text-[13px] text-emerald-600">atm</span> ຖອນເງິນສົດ
-                </span>
-            `);
-        } else {
-            badges.push(`
-                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
-                    <span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ
-                </span>
-            `);
-        }
-    }
-
-    return badges.join(' ');
+    return badges;
 }
 
-// ⭐ 3. ອັບເດດລາຍການໝວດໝູ່ (DATALIST & FILTER DROPDOWN) ແບບ DYNAMIC
+// ສ້າງ BRAND BADGES ຫຼື ICON ຕາມໝວດໝູ່
+function renderBrandOrCategoryBadge(title, category) {
+    var brandBadges = getBrandLogos(`${title} ${category}`);
+
+    if (brandBadges.length > 0) {
+        return brandBadges.join(' ');
+    }
+
+    // Fallback Icons
+    var text = `${title} ${category}`.toLowerCase();
+    if (text.includes('ໂອນ') || text.includes('transfer') || text.includes('swift')) {
+        return `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-red-50 text-brand-red border border-red-100">
+                <span class="material-symbols-outlined text-[13px]">currency_exchange</span> ໂອນເງິນ
+            </span>
+        `;
+    } else if (text.includes('ບັດ') || text.includes('card')) {
+        return `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                <span class="material-symbols-outlined text-[13px]">credit_card</span> ສູນບັດ
+            </span>
+        `;
+    } else if (text.includes('ໂປຣ') || text.includes('promo') || text.includes('ຕະຫຼາດ')) {
+        return `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                <span class="material-symbols-outlined text-[13px]">campaign</span> ໂປຣໂມຊັ່ນ
+            </span>
+        `;
+    } else if (text.includes('ຖອນ') || text.includes('atm') || text.includes('ສົດ')) {
+        return `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <span class="material-symbols-outlined text-[13px]">atm</span> ຖອນເງິນສົດ
+            </span>
+        `;
+    }
+
+    return `
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700">
+            <span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ
+        </span>
+    `;
+}
+
+// ⭐ 3. SEARCH DROPDOWN MATCH-UP LOGIC
+function openSearchDropdown() {
+    renderSearchDropdownList();
+    var dropdown = document.getElementById('libSearchDropdown');
+    if (dropdown) dropdown.classList.remove('hidden');
+}
+
+function closeSearchDropdown() {
+    var dropdown = document.getElementById('libSearchDropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+}
+
+function handleSearchInput(event) {
+    var val = event.target.value.trim();
+    var clearBtn = document.getElementById('libSearchClearBtn');
+    if (clearBtn) {
+        if (val) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+    }
+
+    renderSearchDropdownList();
+    renderLibraryGrid(); // ອັບເດດ Grid ດ້ານຫຼັງໄປພ້ອມກັນ
+}
+
+function clearSearchInput() {
+    var input = document.getElementById('libSearchInput');
+    if (input) input.value = '';
+    var clearBtn = document.getElementById('libSearchClearBtn');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    renderSearchDropdownList();
+    renderLibraryGrid();
+    input.focus();
+}
+
+function renderSearchDropdownList() {
+    var listContainer = document.getElementById('libSearchDropdownList');
+    var dropdown = document.getElementById('libSearchDropdown');
+    if (!listContainer || !dropdown) return;
+
+    var q = (document.getElementById('libSearchInput')?.value || '').trim().toLowerCase();
+    var items = window.libraryItems || [];
+
+    // Filter match-up
+    var matches = items.filter(item => {
+        if (!q) return true; // ຖ້າຍັງບໍ່ໄດ້ພິມ ສະແດງລາຍການທັງໝົດ
+        var textToSearch = `${item.title} ${item.content} ${item.fee} ${item.category}`.toLowerCase();
+        
+        // ຮອງຮັບຄຳຄົ້ນຫາພາສາອັງກິດ ແລະ ລາວສຳລັບ Brand
+        if (q.includes('wechat') || q.includes('ວີແຊັດ')) textToSearch += ' wechat ວີແຊັດ';
+        if (q.includes('alipay') || q.includes('ອາລີເພ')) textToSearch += ' alipay ອາລີເພ';
+        if (q.includes('promptpay') || q.includes('ພຣອມເພ')) textToSearch += ' promptpay ພຣອມເພ';
+        if (q.includes('unionpay') || q.includes('ຢູນຽນ')) textToSearch += ' unionpay ຢູນຽນເພ';
+        if (q.includes('visa') || q.includes('ວີຊາ')) textToSearch += ' visa ວີຊາ';
+        if (q.includes('mastercard') || q.includes('ມາສເຕີ')) textToSearch += ' mastercard ມາສເຕີ';
+
+        return textToSearch.includes(q);
+    });
+
+    if (matches.length === 0) {
+        listContainer.innerHTML = `
+            <div class="p-6 text-center text-slate-400">
+                <span class="material-symbols-outlined text-3xl text-slate-300 block mb-1">search_off</span>
+                <p class="font-bold text-xs text-slate-600">ບໍ່ພົບຂໍ້ມູນທີ່ກົງກັບ "${q}"</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">ລອງຄົ້ນຫາດ້ວຍຊື່ແບຣນ ເຊັ່ນ: Visa, PromptPay, UnionPay...</p>
+            </div>
+        `;
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    var html = '';
+    html += `
+        <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between items-center bg-slate-50 rounded-xl mb-1">
+            <span>${q ? `ຜົນການຄົ້ນຫາທີ່ກົງກັນ (${matches.length} ລາຍການ)` : `ລາຍການຜະລິດຕະພັນທັງໝົດ (${matches.length})`}</span>
+            <span class="text-brand-red font-semibold">ກົດເພື່ອເບິ່ງລາຍລະອຽດ</span>
+        </div>
+    `;
+
+    matches.slice(0, 10).forEach(item => {
+        var brandBadges = getBrandLogos(`${item.title} ${item.category}`).join(' ');
+        var feeTag = item.fee ? `
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-brand-red font-bold rounded-md text-[10px] shrink-0 border border-red-100">
+                <span class="material-symbols-outlined text-[11px]">payments</span> ${item.fee}
+            </span>
+        ` : '';
+
+        html += `
+            <div onclick="selectDropdownItem('${item.id}', '${item.title.replace(/'/g, "\\'")}')" 
+                class="p-2.5 hover:bg-red-50/60 rounded-xl cursor-pointer transition flex items-center justify-between gap-3 group border border-transparent hover:border-red-100">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                        ${brandBadges}
+                        <span class="text-[10px] text-slate-400 font-semibold">• ${item.category}</span>
+                    </div>
+                    <h4 class="font-bold text-xs text-slate-800 group-hover:text-brand-red transition truncate">${item.title}</h4>
+                    <p class="text-[11px] text-slate-400 truncate mt-0.5">${item.content}</p>
+                </div>
+                <div class="flex flex-col items-end gap-1 shrink-0">
+                    ${feeTag}
+                    <span class="material-symbols-outlined text-slate-300 group-hover:text-brand-red text-base transition">chevron_right</span>
+                </div>
+            </div>
+        `;
+    });
+
+    if (matches.length > 10) {
+        html += `
+            <div class="p-2 text-center text-[11px] text-slate-400 bg-slate-50 rounded-xl font-medium">
+                ແລະ ອີກ ${matches.length - 10} ລາຍການ... (ເບິ່ງທັງໝົດໃນຕາຕະລາງດ້ານລຸ່ມ)
+            </div>
+        `;
+    }
+
+    listContainer.innerHTML = html;
+    dropdown.classList.remove('hidden');
+}
+
+function selectDropdownItem(id, title) {
+    var input = document.getElementById('libSearchInput');
+    if (input) input.value = title;
+    var clearBtn = document.getElementById('libSearchClearBtn');
+    if (clearBtn) clearBtn.classList.remove('hidden');
+
+    closeSearchDropdown();
+    renderLibraryGrid();
+    openLibraryDetailModal(id);
+}
+
+// ປິດ Dropdown ເວລາກົດບ່ອນອື່ນພາຍນອກ (Click Outside)
+document.addEventListener('click', function(e) {
+    var searchWrapper = document.getElementById('searchWrapper');
+    if (searchWrapper && !searchWrapper.contains(e.target)) {
+        closeSearchDropdown();
+    }
+});
+
+// ⭐ 4. ອັບເດດລາຍການໝວດໝູ່ (DATALIST & FILTER DROPDOWN)
 function refreshCategoryDatalistAndFilter() {
     var defaultCats = [
         'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
@@ -152,7 +324,6 @@ function refreshCategoryDatalistAndFilter() {
         'ຜະລິດຕະພັນອື່ນໆ'
     ];
 
-    // ລວບລວມໝວດໝູ່ທັງໝົດທີ່ມີໃນລະບົບ (ທັງ Default ແລະ ທີ່ User ພິມສ້າງໃໝ່)
     var allCatsSet = new Set(defaultCats);
     (window.libraryItems || []).forEach(item => {
         if (item.category && item.category.trim()) {
@@ -160,7 +331,6 @@ function refreshCategoryDatalistAndFilter() {
         }
     });
 
-    // 1. ອັບເດດ Datalist ຂອງ Modal ເພີ່ມ/ແກ້ໄຂ
     var datalist = document.getElementById('libCategorySuggestions');
     if (datalist) {
         datalist.innerHTML = '';
@@ -171,7 +341,6 @@ function refreshCategoryDatalistAndFilter() {
         });
     }
 
-    // 2. ອັບເດດ Filter Dropdown ຢູ່ໜ້າຫຼັກ Library
     var filterSelect = document.getElementById('libCategoryFilter');
     if (filterSelect) {
         var currentVal = filterSelect.value || 'ALL';
@@ -186,7 +355,7 @@ function refreshCategoryDatalistAndFilter() {
     }
 }
 
-// 4. RENDER CARDS ໃນ LIBRARY GRID
+// ⭐ 5. RENDER CARDS ໃນ LIBRARY GRID
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -213,7 +382,7 @@ function renderLibraryGrid() {
         container.innerHTML = `
             <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
                 <span class="material-symbols-outlined text-4xl block mb-2 text-slate-300">menu_book</span>
-                <p class="font-bold text-sm">ບໍ່ພົບຂໍ້ມູນຜະລິດຕະພັນໃນໝວດນີ້</p>
+                <p class="font-bold text-sm text-slate-700">ບໍ່ພົບຂໍ້ມູນຜະລິດຕະພັນໃນໝວດນີ້</p>
                 <p class="text-xs text-slate-400 mt-0.5">ກົດປຸ່ມ "ເພີ່ມຫົວຂໍ້ໃໝ່" ເພື່ອສ້າງຂໍ້ມູນຄ່າທຳນຽມ ຫຼື ຜະລິດຕະພັນ</p>
             </div>
         `;
@@ -226,14 +395,12 @@ function renderLibraryGrid() {
             ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Out of date</span>`
             : `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> ໃຊ້ງານຢູ່</span>`;
 
-        var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-
-        // ⭐ ດຶງ Symbol ຂອງ Brand ຫຼື Google Material Symbol ອັດຕະໂນມັດ
+        var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
         var brandSymbolsHtml = renderBrandOrCategoryBadge(item.title, item.category);
 
         container.innerHTML += `
             <div class="bg-white border ${isOutdated ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200'} rounded-3xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-3 text-xs">
-                <div class="space-y-2">
+                <div class="space-y-2.5">
                     <div class="flex justify-between items-start gap-2">
                         <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 truncate max-w-[170px]" title="${item.category}">
                             ${item.category}
@@ -241,8 +408,8 @@ function renderLibraryGrid() {
                         ${statusBadge}
                     </div>
 
-                    <!-- Brand Symbols / Google Material Symbols -->
-                    <div class="flex flex-wrap gap-1 pt-0.5">
+                    <!-- Brand Logos / Badges -->
+                    <div class="flex flex-wrap gap-1.5 pt-0.5">
                         ${brandSymbolsHtml}
                     </div>
 
@@ -260,7 +427,7 @@ function renderLibraryGrid() {
 
                     ${item.imageUrl ? `
                         <div class="pt-1">
-                            <img src="${item.imageUrl}" onclick="openLibraryDetailModal('${item.id}')" class="h-24 w-full object-cover rounded-xl border cursor-pointer hover:opacity-90 transition"/>
+                            <img src="${item.imageUrl}" onclick="openLibraryDetailModal('${item.id}')" class="h-28 w-full object-cover rounded-2xl border cursor-pointer hover:opacity-90 transition"/>
                         </div>
                     ` : ''}
                 </div>
@@ -271,13 +438,13 @@ function renderLibraryGrid() {
                         <span>${updatedDateStr}</span>
                     </div>
                     <div class="flex items-center justify-between gap-2 pt-1">
-                        <button type="button" onclick="openLibraryDetailModal('${item.id}')" class="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] transition cursor-pointer text-center">
+                        <button type="button" onclick="openLibraryDetailModal('${item.id}')" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] transition cursor-pointer text-center">
                             ເບິ່ງລາຍລະອຽດ
                         </button>
-                        <button type="button" onclick="openEditLibraryModal('${item.id}')" class="p-1.5 text-slate-500 hover:text-brand-red hover:bg-red-50 rounded-lg transition cursor-pointer" title="ແກ້ໄຂ">
+                        <button type="button" onclick="openEditLibraryModal('${item.id}')" class="p-2 text-slate-500 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ແກ້ໄຂ">
                             <span class="material-symbols-outlined text-base">edit</span>
                         </button>
-                        <button type="button" onclick="promptDeleteLibraryItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-brand-red hover:bg-red-50 rounded-lg transition cursor-pointer" title="ລຶບ">
+                        <button type="button" onclick="promptDeleteLibraryItem('${item.id}')" class="p-2 text-slate-400 hover:text-brand-red hover:bg-red-50 rounded-xl transition cursor-pointer" title="ລຶບ">
                             <span class="material-symbols-outlined text-base">delete</span>
                         </button>
                     </div>
@@ -298,7 +465,7 @@ function toggleShowOutdated() {
     renderLibraryGrid();
 }
 
-// 5. ເປີດ Modal ເພີ່ມ/ແກ້ໄຂ
+// 6. MODAL ຈັດການຂໍ້ມູນ (ເພີ່ມ / ແກ້ໄຂ / ລຶບ)
 function openAddLibraryModal() {
     document.getElementById('libItemId').value = '';
     document.getElementById('libModalTitle').innerText = 'ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່';
@@ -386,7 +553,6 @@ function removeLibraryImagePreview() {
     if (fileInput) fileInput.value = '';
 }
 
-// 6. ບັນທຶກລົງ SUPABASE + NOTIFICATION
 async function handleSaveLibraryItem() {
     var id = document.getElementById('libItemId')?.value;
     var category = document.getElementById('libItemCategory')?.value.trim();
@@ -399,7 +565,7 @@ async function handleSaveLibraryItem() {
     if (!category) category = 'ຜະລິດຕະພັນອື່ນໆ';
 
     if (!title || !content) {
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຫົວຂໍ້ ແລະ ເນື້ອໃນໃຫ້ຄົບຖ້ວນ', 'error');
+        if (typeof showToast === 'function') showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຫົວຂໍ້ ແລະ ເນື້ອໃນໃຫ້ຄົບຖ້ວນ', 'error');
         return;
     }
 
@@ -463,7 +629,7 @@ async function handleSaveLibraryItem() {
         }
     }
 
-    // ແຈ້ງເຕືອນກະດິ່ງຫາທຸກຄົນ
+    // ແຈ້ງເຕືອນລະບົບ
     var notifEntry = {
         id: Date.now(),
         title: isEdit ? `ອັບເດດ Library: ${title}` : `ເພີ່ມຫົວຂໍ້ໃໝ່ໃນ Library: ${title}`,
@@ -479,7 +645,7 @@ async function handleSaveLibraryItem() {
     closeLibraryModal();
     refreshCategoryDatalistAndFilter();
     renderLibraryGrid();
-    showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນ ແລະ ແຈ້ງເຕືອນແລ້ວ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ ແລະ ແຈ້ງເຕືອນແລ້ວ!', 'success');
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
 }
 
 // 7. ເບິ່ງລາຍລະອຽດເຕັມ (Detail Modal)
@@ -566,7 +732,7 @@ async function toggleItemOutdated(id) {
 
     closeLibraryDetailModal();
     renderLibraryGrid();
-    showToast('ສຳເລັດ', `ປ່ຽນສະຖານະເປັນ "${item.isOutdated ? 'Out of date' : 'ໃຊ້ງານຢູ່'}" ແລ້ວ`, 'info');
+    if (typeof showToast === 'function') showToast('ສຳເລັດ', `ປ່ຽນສະຖານະເປັນ "${item.isOutdated ? 'Out of date' : 'ໃຊ້ງານຢູ່'}" ແລ້ວ`, 'info');
 }
 
 function promptDeleteLibraryItem(id) {
@@ -583,11 +749,11 @@ function promptDeleteLibraryItem(id) {
 
         refreshCategoryDatalistAndFilter();
         renderLibraryGrid();
-        showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
+        if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
     }
 }
 
-// ⭐ Auto-load ເມື່ອກົດປ່ຽນ Tab ມາ 'library'
+// ⭐ Auto-load ເມື່ອກົດ Tab 'library'
 var _origTabForLib = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForLib === 'function') _origTabForLib(tab);
@@ -602,7 +768,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ຜູກ Function ເຂົ້າ Window
 window.loadLibraryItems = loadLibraryItems;
+window.getBrandLogos = getBrandLogos;
 window.renderBrandOrCategoryBadge = renderBrandOrCategoryBadge;
+window.openSearchDropdown = openSearchDropdown;
+window.closeSearchDropdown = closeSearchDropdown;
+window.handleSearchInput = handleSearchInput;
+window.clearSearchInput = clearSearchInput;
+window.renderSearchDropdownList = renderSearchDropdownList;
+window.selectDropdownItem = selectDropdownItem;
 window.refreshCategoryDatalistAndFilter = refreshCategoryDatalistAndFilter;
 window.renderLibraryGrid = renderLibraryGrid;
 window.filterLibraryItems = filterLibraryItems;
