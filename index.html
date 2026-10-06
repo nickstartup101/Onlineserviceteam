@@ -1032,57 +1032,20 @@
         </div>
     </div>
 
-    <!-- Modal: ເພີ່ມ / ແກ້ໄຂ ຂໍ້ມູນ Library (ພ້ອມ Datalist ເລືອກ ຫຼື ພິມໝວດໝູ່ໃໝ່ໄດ້ອິດສະຫຼະ) -->
-    <div id="libraryItemModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
-            <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-amber-400 text-xl" id="libModalIcon">post_add</span>
-                    <h3 class="font-bold text-sm" id="libModalTitle">ເພີ່ມຂໍ້ມູນຜະລິດຕະພັນໃໝ່</h3>
-                </div>
-                <button type="button" onclick="closeLibraryModal()" class="text-white/80 hover:text-white flex items-center justify-center cursor-pointer">
-                    <span class="material-symbols-outlined text-xl">close</span>
-                </button>
-            </div>
-            <div class="p-5 md:p-6 space-y-3.5 text-xs overflow-y-auto flex-1">
-                <input type="hidden" id="libItemId"/>
-                
-                <!-- ⭐ ຊ່ອງໝວດໝູ່ທີ່ແກ້ໄຂໄດ້ ແລະ ພິມຊື່ໃໝ່ໄດ້ອິດສະຫຼະ -->
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700 flex items-center justify-between">
-                        <span>ໝວດໝູ່ຜະລິດຕະພັນ (Category) *</span>
-                        <span class="text-[11px] text-slate-400 font-normal">ເລືອກ ຫຼື ພິມຊື່ໝວດໝູ່ໃໝ່ໄດ້</span>
-                    </label>
-                    <input type="text" id="libItemCategory" list="libCategorySuggestions" placeholder="ເລືອກ ຫຼື ພິມໝວດໝູ່ໃໝ່..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold bg-white text-xs focus:ring-1 focus:ring-brand-red"/>
-                    <datalist id="libCategorySuggestions">
-                        <option value="ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ"></option>
-                        <option value="QR ສາກົນ (WeChat, Alipay, PromptPay)"></option>
-                        <option value="ສູນບັດ & ຄ່າທຳນຽມບັດ (UnionPay, Visa, Mastercard)"></option>
-                        <option value="ໂປຣໂມຊັ່ນການຕະຫຼາດ"></option>
-                        <option value="ຜະລິດຕະພັນອື່ນໆ"></option>
-                    </datalist>
-                </div>
+   <!-- ⭐ ຊ່ອງໝວດໝູ່ທີ່ເປັນ Dropdown ແທ້ ພ້ອມຕົວເລືອກພິມໝວດໃໝ່ໄດ້ -->
+<div>
+    <label class="block font-semibold mb-1 text-slate-700 flex items-center justify-between">
+        <span>ໝວດໝູ່ຜະລິດຕະພັນ (Category) *</span>
+        <span class="text-[11px] text-brand-red font-semibold cursor-pointer hover:underline" onclick="openManageCategoryModal()">⚙️ ຈັດການໝວດໝູ່</span>
+    </label>
+    
+    <!-- Dropdown ແທ້ ເລືອກໄດ້ 100% -->
+    <select id="libItemCategorySelect" onchange="handleCategorySelectChange()" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold bg-white text-xs focus:ring-1 focus:ring-brand-red cursor-pointer">
+    </select>
 
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700">ຫົວຂໍ້ຂໍ້ມູນ (Title) *</label>
-                    <input type="text" id="libItemTitle" placeholder="ເຊັ່ນ: ຄ່າທຳນຽມການຖອນເງິນສົດຜ່ານບັດ UnionPay ຢູ່ຕ່າງປະເທດ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold text-xs focus:ring-1 focus:ring-brand-red"/>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block font-semibold mb-1 text-slate-700">ຄ່າທຳນຽມ (Fee / Rate) [ບໍ່ບັງຄັບ]</label>
-                        <input type="text" id="libItemFee" placeholder="ເຊັ່ນ: 1.5% ຫຼື 15,000 ກີບ/ຄັ້ງ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none text-xs"/>
-                    </div>
-                    <div>
-                        <label class="block font-semibold mb-1 text-slate-700">ໄລຍະເວລາຈັດຕັ້ງປະຕິບັດ (Period)</label>
-                        <input type="text" id="libItemPeriod" placeholder="ເຊັ່ນ: 01/10/2026 ເປັນຕົ້ນໄປ ຫຼື ຕະຫຼອດໄປ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none text-xs"/>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block font-semibold mb-1 text-slate-700">ເນື້ອໃນແບບກະທັດຮັດ (Content / Details) *</label>
-                    <textarea id="libItemContent" rows="4" placeholder="ຂຽນລາຍລະອຽດ ຫຼື ຂັ້ນຕອນສຳຄັນແບບເຂົ້າໃຈງ່າຍ ເພື່ອໃຫ້ຕອບລູກຄ້າໄດ້ທັນທີ..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none leading-relaxed text-xs"></textarea>
-                </div>
+    <!-- ຊ່ອງພິມໝວດໝູ່ໃໝ່ (ຈະສະແດງອັດຕະໂນມັດເມື່ອເລືອກ "+ ພິມໝວດໝູ່ໃໝ່...") -->
+    <input type="text" id="libCustomCategoryInput" placeholder="ພິມຊື່ໝວດໝູ່ໃໝ່ທີ່ນີ້..." class="hidden w-full mt-2 border border-slate-300 rounded-xl p-2.5 outline-none bg-slate-50 text-xs font-semibold focus:ring-1 focus:ring-brand-red"/>
+    </div>
 
                 <!-- ຮູບພາບປະກອບ -->
                 <div>
