@@ -1,4 +1,4 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR & SWAP CHAIN INSPECTOR =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & AUTO-SWAP ENGINE =================
 
 // 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
@@ -8,7 +8,7 @@ function isDashNameMatch(a, b) {
     return cleanA === cleanB;
 }
 
-// 0.1 HELPER ດຶງຮູບ Avatar ຫຼື Icon
+// 0.1 HELPER ດຶງຮູບ Avatar
 function getStaffPhotoHtml(nameLao) {
     var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
     if (user && user.photo) {
@@ -17,13 +17,23 @@ function getStaffPhotoHtml(nameLao) {
     return '';
 }
 
-// 0.2 HELPER ກວດສອບວ່າແມ່ນຫົວໜ້າກະບໍ່
+// 0.2 HELPER ກວດສອບຫົວໜ້າກະ
 function isStaffLeader(nameLao) {
     var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
     return user ? Boolean(user.isLeader) : false;
 }
 
-// 0.3 ດຶງ Sheet ທັງໝົດທີ່ກ່ຽວຂ້ອງກັບເດືອນທີ່ເລືອກ
+// 0.3 ແປງຊື່ກະໃຫ້ເປັນ Standard Key ('shift1', 'shift2', 'shift3')
+function normalizeShiftKey(s) {
+    if (!s) return null;
+    var str = s.toString().toLowerCase();
+    if (str.includes('1') || str.includes('shift1') || str.includes('ກະ 1')) return 'shift1';
+    if (str.includes('2') || str.includes('shift2') || str.includes('ກະ 2')) return 'shift2';
+    if (str.includes('3') || str.includes('shift3') || str.includes('ກະ 3')) return 'shift3';
+    return null;
+}
+
+// 0.4 ດຶງ Sheet ຂອງເດືອນທີ່ກົງກັບວັນທີ
 function getSheetsForMonth(dateStr) {
     var monthKey = dateStr.slice(0, 7); // YYYY-MM
     var sheets = (window.scheduleSheets || []).filter(function(s) {
@@ -38,6 +48,94 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
+// ⭐ 0.5 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100% (ແກ້ໄຂບັນຫາຊື່ບໍ່ສະລັບ)
+function autoApplyCompletedSwapsForDate(targetDate) {
+    var swapsToday = (window.swapHistory || []).filter(function(s) {
+        return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
+    });
+
+    if (swapsToday.length === 0) return false;
+
+    var sheets = (window.scheduleSheets || []).filter(function(s) {
+        return Boolean(s && s.data && s.data[targetDate]);
+    });
+
+    if (sheets.length === 0) return false;
+
+    var hasAnyChange = false;
+
+    swapsToday.forEach(function(req) {
+        var personA = req.fromName;
+        var personB = req.toName;
+        var targetShiftA = normalizeShiftKey(req.toShift);   // ກະທີ່ personA ຕ້ອງໄປຢູ່
+        var targetShiftB = normalizeShiftKey(req.fromShift); // ກະທີ່ personB ຕ້ອງໄປຢູ່
+        var isCover = (req.swapType === 'COVER');
+
+        sheets.forEach(function(sheet) {
+            var day = sheet.data[targetDate];
+            if (!day) return;
+
+            if (isCover) {
+                ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
+                    var arr = day[sName] || [];
+                    for (var i = 0; i < arr.length; i++) {
+                        if (isDashNameMatch(arr[i], personB)) {
+                            arr[i] = personA;
+                            hasAnyChange = true;
+                        }
+                    }
+                });
+            } else {
+                // ຊອກຫາຕຳແໜ່ງປັດຈຸບັນຂອງທັງສອງຄົນ
+                var findSlot = function(name) {
+                    for (var sName of ['shift1', 'shift2', 'shift3']) {
+                        var arr = day[sName] || [];
+                        for (var i = 0; i < arr.length; i++) {
+                            if (isDashNameMatch(arr[i], name)) {
+                                return { shift: sName, index: i };
+                            }
+                        }
+                    }
+                    return null;
+                };
+
+                var posA = findSlot(personA);
+                var posB = findSlot(personB);
+
+                // ⭐ ກວດສອບ: ຖ້າທັງສອງຄົນຍັງຢູ່ບ່ອນເກົ່າ (ຍັງບໍ່ທັນສະລັບ) ໃຫ້ສັ່ງສະລັບທັນທີ
+                if (posA && posB && posA.shift !== posB.shift) {
+                    var needsSwap = false;
+
+                    if (targetShiftA && targetShiftB) {
+                        // ຖ້າ personA ຍັງບໍ່ທັນຮອດ targetShiftA ສະແດງວ່າຍັງບໍ່ທັນສະລັບ
+                        if (posA.shift !== targetShiftA && posB.shift !== targetShiftB) {
+                            needsSwap = true;
+                        }
+                    } else {
+                        needsSwap = true;
+                    }
+
+                    if (needsSwap) {
+                        day[posA.shift][posA.index] = personB;
+                        day[posB.shift][posB.index] = personA;
+                        hasAnyChange = true;
+                    }
+                }
+            }
+        });
+    });
+
+    if (hasAnyChange) {
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+            if (typeof saveAll === 'function') saveAll();
+        } catch(e) {}
+    }
+
+    return hasAnyChange;
+}
+
 // ⭐ 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
 function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
@@ -47,16 +145,18 @@ function renderDashboard() {
         if (dateInput) dateInput.value = targetDate;
     }
 
-    // 1. ອັບເດດ Badge ປະເພດວັນ (ວັນທຳມະດາ ຫຼື ວັນພັກ)
+    // 1. ອັບເດດ Badge ປະເພດວັນ
     updateDayTypeBadge(targetDate);
 
-    // 2. ດຶງ Sheet ຂອງເດືອນນັ້ນ
-    var sheets = getSheetsForMonth(targetDate);
+    // ⭐ 2. ສັ່ງ Auto-Apply ທຸກຄູ່ທີ່ປ່ຽນກະສຳເລັດໃຫ້ສະລັບບ່ອນນັ່ງທັນທີ!
+    autoApplyCompletedSwapsForDate(targetDate);
 
-    // 3. ດຶງລາຍການຄົນທີ່ປ່ຽນກະມື້ນີ້ມາໄວ້ກວດສອບ Badge ⇄
+    // 3. ດຶງ Sheet ແລະ ລາຍການ Swap ຂອງວັນນີ້
+    var sheets = getSheetsForMonth(targetDate);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
     });
+
     var swappedStaffSet = new Set();
     swapsToday.forEach(function(s) {
         swappedStaffSet.add(s.fromName);
@@ -66,10 +166,10 @@ function renderDashboard() {
     // 4. Render 3 ກະ (Shift 1, Shift 2, Shift 3)
     renderShiftCards(targetDate, sheets, swappedStaffSet);
 
-    // 5. Render ລາຍການລາພັກມື້ນີ້
+    // 5. Render ພະນັກງານລາພັກມື້ນີ້
     renderLeavesToday(targetDate);
 
-    // 6. ⭐ Render ລາຍການປ່ຽນກະ & Swap Chain Inspector
+    // 6. Render ລາຍການປ່ຽນກະ & Swap Chain Inspector
     renderDashboardSwapsWithChains(targetDate, swapsToday);
 }
 
@@ -101,7 +201,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
-// 3. RENDER CARDS ທັງ 3 ກະ (ຮອງຮັບການແຍກຫຼາຍ SHEET ດັ່ງໃນຮູບ)
+// 3. RENDER CARDS ທັງ 3 ກະ (ໂທມິກ & ສົມຊາຍ ຈະສະລັບບ່ອນກັນທັນທີ)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -201,7 +301,7 @@ function renderLeavesToday(targetDate) {
     });
 }
 
-// ⭐ 5. RENDER ລາຍການປ່ຽນກະ & ປຸ່ມກວດສອບ CHAINED SWAP INSPECTOR
+// ⭐ 5. RENDER ລາຍການປ່ຽນກະ & ປຸ່ມ INSPECTOR
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -211,7 +311,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
         return;
     }
 
-    // ກວດສອບວ່າໃຜມີການປ່ຽນຕໍ່ເນື່ອງ (Chained Swap)
     var countMap = {};
     swapsToday.forEach(function(s) {
         countMap[s.fromName] = (countMap[s.fromName] || 0) + 1;
@@ -228,7 +327,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
 
     var html = '';
 
-    // ປຸ່ມ Route Inspector
     html += '<div class="flex justify-between items-center pb-1 mb-1">' +
                 '<span class="text-[11px] text-slate-500 font-bold">ສຳເລັດ ' + swapsToday.length + ' ລາຍການ</span>' +
                 '<button type="button" onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition">' +
@@ -267,12 +365,12 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     container.innerHTML = html;
 }
 
-// ⭐ 6. MODAL ສະແດງ TIMELINE ແລະ ຕຳແໜ່ງສຸດທ້າຍມື້ນີ້ (FINAL DESTINATION SHIFTS)
+// ⭐ 6. MODAL INSPECTOR ສະແດງ TIMELINE & ຕຳແໜ່ງສຸດທ້າຍ
 function openSwapChainInspectorModal(dateStr) {
     var sheets = getSheetsForMonth(dateStr);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         return s.status === 'COMPLETED' && (dateStr >= s.startDate && dateStr <= s.endDate);
-    }).sort(function(a, b) { return (a.id || 0) - (b.id || 0); }); // ລຽງແຕ່ຕົ້ນຫາທ້າຍ
+    }).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
 
     if (swapsToday.length === 0) {
         showToast('ແຈ້ງເຕືອນ', 'ບໍ່ມີປະຫວັດການປ່ຽນກະໃນວັນທີນີ້', 'info');
@@ -310,7 +408,6 @@ function openSwapChainInspectorModal(dateStr) {
                         '</div>';
     });
 
-    // ຄົ້ນຫາຕຳແໜ່ງສຸດທ້າຍຕົວຈິງໃນຕາຕະລາງມື້ນີ້ (Real-time Final Location)
     var finalLocationHtml = '';
     involvedStaff.forEach(function(name) {
         var currentSlot = 'ພັກຜ່ອນ (OFF)';
@@ -379,7 +476,7 @@ function closeSwapChainInspectorModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ Auto-load ເມື່ອກົດ Tab 'dashboard'
+// ⭐ Auto-load
 var _origTabForDash = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForDash === 'function') _origTabForDash(tab);
@@ -392,8 +489,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(renderDashboard, 100);
 });
 
-// ຜູກທຸກ Function ເຂົ້າ Window
+// ຜູກ Functions ເຂົ້າ Window
 window.renderDashboard = renderDashboard;
+window.autoApplyCompletedSwapsForDate = autoApplyCompletedSwapsForDate;
 window.updateDayTypeBadge = updateDayTypeBadge;
 window.renderShiftCards = renderShiftCards;
 window.renderLeavesToday = renderLeavesToday;
