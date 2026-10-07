@@ -1,4 +1,4 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (REALTIME NOTIFICATIONS INTEGRATED) =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (PERMANENT NOTIFICATIONS FIX) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
@@ -50,60 +50,62 @@ async function loadLibraryItems() {
 
     refreshCategoryDatalistAndFilter();
     renderLibraryGrid();
-    updateAppNotificationsWithLibrary(); // ⭐ ສັ່ງໃຫ້ດຶງເຂົ້າໄປສະແດງໃນກະດິ່ງແຈ້ງເຕືອນ
+    updateAppNotificationsWithLibrary();
 }
 
-// ⭐ 2. ລະບົບສັງເຄາະການແຈ້ງເຕືອນ LIBRARY ເຂົ້າໄປໃນກະດິ່ງ 🔔 ຮ່ວມກັບການລາພັກ
-function updateAppNotificationsWithLibrary() {
-    var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
-    var myName = currentUser ? (currentUser.nameLao || currentUser.fullName || '') : '';
-    var readIds = JSON.parse(localStorage.getItem('ot_read_library_notifs') || '[]');
+// ⭐ 2. ລະບົບປ້ອງກັນການຂຽນທັບ (MUTATION OBSERVER: ຫ້າມບໍ່ໃຫ້ແຈ້ງເຕືອນຫາຍເດັດຂາດ)
+var _isInjectingNotifs = false;
+function setupNotificationObserver() {
+    var listContainer = document.getElementById('notifDropdownList');
+    if (!listContainer) return;
 
-    var items = window.libraryItems || [];
-    var unreadLibraryCount = 0;
+    if (window._libraryNotifObserver) {
+        window._libraryNotifObserver.disconnect();
+    }
 
-    // ນັບບົດຄວາມທີ່ User ນີ້ຍັງບໍ່ທັນໄດ້ອ່ານ (ແລະ ບໍ່ແມ່ນຕົນເອງເປັນຜູ້ສ້າງ)
-    items.forEach(function(item) {
-        if (item.updatedBy !== myName && readIds.indexOf(item.id) === -1) {
-            unreadLibraryCount++;
+    window._libraryNotifObserver = new MutationObserver(function() {
+        if (_isInjectingNotifs) return;
+        var container = document.getElementById('notifDropdownList');
+        if (!container) return;
+
+        // ຖ້າ app.js ພະຍາຍາມລຶບ ຫຼື ຂຽນທັບ ໃຫ້ແຊກ Library ກັບຄືນມາເທິງສຸດທັນທີ 0 ວິນາທີ!
+        if (!container.querySelector('.library-notif-card')) {
+            _isInjectingNotifs = true;
+            injectLibraryNotificationsIntoDropdown();
+            _isInjectingNotifs = false;
         }
     });
 
-    // ອັບເດດເລກສີແດງເທິງກະດິ່ງ (#notifBadge)
-    var badgeEl = document.getElementById('notifBadge');
-    if (badgeEl) {
-        var currentBadgeText = parseInt(badgeEl.innerText) || 0;
-        var totalBadge = currentBadgeText + unreadLibraryCount;
-        if (totalBadge > 0) {
-            badgeEl.innerText = totalBadge > 99 ? '99+' : totalBadge;
-            badgeEl.classList.remove('hidden');
-            badgeEl.classList.add('flex');
-        }
-    }
-
-    // ແຊກລາຍການ Library ເຂົ້າໄປໃນ Dropdown (#notifDropdownList)
-    injectLibraryNotificationsIntoDropdown();
+    window._libraryNotifObserver.observe(listContainer, { childList: true, subtree: false });
 }
 
-// ⭐ 3. ແຊກບັດແຈ້ງເຕືອນໄອຄອນປຶ້ມສີແດງ 📚 ເຂົ້າໄປໃນກ່ອງແຈ້ງເຕືອນ
+// ⭐ 3. ແຊກບັດແຈ້ງເຕືອນ LIBRARY ເຂົ້າໄປທາງເທິງສຸດຂອງລາຍການແຈ້ງເຕືອນ
 function injectLibraryNotificationsIntoDropdown() {
     var listContainer = document.getElementById('notifDropdownList');
     if (!listContainer) return;
 
+    // ຖ້າມີແລ້ວ ບໍ່ຕ້ອງແຊກຊໍ້າ
+    if (listContainer.querySelector('.library-notif-card')) return;
+
     var items = window.libraryItems || [];
     if (items.length === 0) return;
+
+    // ລຶບຂໍ້ຄວາມ "ບໍ່ມີການແຈ້ງເຕືອນ" ອອກຖ້າມີ
+    var emptyMsg = listContainer.querySelector('p');
+    if (emptyMsg && emptyMsg.innerText.indexOf('ບໍ່ມີການແຈ້ງເຕືອນ') !== -1) {
+        emptyMsg.remove();
+    }
 
     var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
     var myName = currentUser ? (currentUser.nameLao || currentUser.fullName || '') : '';
     var readIds = JSON.parse(localStorage.getItem('ot_read_library_notifs') || '[]');
 
-    // ເອົາບົດຄວາມຫຼ້າສຸດ 5 ອັນທຳອິດມາສ້າງເປັນແຈ້ງເຕືອນ
-    var libraryNotifHtml = '';
+    var html = '';
     items.slice(0, 5).forEach(function(item) {
         var isUnread = (item.updatedBy !== myName && readIds.indexOf(item.id) === -1);
         var dateFormatted = item.updatedAt ? item.updatedAt.slice(0, 10) : '';
 
-        libraryNotifHtml += '<div onclick="openLibraryFromNotif(\'' + item.id + '\')" class="p-3 rounded-2xl border transition flex items-start gap-3 cursor-pointer hover:bg-slate-100/80 font-lao ' + (isUnread ? 'bg-red-50/70 border-red-200' : 'bg-slate-50 border-slate-100') + '">' +
+        html += '<div onclick="openLibraryFromNotif(\'' + item.id + '\')" class="library-notif-card p-3 rounded-2xl border transition flex items-start gap-3 cursor-pointer hover:bg-slate-100/80 font-lao mb-2 ' + (isUnread ? 'bg-red-50/70 border-red-200' : 'bg-slate-50 border-slate-100') + '">' +
             '<div class="w-8 h-8 rounded-xl bg-red-100 text-brand-red flex items-center justify-center shrink-0 mt-0.5">' +
                 '<span class="material-symbols-outlined text-base">menu_book</span>' +
             '</div>' +
@@ -122,14 +124,39 @@ function injectLibraryNotificationsIntoDropdown() {
         '</div>';
     });
 
-    // ວາງໄວ້ທາງເທິງສຸດຂອງລາຍການແຈ້ງເຕືອນທັງໝົດ
-    var existingHtml = listContainer.innerHTML;
-    if (existingHtml.indexOf('ອັບເດດຂໍ້ມູນ Library') === -1) {
-        listContainer.innerHTML = libraryNotifHtml + existingHtml;
-    }
+    listContainer.insertAdjacentHTML('afterbegin', html);
 }
 
-// ເມື່ອກົດແຈ້ງເຕືອນ ໃຫ້ເປີດເບິ່ງລາຍລະອຽດບົດຄວາມທັນທີ
+// ⭐ 4. ອັບເດດເລກສີແດງເທິງກະດິ່ງແຈ້ງເຕືອນ 🔔
+function updateAppNotificationsWithLibrary() {
+    var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+    var myName = currentUser ? (currentUser.nameLao || currentUser.fullName || '') : '';
+    var readIds = JSON.parse(localStorage.getItem('ot_read_library_notifs') || '[]');
+
+    var items = window.libraryItems || [];
+    var unreadCount = 0;
+
+    items.forEach(function(item) {
+        if (item.updatedBy !== myName && readIds.indexOf(item.id) === -1) {
+            unreadCount++;
+        }
+    });
+
+    var badgeEl = document.getElementById('notifBadge');
+    if (badgeEl) {
+        if (unreadCount > 0) {
+            badgeEl.innerText = unreadCount > 99 ? '99+' : unreadCount;
+            badgeEl.classList.remove('hidden');
+            badgeEl.classList.add('flex');
+        } else {
+            badgeEl.classList.add('hidden');
+        }
+    }
+
+    injectLibraryNotificationsIntoDropdown();
+}
+
+// ເປີດບົດຄວາມເມື່ອກົດໃສ່ແຈ້ງເຕືອນ
 function openLibraryFromNotif(id) {
     if (typeof switchTab === 'function') switchTab('library');
     var dd = document.getElementById('notifDropdown');
@@ -137,12 +164,11 @@ function openLibraryFromNotif(id) {
     openLibraryDetailModal(id);
 }
 
-// ⭐ 4. ໝາຍວ່າອ່ານແລ້ວທັງໝົດ
+// ⭐ 5. ໝາຍວ່າອ່ານແລ້ວທັງໝົດ
 var _origMarkAllRead = window.markAllNotificationsAsRead;
 window.markAllNotificationsAsRead = function() {
     if (typeof _origMarkAllRead === 'function') _origMarkAllRead();
 
-    // ໝາຍບົດຄວາມທັງໝົດວ່າອ່ານແລ້ວ
     var allIds = (window.libraryItems || []).map(function(i) { return i.id; });
     localStorage.setItem('ot_read_library_notifs', JSON.stringify(allIds));
 
@@ -154,19 +180,19 @@ window.markAllNotificationsAsRead = function() {
 
     var listContainer = document.getElementById('notifDropdownList');
     if (listContainer) {
-        var unreadDots = listContainer.querySelectorAll('.bg-brand-red');
+        var unreadDots = listContainer.querySelectorAll('.library-notif-card .bg-brand-red');
         unreadDots.forEach(function(dot) { dot.remove(); });
     }
 };
 
-// ⭐ 5. ຜູກເມື່ອກົດປຸ່ມກະດິ່ງ ໃຫ້ Render ລາຍການ Library ຮ່ວມກັນສະເໝີ
+// ⭐ 6. ຜູກເມື່ອກົດປຸ່ມກະດິ່ງ
 var _origToggleNotif = window.toggleNotificationDropdown;
 window.toggleNotificationDropdown = function() {
     if (typeof _origToggleNotif === 'function') _origToggleNotif();
-    setTimeout(injectLibraryNotificationsIntoDropdown, 10);
+    setTimeout(injectLibraryNotificationsIntoDropdown, 1);
 };
 
-// ⭐ 6. REALTIME LISTENER ດັກຈັບການເພີ່ມ/ອັບເດດຈາກ USER ອື່ນໆ ແບບສົດໆ 0 ວິນາທີ
+// ⭐ 7. REALTIME LISTENER ດັກຈັບການແຈ້ງເຕືອນຈາກ USER ອື່ນໆ ແບບສົດໆ 0 ວິນາທີ
 function initRealtimeLibraryListener() {
     if (!window.supabaseClient) return;
     try {
@@ -177,21 +203,18 @@ function initRealtimeLibraryListener() {
                 var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
                 var myName = currentUser ? (currentUser.nameLao || currentUser.fullName || '') : '';
 
-                // ຖ້າແມ່ນຄົນອື່ນເປັນຜູ້ອັບເດດ ➔ ເຕືອນ Toast + ເດັ້ງເລກກະດິ່ງທັນທີ!
                 if (newRecord && newRecord.updated_by !== myName) {
                     if (typeof showToast === 'function') {
                         showToast('📚 ອັບເດດ Library ໃໝ່', newRecord.updated_by + ' ໄດ້ອັບເດດ "' + newRecord.title + '"', 'info');
                     }
-                    loadLibraryItems(); // ດຶງຂໍ້ມູນໃໝ່ມາສະແດງທັນທີ
+                    loadLibraryItems();
                 }
             })
             .subscribe();
-    } catch(e) {
-        console.warn("Realtime library listener warning:", e);
-    }
+    } catch(e) {}
 }
 
-// 7. BRAND LOGOS & BADGES
+// 8. BRAND LOGOS & BADGES
 function getSingleBrandLogo(titleInput, categoryInput) {
     var title = (titleInput || '').toLowerCase();
     var cat = (categoryInput || '').toLowerCase();
@@ -270,7 +293,7 @@ function renderBrandOrCategoryBadge(title, category) {
     return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ</span>';
 }
 
-// 8. ດຶງລາຍການໝວດໝູ່
+// 9. ດຶງລາຍການໝວດໝູ່
 function getUniqueCategoriesList() {
     var catList = [];
     try {
@@ -352,7 +375,7 @@ function handleCategorySelectChange() {
     }
 }
 
-// 9. ຈັດການໝວດໝູ່ (MODAL)
+// 10. ຈັດການໝວດໝູ່
 function openManageCategoryModal() {
     renderManageCategoryList();
     var modal = document.getElementById('manageCategoryModal');
@@ -512,7 +535,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     }
 }
 
-// 10. RENDER CARDS GRID
+// 11. RENDER CARDS GRID
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -585,7 +608,7 @@ function toggleShowOutdated() {
     renderLibraryGrid();
 }
 
-// 11. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່
+// 12. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່
 function openAddLibraryModal() {
     refreshCategoryDatalistAndFilter();
 
@@ -619,7 +642,7 @@ function openAddLibraryModal() {
     if (modal) modal.classList.remove('hidden');
 }
 
-// 12. MODAL ແກ້ໄຂຫົວຂໍ້
+// 13. MODAL ແກ້ໄຂຫົວຂໍ້
 function openEditLibraryModal(id) {
     refreshCategoryDatalistAndFilter();
 
@@ -685,7 +708,7 @@ function closeLibraryModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ 13. ບັນທຶກຫົວຂໍ້ & ສົ່ງແຈ້ງເຕືອນ REALTIME ຫາ USER ອື່ນໆ
+// 14. ບັນທຶກຫົວຂໍ້
 async function handleSaveLibraryItem() {
     var idEl = document.getElementById('libItemId');
     var id = idEl ? idEl.value : '';
@@ -747,7 +770,6 @@ async function handleSaveLibraryItem() {
 
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
-    // 1. ອັບເດດຖານຂໍ້ມູນ
     if (window.supabaseClient) {
         try {
             var payload = {
@@ -770,7 +792,6 @@ async function handleSaveLibraryItem() {
         } catch (err) {}
     }
 
-    // 2. ອັບເດດການແຈ້ງເຕືອນລົງໃນ Dropdown ແລະ ກະດິ່ງທັນທີ
     updateAppNotificationsWithLibrary();
 
     closeLibraryModal();
@@ -780,7 +801,7 @@ async function handleSaveLibraryItem() {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
 }
 
-// 14. ລຶບຫົວຂໍ້ບົດຄວາມ
+// 15. ລຶບຫົວຂໍ້ບົດຄວາມ
 async function promptDeleteLibraryItem(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -803,7 +824,7 @@ async function promptDeleteLibraryItem(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
 }
 
-// 15. DETAIL MODAL
+// 16. DETAIL MODAL
 function openLibraryDetailModal(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -905,7 +926,7 @@ async function toggleItemOutdated(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
 }
 
-// 16. ຮູບພາບ
+// 17. ຮູບພາບ
 function handleLibraryImageUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -948,7 +969,7 @@ function removeLibraryImagePreview() {
     if (fileInput) fileInput.value = '';
 }
 
-// 17. SEARCH
+// 18. SEARCH
 function openSearchDropdown() {
     renderSearchDropdownList();
     var dropdown = document.getElementById('libSearchDropdown');
@@ -1054,11 +1075,13 @@ window.switchTab = function(tab) {
 
 document.addEventListener('DOMContentLoaded', function() {
     loadLibraryItems();
+    setTimeout(setupNotificationObserver, 300); // ເລີ່ມຕົ້ນລະບົບປ້ອງກັນການຂຽນທັບ
     setTimeout(initRealtimeLibraryListener, 1000);
 });
 
 // ຜູກ Functions ເຂົ້າ Window
 window.loadLibraryItems = loadLibraryItems;
+window.setupNotificationObserver = setupNotificationObserver;
 window.updateAppNotificationsWithLibrary = updateAppNotificationsWithLibrary;
 window.injectLibraryNotificationsIntoDropdown = injectLibraryNotificationsIntoDropdown;
 window.openLibraryFromNotif = openLibraryFromNotif;
