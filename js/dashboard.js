@@ -1,4 +1,4 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR & AUTO-SWAP ENGINE =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & AUTO-SWAP ENGINE (GOOGLE MATERIAL SYMBOLS) =================
 
 // 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
@@ -8,7 +8,7 @@ function isDashNameMatch(a, b) {
     return cleanA === cleanB;
 }
 
-// ⭐ 0.1 HELPER ດຶງວັນທີມື້ປັດຈຸບັນຕົວຈິງຂອງເຄື່ອງ (Local Time YYYY-MM-DD)
+// 0.1 HELPER ດຶງວັນທີມື້ປັດຈຸບັນຕົວຈິງຂອງເຄື່ອງ (Local Time YYYY-MM-DD)
 function getTodayLocalDateStr() {
     var now = new Date();
     var y = now.getFullYear();
@@ -57,7 +57,7 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
-// 0.6 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ
+// 0.6 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
 function autoApplyCompletedSwapsForDate(targetDate) {
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
@@ -141,24 +141,19 @@ function autoApplyCompletedSwapsForDate(targetDate) {
     return hasAnyChange;
 }
 
-// ⭐ 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD (ຕິດຕາມວັນທີມື້ນີ້ອັດຕະໂນມັດ)
+// 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
 function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
     
-    // ⭐ ຖ້າເປີດເຂົ້າມາຄັ້ງທຳອິດ ຫຼື ຍັງບໍ່ໄດ້ເລືອກວັນທີ ໃຫ້ດຶງວັນທີມື້ນີ້ຕົວຈິງສະເໝີ
     if (dateInput && (!dateInput.value || !window._dashUserHasPickedDate)) {
         dateInput.value = getTodayLocalDateStr();
     }
 
     var targetDate = dateInput ? dateInput.value : getTodayLocalDateStr();
 
-    // 1. ອັບເດດ Badge ປະເພດວັນ
     updateDayTypeBadge(targetDate);
-
-    // 2. ສັ່ງ Auto-Apply ທຸກຄູ່ທີ່ປ່ຽນກະສຳເລັດໃຫ້ສະລັບບ່ອນນັ່ງທັນທີ
     autoApplyCompletedSwapsForDate(targetDate);
 
-    // 3. ດຶງ Sheet ແລະ ລາຍການ Swap ຂອງວັນນີ້
     var sheets = getSheetsForMonth(targetDate);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
@@ -170,13 +165,8 @@ function renderDashboard() {
         swappedStaffSet.add(s.toName);
     });
 
-    // 4. Render 3 ກະ (Shift 1, Shift 2, Shift 3)
     renderShiftCards(targetDate, sheets, swappedStaffSet);
-
-    // 5. Render ພະນັກງານລາພັກມື້ນີ້
     renderLeavesToday(targetDate);
-
-    // 6. Render ລາຍການປ່ຽນກະ & Swap Chain Inspector
     renderDashboardSwapsWithChains(targetDate, swapsToday);
 }
 
@@ -208,7 +198,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
-// 3. RENDER CARDS ທັງ 3 ກະ
+// 3. RENDER CARDS ທັງ 3 ກະ (ໄອຄອນປ່ຽນກະເປັນ MATERIAL SYMBOL)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -258,7 +248,11 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
                     var avatarHtml = getStaffPhotoHtml(name);
 
                     var leaderDot = isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : '';
-                    var swapIcon = isSwapped ? '<span class="text-amber-600 text-[11px] ml-0.5 font-bold" title="ປ່ຽນກະມາ">⇄</span>' : '';
+                    
+                    // ⭐ ໄອຄອນປ່ຽນກະມາໃຊ້ Material Symbol 'sync_alt'
+                    var swapIcon = isSwapped 
+                        ? '<span class="material-symbols-outlined text-[13px] text-amber-600 ml-0.5 leading-none align-middle" title="ປ່ຽນກະມາ">sync_alt</span>' 
+                        : '';
 
                     var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200 bg-slate-50';
                     var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
@@ -303,12 +297,12 @@ function renderLeavesToday(targetDate) {
                 '<span class="text-slate-500 text-[11px] ml-2">[' + (l.shift || 'ທຸກກະ') + ']</span>' +
                 (l.reason ? '<p class="text-[10px] text-slate-400 italic mt-0.5">"' + l.reason + '"</p>' : '') +
             '</div>' +
-            '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-brand-red">ລາພັກ</span>' +
+            '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-brand-red flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">flight_takeoff</span> ລາພັກ</span>' +
         '</div>';
     });
 }
 
-// 5. RENDER ລາຍການປ່ຽນກະ & ປຸ່ມ INSPECTOR
+// ⭐ 5. RENDER ລາຍການປ່ຽນກະ (GOOGLE MATERIAL SYMBOLS ແທ້ 100%)
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -334,10 +328,12 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
 
     var html = '';
 
+    // ປຸ່ມ Route Inspector
     html += '<div class="flex justify-between items-center pb-1 mb-1">' +
                 '<span class="text-[11px] text-slate-500 font-bold">ສຳເລັດ ' + swapsToday.length + ' ລາຍການ</span>' +
-                '<button type="button" onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-xs flex items-center gap-1 cursor-pointer transition">' +
-                    '<span class="material-symbols-outlined text-[13px] text-amber-400">route</span> ເບິ່ງເສັ້ນທາງການປ່ຽນກະທຸກຄົນ' +
+                '<button type="button" onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition">' +
+                    '<span class="material-symbols-outlined text-[14px] text-amber-400">alt_route</span>' +
+                    '<span>ເບິ່ງເສັ້ນທາງການປ່ຽນກະທຸກຄົນ</span>' +
                 '</button>' +
             '</div>';
 
@@ -345,25 +341,42 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
         var isChained = (countMap[s.fromName] > 1 || countMap[s.toName] > 1);
         var sA = formatShiftTag(s.fromShift);
         var sB = formatShiftTag(s.toShift);
-        var remarkTag = (sA && sB) ? ('[' + sA + ' ⇄ ' + sB + ']') : '';
 
+        // ⭐ ໄອຄອນ 'sync_alt' ແທນລູກສອນ ⇄
+        var remarkTag = (sA && sB) 
+            ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">' +
+                '<span>' + sA + '</span>' +
+                '<span class="material-symbols-outlined text-[11px] text-slate-400">sync_alt</span>' +
+                '<span>' + sB + '</span>' +
+              '</span>'
+            : '';
+
+        // ⭐ ໄອຄອນ 'autorenew' ແທນ Emoji 🔄
         var chainedBadge = isChained 
-            ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">🔄 ປ່ຽນຕໍ່ເນື່ອງ</span>' 
+            ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">' +
+                '<span class="material-symbols-outlined text-[12px] leading-none">autorenew</span>' +
+                '<span>ປ່ຽນຕໍ່ເນື່ອງ</span>' +
+              '</span>' 
             : '';
 
         html += '<div onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="p-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 rounded-2xl flex justify-between items-center gap-2 cursor-pointer transition shadow-2xs font-lao group">' +
                     '<div class="flex-1 min-w-0">' +
                         '<div class="flex items-center gap-1.5 flex-wrap text-xs">' +
                             '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.fromName + '</span>' +
-                            '<span class="text-slate-400 text-[10px]">➔</span>' +
+                            // ⭐ ໄອຄອນ 'arrow_forward' ແທນ ➔
+                            '<span class="material-symbols-outlined text-[13px] text-slate-400">arrow_forward</span>' +
                             '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.toName + '</span>' +
-                            (remarkTag ? '<span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">' + remarkTag + '</span>' : '') +
+                            remarkTag +
                             chainedBadge +
                         '</div>' +
                         (s.reason ? '<p class="text-[10px] text-slate-400 truncate mt-0.5 italic">"' + s.reason + '"</p>' : '') +
                     '</div>' +
                     '<div class="flex items-center gap-1 shrink-0">' +
-                        '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ປ່ຽນສຳເລັດ</span>' +
+                        // ⭐ ໄອຄອນ 'check_circle'
+                        '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">' +
+                            '<span class="material-symbols-outlined text-[12px]">check_circle</span>' +
+                            '<span>ປ່ຽນສຳເລັດ</span>' +
+                        '</span>' +
                         '<span class="material-symbols-outlined text-slate-300 group-hover:text-slate-600 text-sm">chevron_right</span>' +
                     '</div>' +
                 '</div>';
@@ -372,7 +385,7 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     container.innerHTML = html;
 }
 
-// 6. MODAL INSPECTOR ສະແດງ TIMELINE & ຕຳແໜ່ງສຸດທ້າຍ
+// ⭐ 6. MODAL INSPECTOR ສະແດງ TIMELINE & ຕຳແໜ່ງສຸດທ້າຍ
 function openSwapChainInspectorModal(dateStr) {
     var sheets = getSheetsForMonth(dateStr);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
@@ -404,8 +417,14 @@ function openSwapChainInspectorModal(dateStr) {
                             '<div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 z-10">' + (idx + 1) + '</div>' +
                             '<div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">' +
                                 '<div class="flex justify-between items-center mb-1">' +
-                                    '<span class="font-bold text-slate-800">' + s.fromName + ' ⇄ ' + s.toName + '</span>' +
-                                    '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">ສຳເລັດ</span>' +
+                                    '<span class="font-bold text-slate-800 flex items-center gap-1.5">' +
+                                        s.fromName +
+                                        '<span class="material-symbols-outlined text-[13px] text-slate-400">sync_alt</span>' +
+                                        s.toName +
+                                    '</span>' +
+                                    '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">' +
+                                        '<span class="material-symbols-outlined text-[11px]">check_circle</span> ສຳເລັດ' +
+                                    '</span>' +
                                 '</div>' +
                                 '<p class="text-slate-600 text-[11px] leading-relaxed">' +
                                     '• <strong>' + s.fromName + '</strong> ສະລັບກະກັບ <strong>' + s.toName + '</strong> (' + (s.fromShift || 'ກະເດີມ') + ' ↔ ' + (s.toShift || 'ກະເດີມ') + ')' +
@@ -452,7 +471,7 @@ function openSwapChainInspectorModal(dateStr) {
     modal.innerHTML = '<div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col font-lao animate-in fade-in zoom-in-95 duration-150">' +
         '<div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">' +
             '<div class="flex items-center gap-2">' +
-                '<span class="material-symbols-outlined text-amber-400 text-xl">route</span>' +
+                '<span class="material-symbols-outlined text-amber-400 text-xl">alt_route</span>' +
                 '<div>' +
                     '<h3 class="font-bold text-sm">ເສັ້ນທາງການປ່ຽນກະ & ຜົນຮັບຕົວຈິງ</h3>' +
                     '<p class="text-[10px] text-slate-300">ປະຈຳວັນທີ: ' + dateStr + '</p>' +
@@ -483,7 +502,7 @@ function closeSwapChainInspectorModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ ເມື່ອຜູ້ໃຊ້ຄລິກເລືອກວັນທີເອງ
+// ເມື່ອຜູ້ໃຊ້ຄລິກເລືອກວັນທີເອງ
 document.addEventListener('change', function(e) {
     if (e.target && e.target.id === 'dashDateInput') {
         window._dashUserHasPickedDate = true;
@@ -491,12 +510,12 @@ document.addEventListener('change', function(e) {
     }
 });
 
-// ⭐ Auto-load ເມື່ອກົດ Tab Dashboard
+// Auto-load ເມື່ອກົດ Tab Dashboard
 var _origTabForDash = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForDash === 'function') _origTabForDash(tab);
     if (tab === 'dashboard') {
-        window._dashUserHasPickedDate = false; // ຣີເຊັດໃຫ້ຕິດຕາມມື້ນີ້ສະເໝີເມື່ອກົດເຂົ້າ Dashboard
+        window._dashUserHasPickedDate = false;
         setTimeout(renderDashboard, 50);
     }
 };
