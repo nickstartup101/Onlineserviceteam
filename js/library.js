@@ -1,10 +1,9 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (FULLY FIXED & ROBUST) =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (REALTIME NOTIFICATIONS) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
 window.currentLibraryImageBase64 = '';
 
-// ໝວດໝູ່ເລີ່ມຕົ້ນຂອງລະບົບ
 var DEFAULT_LIBRARY_CATEGORIES = [
     'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
     'QR ສາກົນ (WeChat, Alipay, PromptPay)',
@@ -13,7 +12,7 @@ var DEFAULT_LIBRARY_CATEGORIES = [
     'ຜະລິດຕະພັນອື່ນໆ'
 ];
 
-// 1. ດຶງຂໍ້ມູນ Library ຈາກ Supabase (ພ້ອມ LocalStorage Fallback)
+// 1. ດຶງຂໍ້ມູນ Library ຈາກ Supabase
 async function loadLibraryItems() {
     try {
         var localData = localStorage.getItem('ot_library_items');
@@ -46,16 +45,162 @@ async function loadLibraryItems() {
                 });
                 localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
             }
-        } catch (err) {
-            console.warn("Could not fetch library_items from cloud:", err);
-        }
+        } catch (err) {}
     }
 
     refreshCategoryDatalistAndFilter();
     renderLibraryGrid();
+    loadNotificationsFromCloud(); // ດຶງການແຈ້ງເຕືອນລ່າສຸດພ້ອມກັນ
 }
 
-// 2. BRAND LOGOS & BADGES
+// ⭐ 2. ລະບົບດຶງ ແລະ ສະແດງການແຈ້ງເຕືອນຈາກ CLOUD SUPABASE ຫາ USER ທຸກຄົນ
+async function loadNotificationsFromCloud() {
+    if (!window.supabaseClient) return;
+    try {
+        var res = await window.supabaseClient
+            .from('notifications')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(25);
+
+        if (!res.error && res.data) {
+            var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+            var myCode = currentUser ? currentUser.user : '';
+
+            window.systemNotifications = res.data.map(function(d) {
+                var readArr = Array.isArray(d.read_by) ? d.read_by : (typeof d.read_by === 'string' ? [d.read_by] : []);
+                return {
+                    id: d.id,
+                    title: d.title,
+                    message: d.message,
+                    tag: d.tag || 'ແຈ້ງເຕືອນ',
+                    date: d.created_at ? new Date(d.created_at).toLocaleString('lo-LA') : '',
+                    readBy: readArr
+                };
+            });
+
+            try {
+                localStorage.setItem('ot_system_notifications', JSON.stringify(window.systemNotifications));
+            } catch(e) {}
+
+            renderAppNotificationBell();
+        }
+    } catch(err) {
+        console.warn("Could not load notifications from cloud:", err);
+    }
+}
+
+// ⭐ 3. RENDER ປຸ່ມກະດິ່ງ 🔔 ແລະ DROPDOWN ການແຈ້ງເຕືອນ
+function renderAppNotificationBell() {
+    var notifs = window.systemNotifications || [];
+    var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+    var myCode = currentUser ? currentUser.user : '';
+
+    // ນັບສະເພາະອັນທີ່ User ນີ້ຍັງບໍ່ທັນໄດ້ອ່ານ
+    var unreadCount = notifs.filter(function(n) {
+        return !n.readBy || n.readBy.indexOf(myCode) === -1;
+    }).length;
+
+    var badgeEl = document.getElementById('notifBadge');
+    if (badgeEl) {
+        if (unreadCount > 0) {
+            badgeEl.innerText = unreadCount > 99 ? '99+' : unreadCount;
+            badgeEl.classList.remove('hidden');
+            badgeEl.classList.add('flex');
+        } else {
+            badgeEl.classList.add('hidden');
+            badgeEl.classList.remove('flex');
+        }
+    }
+
+    var listContainer = document.getElementById('notifDropdownList');
+    if (listContainer) {
+        if (notifs.length === 0) {
+            listContainer.innerHTML = '<p class="text-slate-400 text-xs italic py-4 text-center font-lao">ບໍ່ມີການແຈ້ງເຕືອນ</p>';
+            return;
+        }
+
+        var html = '';
+        notifs.slice(0, 15).forEach(function(n) {
+            var isUnread = !n.readBy || n.readBy.indexOf(myCode) === -1;
+            html += '<div class="p-2.5 rounded-xl border transition flex items-start gap-2.5 font-lao ' + (isUnread ? 'bg-red-50/50 border-red-200' : 'bg-slate-50 border-slate-200') + '">' +
+                        '<div class="w-7 h-7 rounded-lg bg-brand-red/10 text-brand-red flex items-center justify-center shrink-0 mt-0.5">' +
+                            '<span class="material-symbols-outlined text-sm">notifications</span>' +
+                        '</div>' +
+                        '<div class="flex-1 min-w-0 text-xs">' +
+                            '<div class="flex justify-between items-start gap-1">' +
+                                '<h5 class="font-bold text-slate-800 text-xs leading-snug truncate">' + n.title + '</h5>' +
+                                (isUnread ? '<span class="w-2 h-2 rounded-full bg-brand-red shrink-0 mt-1"></span>' : '') +
+                            '</div>' +
+                            '<p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">' + n.message + '</p>' +
+                            '<span class="text-[9px] text-slate-400 block mt-1">' + n.date + '</span>' +
+                        '</div>' +
+                    '</div>';
+        });
+        listContainer.innerHTML = html;
+    }
+}
+
+// ໝາຍວ່າອ່ານແລ້ວທັງໝົດ
+async function markAllNotificationsAsRead() {
+    var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+    var myCode = currentUser ? currentUser.user : '';
+    if (!myCode) return;
+
+    (window.systemNotifications || []).forEach(function(n) {
+        if (!n.readBy) n.readBy = [];
+        if (n.readBy.indexOf(myCode) === -1) n.readBy.push(myCode);
+    });
+
+    renderAppNotificationBell();
+
+    if (window.supabaseClient) {
+        try {
+            var res = await window.supabaseClient.from('notifications').select('id, read_by');
+            if (res.data) {
+                for (var i = 0; i < res.data.length; i++) {
+                    var rArr = Array.isArray(res.data[i].read_by) ? res.data[i].read_by : [];
+                    if (rArr.indexOf(myCode) === -1) {
+                        rArr.push(myCode);
+                        await window.supabaseClient.from('notifications').update({ read_by: rArr }).eq('id', res.data[i].id);
+                    }
+                }
+            }
+        } catch(e) {}
+    }
+}
+
+function toggleNotificationDropdown() {
+    var dd = document.getElementById('notifDropdown');
+    if (dd) dd.classList.toggle('hidden');
+}
+
+// ⭐ 4. REALTIME LISTENER ດັກຈັບການແຈ້ງເຕືອນຈາກ USER ອື່ນໆ ແບບສົດໆ 0 ວິນາທີ
+function initRealtimeNotificationListener() {
+    if (!window.supabaseClient) return;
+    try {
+        window.supabaseClient
+            .channel('public:notifications_realtime')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, function(payload) {
+                var newNotif = payload.new;
+                var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
+                var myName = currentUser ? (currentUser.nameLao || currentUser.fullName) : '';
+
+                // ຖ້າແມ່ນຄົນອື່ນເປັນຜູ້ສ້າງ ➔ ສະແດງ Toast Popup ເຕືອນທັນທີ!
+                if (newNotif && newNotif.created_by !== myName) {
+                    if (typeof showToast === 'function') {
+                        showToast(newNotif.title, newNotif.message, 'info');
+                    }
+                    loadNotificationsFromCloud(); // ອັບເດດເລກກະດິ່ງທັນທີ
+                }
+            })
+            .subscribe();
+    } catch(e) {
+        console.warn("Realtime notification listener warning:", e);
+    }
+}
+
+// 5. BRAND LOGOS & BADGES
 function getSingleBrandLogo(titleInput, categoryInput) {
     var title = (titleInput || '').toLowerCase();
     var cat = (categoryInput || '').toLowerCase();
@@ -134,7 +279,7 @@ function renderBrandOrCategoryBadge(title, category) {
     return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ</span>';
 }
 
-// ⭐ 3. ດຶງ ແລະ ບັນທຶກໝວດໝູ່ແບບຄົງທີ່ (RESOLVED STORAGE)
+// 6. ດຶງລາຍການໝວດໝູ່
 function getUniqueCategoriesList() {
     var catList = [];
     try {
@@ -146,7 +291,6 @@ function getUniqueCategoriesList() {
         catList = DEFAULT_LIBRARY_CATEGORIES.slice();
     }
 
-    // ດຶງໝວດໝູ່ທີ່ຕິດມາກັບບົດຄວາມ
     (window.libraryItems || []).forEach(function(item) {
         var c = (item.category || '').trim();
         if (c && catList.indexOf(c) === -1) {
@@ -154,7 +298,6 @@ function getUniqueCategoriesList() {
         }
     });
 
-    // ຕັດໝວດໝູ່ທີ່ຖືກລຶບອອກ
     var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
     catList = catList.filter(function(c) { return deletedCats.indexOf(c) === -1; });
 
@@ -166,11 +309,10 @@ function getUniqueCategoriesList() {
     return catList;
 }
 
-// ⭐ 4. ອັບເດດ DROPDOWN ໝວດໝູ່ທັງໝົດ
+// 7. ອັບເດດ DROPDOWN ໝວດໝູ່
 function refreshCategoryDatalistAndFilter() {
     var allCats = getUniqueCategoriesList();
 
-    // 1. Dropdown Filter ດ້ານເທິງ
     var filterSelect = document.getElementById('libCategoryFilter');
     if (filterSelect) {
         var currentVal = filterSelect.value || 'ALL';
@@ -184,7 +326,6 @@ function refreshCategoryDatalistAndFilter() {
         });
     }
 
-    // 2. Dropdown ໃນ Modal ເພີ່ມ/ແກ້ໄຂ (#libItemCategorySelect)
     var modalCatSelect = document.getElementById('libItemCategorySelect');
     if (modalCatSelect) {
         var currentModalVal = modalCatSelect.value;
@@ -221,7 +362,7 @@ function handleCategorySelectChange() {
     }
 }
 
-// ⭐ 5. ຈັດການໝວດໝູ່ (MODAL: ເພີ່ມ, ແກ້ໄຂ, ລຶບ)
+// 8. ຈັດການໝວດໝູ່ (MODAL)
 function openManageCategoryModal() {
     renderManageCategoryList();
     var modal = document.getElementById('manageCategoryModal');
@@ -265,7 +406,6 @@ function renderManageCategoryList() {
     container.innerHTML = html;
 }
 
-// ⭐ ເພີ່ມໝວດໝູ່ໃໝ່ (ບັນທຶກເຂົ້າ STORAGE 100%)
 function handleAddNewCategoryQuick() {
     var input = document.getElementById('newCategoryQuickInput');
     var val = (input ? input.value : '').trim();
@@ -290,7 +430,6 @@ function handleAddNewCategoryQuick() {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ເພີ່ມໝວດໝູ່ "' + val + '" ຮຽບຮ້ອຍແລ້ວ!', 'success');
 }
 
-// ⭐ ແກ້ໄຂຊື່ໝວດໝູ່ (RENAME ໄດ້ 100%)
 async function promptEditCategorySafe(encodedCat) {
     var oldName = decodeURIComponent(encodedCat);
     var newName = prompt('ປ້ອນຊື່ໝວດໝູ່ໃໝ່ສຳລັບ "' + oldName + '":', oldName);
@@ -298,7 +437,6 @@ async function promptEditCategorySafe(encodedCat) {
 
     newName = newName.trim();
 
-    // 1. ອັບເດດລາຍການໝວດໝູ່
     var cats = getUniqueCategoriesList().map(function(c) { return c === oldName ? newName : c; });
     if (cats.indexOf(newName) === -1) cats.push(newName);
     localStorage.setItem('ot_all_categories', JSON.stringify(cats));
@@ -308,7 +446,6 @@ async function promptEditCategorySafe(encodedCat) {
     deletedCats = deletedCats.filter(function(c) { return c !== newName; });
     localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
 
-    // 2. ອັບເດດທຸກບົດຄວາມທີ່ໃຊ້ໝວດນີ້
     var affectedCount = 0;
     (window.libraryItems || []).forEach(function(item) {
         if ((item.category || '').trim() === oldName) {
@@ -319,7 +456,6 @@ async function promptEditCategorySafe(encodedCat) {
     });
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
-    // 3. ອັບເດດຂຶ້ນ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('library_items').update({ 
@@ -338,7 +474,6 @@ async function promptEditCategorySafe(encodedCat) {
     }
 }
 
-// ⭐ ລຶບໝວດໝູ່
 async function promptDeleteCategorySafe(encodedCat, count) {
     var catName = decodeURIComponent(encodedCat);
     var confirmMsg = count > 0
@@ -387,7 +522,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     }
 }
 
-// 6. RENDER CARDS GRID
+// 9. RENDER CARDS GRID
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -460,7 +595,7 @@ function toggleShowOutdated() {
     renderLibraryGrid();
 }
 
-// ⭐ 7. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່ (NULL-SAFE 100%)
+// 10. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່
 function openAddLibraryModal() {
     refreshCategoryDatalistAndFilter();
 
@@ -494,7 +629,7 @@ function openAddLibraryModal() {
     if (modal) modal.classList.remove('hidden');
 }
 
-// ⭐ 8. MODAL ແກ້ໄຂຫົວຂໍ້ (NULL-SAFE 100% + ເປີດຂຶ້ນແນ່ນອນ)
+// 11. MODAL ແກ້ໄຂຫົວຂໍ້
 function openEditLibraryModal(id) {
     refreshCategoryDatalistAndFilter();
 
@@ -560,7 +695,7 @@ function closeLibraryModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ 9. ບັນທຶກຂໍ້ມູນ
+// ⭐ 12. ບັນທຶກຫົວຂໍ້ & ສົ່ງແຈ້ງເຕືອນ REALTIME ຫາ USER ອື່ນໆທຸກຄົນ
 async function handleSaveLibraryItem() {
     var idEl = document.getElementById('libItemId');
     var id = idEl ? idEl.value : '';
@@ -622,6 +757,7 @@ async function handleSaveLibraryItem() {
 
     localStorage.setItem('ot_library_items', JSON.stringify(window.libraryItems));
 
+    // 1. ອັບເດດຖານຂໍ້ມູນ
     if (window.supabaseClient) {
         try {
             var payload = {
@@ -644,21 +780,9 @@ async function handleSaveLibraryItem() {
         } catch (err) {}
     }
 
-    // ແຈ້ງເຕືອນ Realtime
+    // ⭐ 2. ສົ່ງແຈ້ງເຕືອນຂຶ້ນ SUPABASE ເພື່ອໃຫ້ USER ອື່ນໆໄດ້ຮັບທັນທີ!
     var notifTitle = isEdit ? ('ອັບເດດຂໍ້ມູນ: ' + title) : ('ເພີ່ມຂໍ້ມູນໃໝ່: ' + title);
     var notifMessage = authorName + ' ໄດ້ອັບເດດຂໍ້ມູນ "' + title + '" ໃນໝວດ [' + category + ']';
-
-    var notifEntry = {
-        id: Date.now(),
-        title: notifTitle,
-        message: notifMessage,
-        tag: 'Library ຄວາມຮູ້',
-        date: new Date().toLocaleString('lo-LA'),
-        readBy: [user ? user.user : 'me']
-    };
-    if (!window.systemNotifications) window.systemNotifications = [];
-    window.systemNotifications.unshift(notifEntry);
-    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
 
     if (window.supabaseClient) {
         try {
@@ -668,7 +792,7 @@ async function handleSaveLibraryItem() {
                 tag: 'Library ຄວາມຮູ້',
                 created_by: authorName,
                 created_at: new Date().toISOString(),
-                read_by: [user ? user.user : 'me']
+                read_by: [user ? user.user : 'me'] // ຜູ້ສ້າງອ່ານແລ້ວ, ຄົນອື່ນຍັງບໍ່ທັນອ່ານ
             }]);
         } catch (nErr) {}
     }
@@ -676,10 +800,12 @@ async function handleSaveLibraryItem() {
     closeLibraryModal();
     refreshCategoryDatalistAndFilter();
     renderLibraryGrid();
+    loadNotificationsFromCloud(); // ຣີເຟຣຊກະດິ່ງ
+
     if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
 }
 
-// ⭐ 10. ລຶບຫົວຂໍ້ບົດຄວາມ
+// 13. ລຶບຫົວຂໍ້ບົດຄວາມ
 async function promptDeleteLibraryItem(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -701,7 +827,7 @@ async function promptDeleteLibraryItem(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
 }
 
-// 11. DETAIL MODAL
+// 14. DETAIL MODAL
 function openLibraryDetailModal(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -808,10 +934,11 @@ async function toggleItemOutdated(id) {
 
     closeLibraryDetailModal();
     renderLibraryGrid();
+    loadNotificationsFromCloud();
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
 }
 
-// 12. ຮູບພາບ
+// 15. ຮູບພາບ
 function handleLibraryImageUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
@@ -854,7 +981,7 @@ function removeLibraryImagePreview() {
     if (fileInput) fileInput.value = '';
 }
 
-// 13. SEARCH BAR
+// 16. SEARCH
 function openSearchDropdown() {
     renderSearchDropdownList();
     var dropdown = document.getElementById('libSearchDropdown');
@@ -949,19 +1076,28 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ⭐ Auto-load ເມື່ອກົດ Tab
+// ⭐ Auto-load
 var _origTabForLib = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForLib === 'function') _origTabForLib(tab);
-    if (tab === 'library') loadLibraryItems();
+    if (tab === 'library') {
+        loadLibraryItems();
+    }
 };
 
 document.addEventListener('DOMContentLoaded', function() {
     loadLibraryItems();
+    loadNotificationsFromCloud();
+    setTimeout(initRealtimeNotificationListener, 1000);
 });
 
 // ຜູກ Functions ເຂົ້າ Window
 window.loadLibraryItems = loadLibraryItems;
+window.loadNotificationsFromCloud = loadNotificationsFromCloud;
+window.renderAppNotificationBell = renderAppNotificationBell;
+window.markAllNotificationsAsRead = markAllNotificationsAsRead;
+window.toggleNotificationDropdown = toggleNotificationDropdown;
+window.initRealtimeNotificationListener = initRealtimeNotificationListener;
 window.getSingleBrandLogo = getSingleBrandLogo;
 window.renderBrandOrCategoryBadge = renderBrandOrCategoryBadge;
 window.getUniqueCategoriesList = getUniqueCategoriesList;
