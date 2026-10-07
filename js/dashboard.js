@@ -1,4 +1,4 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR & AUTO-SWAP ENGINE (GOOGLE MATERIAL SYMBOLS) =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & STAFF PROFILE POPOVER =================
 
 // 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
@@ -57,7 +57,73 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
-// 0.6 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
+// ⭐ 0.6 ຟັງຊັນເປີດເບິ່ງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
+function openStaffInfoModal(encodedOrRawName) {
+    var nameLao = decodeURIComponent(encodedOrRawName || '');
+    var user = (window.users || []).find(function(u) {
+        return isDashNameMatch(u.nameLao, nameLao) || isDashNameMatch(u.fullName, nameLao) || isDashNameMatch(u.user, nameLao);
+    });
+
+    var defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
+
+    var photoEl = document.getElementById('staffInfoModalPhoto');
+    var leaderBadgeEl = document.getElementById('staffInfoModalLeaderBadge');
+    var nameEl = document.getElementById('staffInfoModalName');
+    var fullNameEl = document.getElementById('staffInfoModalFullName');
+    var codeEl = document.getElementById('staffInfoModalCode');
+    var deptEl = document.getElementById('staffInfoModalDept');
+    var posEl = document.getElementById('staffInfoModalPos');
+    var phoneEl = document.getElementById('staffInfoModalPhone');
+    var callBtnEl = document.getElementById('staffInfoModalCallBtn');
+
+    if (user) {
+        if (photoEl) photoEl.src = user.photo || defaultAvatar;
+        if (leaderBadgeEl) {
+            if (user.isLeader) leaderBadgeEl.classList.remove('hidden');
+            else leaderBadgeEl.classList.add('hidden');
+        }
+        if (nameEl) nameEl.innerText = user.nameLao || nameLao;
+        if (fullNameEl) fullNameEl.innerText = user.fullName || user.nameLao || '';
+        if (codeEl) codeEl.innerText = user.user || 'BCEL';
+        if (deptEl) deptEl.innerText = user.dept || user.department || 'ຂະແໜງບໍລິການອອນລາຍ';
+        if (posEl) posEl.innerText = user.isLeader ? 'ຫົວໜ້າກະປະຈຳການ (Shift Leader)' : (user.position || 'ພະນັກງານວິຊາການ');
+
+        var phoneStr = (user.phone && user.phone.trim()) ? user.phone.trim() : 'ຍັງບໍ່ໄດ້ລະບຸເບີໂທ';
+        if (phoneEl) phoneEl.innerText = phoneStr;
+        if (callBtnEl) {
+            if (user.phone && user.phone.trim()) {
+                callBtnEl.href = 'tel:' + user.phone.replace(/\s+/g, '');
+                callBtnEl.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                callBtnEl.href = '#';
+                callBtnEl.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+    } else {
+        if (photoEl) photoEl.src = defaultAvatar;
+        if (leaderBadgeEl) leaderBadgeEl.classList.add('hidden');
+        if (nameEl) nameEl.innerText = nameLao;
+        if (fullNameEl) fullNameEl.innerText = nameLao;
+        if (codeEl) codeEl.innerText = '-';
+        if (deptEl) deptEl.innerText = 'ຂະແໜງບໍລິການອອນລາຍ';
+        if (posEl) posEl.innerText = 'ພະນັກງານວິຊາການ';
+        if (phoneEl) phoneEl.innerText = 'ຍັງບໍ່ໄດ້ລະບຸເບີໂທ';
+        if (callBtnEl) {
+            callBtnEl.href = '#';
+            callBtnEl.classList.add('opacity-50', 'pointer-events-none');
+        }
+    }
+
+    var modal = document.getElementById('staffInfoModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeStaffInfoModal() {
+    var modal = document.getElementById('staffInfoModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+// 0.7 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
 function autoApplyCompletedSwapsForDate(targetDate) {
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
@@ -152,6 +218,7 @@ function renderDashboard() {
     var targetDate = dateInput ? dateInput.value : getTodayLocalDateStr();
 
     updateDayTypeBadge(targetDate);
+    updateLiveShiftIndicators(targetDate);
     autoApplyCompletedSwapsForDate(targetDate);
 
     var sheets = getSheetsForMonth(targetDate);
@@ -168,6 +235,25 @@ function renderDashboard() {
     renderShiftCards(targetDate, sheets, swappedStaffSet);
     renderLeavesToday(targetDate);
     renderDashboardSwapsWithChains(targetDate, swapsToday);
+}
+
+// 1.1 ອັບເດດປ້າຍ LIVE ຕາມໂມງປັດຈຸບັນ
+function updateLiveShiftIndicators(targetDate) {
+    var todayStr = getTodayLocalDateStr();
+    var isToday = (targetDate === todayStr);
+    var hour = new Date().getHours();
+
+    var s1Live = isToday && (hour >= 8 && hour < 16);
+    var s2Live = isToday && (hour >= 12 && hour < 20);
+    var s3Live = isToday && (hour >= 20 || hour < 8);
+
+    var lb1 = document.getElementById('liveBadge1');
+    var lb2 = document.getElementById('liveBadge2');
+    var lb3 = document.getElementById('liveBadge3');
+
+    if (lb1) { lb1.classList.toggle('hidden', !s1Live); lb1.classList.toggle('inline-flex', s1Live); }
+    if (lb2) { lb2.classList.toggle('hidden', !s2Live); lb2.classList.toggle('inline-flex', s2Live); }
+    if (lb3) { lb3.classList.toggle('hidden', !s3Live); lb3.classList.toggle('inline-flex', s3Live); }
 }
 
 // 2. ອັບເດດ BADGE ວັນທີ
@@ -194,11 +280,11 @@ function updateDayTypeBadge(dateStr) {
 
     var actDateLabel = document.getElementById('dashActivityDateLabel');
     if (actDateLabel) {
-        actDateLabel.innerText = 'ວັນທີ ' + parts[2] + '/' + (parts[1] < 10 ? '0' + parts[1] : parts[1]) + '/' + parts[0];
+        actDateLabel.innerText = 'ວັນທີ ' + (parts[2] < 10 ? '0' + parts[2] : parts[2]) + '/' + (parts[1] < 10 ? '0' + parts[1] : parts[1]) + '/' + parts[0];
     }
 }
 
-// 3. RENDER CARDS ທັງ 3 ກະ (ໄອຄອນປ່ຽນກະເປັນ MATERIAL SYMBOL)
+// ⭐ 3. RENDER CARDS ທັງ 3 ກະ (ຄລິກຊື່ພະນັກງານເພື່ອເບິ່ງຂໍ້ມູນໄດ້ທຸກຄົນ)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -246,20 +332,20 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
                     var isLeader = isStaffLeader(name);
                     var isSwapped = swappedStaffSet.has(name);
                     var avatarHtml = getStaffPhotoHtml(name);
+                    var safeName = encodeURIComponent(name);
 
                     var leaderDot = isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : '';
-                    
-                    // ⭐ ໄອຄອນປ່ຽນກະມາໃຊ້ Material Symbol 'sync_alt'
                     var swapIcon = isSwapped 
                         ? '<span class="material-symbols-outlined text-[13px] text-amber-600 ml-0.5 leading-none align-middle" title="ປ່ຽນກະມາ">sync_alt</span>' 
                         : '';
 
-                    var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50' : 'border-slate-200 bg-slate-50';
+                    var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100/60' : 'border-slate-200 bg-slate-50 hover:bg-slate-100';
                     var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
 
-                    pillsHtml += '<span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs ' + borderClass + ' ' + textClass + '">' +
+                    // ⭐ ປຸ່ມຄລິກເປີດ openStaffInfoModal
+                    pillsHtml += '<button type="button" onclick="openStaffInfoModal(\'' + safeName + '\')" class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs cursor-pointer hover:border-brand-red hover:scale-[1.03] transition ' + borderClass + ' ' + textClass + '" title="ກົດເພື່ອເບິ່ງຂໍ້ມູນພະນັກງານ">' +
                                     avatarHtml + '<span>' + name + '</span>' + leaderDot + swapIcon +
-                                 '</span>';
+                                 '</button>';
                 });
                 pillsHtml += '</div>';
 
@@ -291,9 +377,10 @@ function renderLeavesToday(targetDate) {
     }
 
     leaves.forEach(function(l) {
-        container.innerHTML += '<div class="p-2.5 bg-red-50/60 border border-red-100 rounded-xl flex justify-between items-center text-xs font-lao">' +
+        var safeName = encodeURIComponent(l.nameLao);
+        container.innerHTML += '<div onclick="openStaffInfoModal(\'' + safeName + '\')" class="p-2.5 bg-red-50/60 hover:bg-red-50 border border-red-100 rounded-xl flex justify-between items-center text-xs font-lao cursor-pointer transition">' +
             '<div>' +
-                '<span class="font-bold text-brand-red">' + l.nameLao + '</span>' +
+                '<span class="font-bold text-brand-red hover:underline">' + l.nameLao + '</span>' +
                 '<span class="text-slate-500 text-[11px] ml-2">[' + (l.shift || 'ທຸກກະ') + ']</span>' +
                 (l.reason ? '<p class="text-[10px] text-slate-400 italic mt-0.5">"' + l.reason + '"</p>' : '') +
             '</div>' +
@@ -302,7 +389,7 @@ function renderLeavesToday(targetDate) {
     });
 }
 
-// ⭐ 5. RENDER ລາຍການປ່ຽນກະ (GOOGLE MATERIAL SYMBOLS ແທ້ 100%)
+// 5. RENDER ລາຍການປ່ຽນກະ (GOOGLE MATERIAL SYMBOLS)
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -328,7 +415,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
 
     var html = '';
 
-    // ປຸ່ມ Route Inspector
     html += '<div class="flex justify-between items-center pb-1 mb-1">' +
                 '<span class="text-[11px] text-slate-500 font-bold">ສຳເລັດ ' + swapsToday.length + ' ລາຍການ</span>' +
                 '<button type="button" onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition">' +
@@ -342,7 +428,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
         var sA = formatShiftTag(s.fromShift);
         var sB = formatShiftTag(s.toShift);
 
-        // ⭐ ໄອຄອນ 'sync_alt' ແທນລູກສອນ ⇄
         var remarkTag = (sA && sB) 
             ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">' +
                 '<span>' + sA + '</span>' +
@@ -351,7 +436,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
               '</span>'
             : '';
 
-        // ⭐ ໄອຄອນ 'autorenew' ແທນ Emoji 🔄
         var chainedBadge = isChained 
             ? '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">' +
                 '<span class="material-symbols-outlined text-[12px] leading-none">autorenew</span>' +
@@ -363,7 +447,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
                     '<div class="flex-1 min-w-0">' +
                         '<div class="flex items-center gap-1.5 flex-wrap text-xs">' +
                             '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.fromName + '</span>' +
-                            // ⭐ ໄອຄອນ 'arrow_forward' ແທນ ➔
                             '<span class="material-symbols-outlined text-[13px] text-slate-400">arrow_forward</span>' +
                             '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.toName + '</span>' +
                             remarkTag +
@@ -372,7 +455,6 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
                         (s.reason ? '<p class="text-[10px] text-slate-400 truncate mt-0.5 italic">"' + s.reason + '"</p>' : '') +
                     '</div>' +
                     '<div class="flex items-center gap-1 shrink-0">' +
-                        // ⭐ ໄອຄອນ 'check_circle'
                         '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">' +
                             '<span class="material-symbols-outlined text-[12px]">check_circle</span>' +
                             '<span>ປ່ຽນສຳເລັດ</span>' +
@@ -385,7 +467,7 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     container.innerHTML = html;
 }
 
-// ⭐ 6. MODAL INSPECTOR ສະແດງ TIMELINE & ຕຳແໜ່ງສຸດທ້າຍ
+// 6. MODAL INSPECTOR ສະແດງ TIMELINE & ຕຳແໜ່ງສຸດທ້າຍ
 function openSwapChainInspectorModal(dateStr) {
     var sheets = getSheetsForMonth(dateStr);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
@@ -439,6 +521,7 @@ function openSwapChainInspectorModal(dateStr) {
         var currentSlot = 'ພັກຜ່ອນ (OFF)';
         var slotTime = '-';
         var slotBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+        var safeName = encodeURIComponent(name);
 
         sheets.forEach(function(sheet) {
             var dayData = (sheet.data && sheet.data[dateStr]) ? sheet.data[dateStr] : null;
@@ -459,9 +542,9 @@ function openSwapChainInspectorModal(dateStr) {
             }
         });
 
-        finalLocationHtml += '<div class="p-3 bg-white border border-slate-200 rounded-2xl flex justify-between items-center shadow-2xs">' +
+        finalLocationHtml += '<div onclick="closeSwapChainInspectorModal(); openStaffInfoModal(\'' + safeName + '\');" class="p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-2xl flex justify-between items-center shadow-2xs cursor-pointer transition">' +
                                 '<div>' +
-                                    '<h5 class="font-bold text-slate-800 text-xs">' + name + '</h5>' +
+                                    '<h5 class="font-bold text-slate-800 text-xs flex items-center gap-1">' + getStaffPhotoHtml(name) + '<span>' + name + '</span></h5>' +
                                     '<p class="text-[10px] text-slate-400 mt-0.5">ເວລາເຂົ້າວຽກ: ' + slotTime + '</p>' +
                                 '</div>' +
                                 '<span class="px-2.5 py-1 rounded-xl text-[11px] font-bold border ' + slotBadgeClass + '">' + currentSlot + '</span>' +
@@ -528,6 +611,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ຜູກ Functions ເຂົ້າ Window
 window.renderDashboard = renderDashboard;
 window.getTodayLocalDateStr = getTodayLocalDateStr;
+window.openStaffInfoModal = openStaffInfoModal;
+window.closeStaffInfoModal = closeStaffInfoModal;
+window.updateLiveShiftIndicators = updateLiveShiftIndicators;
 window.autoApplyCompletedSwapsForDate = autoApplyCompletedSwapsForDate;
 window.updateDayTypeBadge = updateDayTypeBadge;
 window.renderShiftCards = renderShiftCards;
