@@ -1,9 +1,9 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (PDF & IN-APP VIEWER) =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (BLOB PDF VIEWER) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
 window.currentLibraryImageBase64 = '';
-window.currentLibraryFileType = ''; // 'image' ຫຼື 'pdf'
+window._currentPdfBlobUrl = null;
 
 var DEFAULT_LIBRARY_CATEGORIES = [
     'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
@@ -16,7 +16,38 @@ var DEFAULT_LIBRARY_CATEGORIES = [
 // Helper ກວດສອບວ່າແມ່ນໄຟລ໌ PDF ຫຼື ບໍ່
 function isPdfFile(urlOrBase64) {
     if (!urlOrBase64) return false;
-    return urlOrBase64.indexOf('data:application/pdf') !== -1 || urlOrBase64.toLowerCase().indexOf('.pdf') !== -1;
+    return urlOrBase64.indexOf('data:application/pdf') !== -1 || 
+           urlOrBase64.toLowerCase().indexOf('.pdf') !== -1 ||
+           urlOrBase64.indexOf('blob:') !== -1;
+}
+
+// ⭐ HELPER ແປງ BASE64 ເປັນ BLOB URL (ແກ້ໄຂບັນຫາ CHROME ບລັອກ PDF 100%)
+function getPdfBlobUrl(dataUriOrBase64) {
+    try {
+        if (!dataUriOrBase64) return '';
+        if (dataUriOrBase64.startsWith('http://') || dataUriOrBase64.startsWith('https://') || dataUriOrBase64.startsWith('blob:')) {
+            return dataUriOrBase64;
+        }
+
+        var base64 = dataUriOrBase64;
+        var commaIdx = dataUriOrBase64.indexOf(',');
+        if (commaIdx !== -1) {
+            base64 = dataUriOrBase64.slice(commaIdx + 1);
+        }
+        base64 = base64.replace(/\s/g, ''); // ຕັດ whitespace ອອກ
+
+        var binaryString = atob(base64);
+        var len = binaryString.length;
+        var bytes = new Uint8Array(len);
+        for (var i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        var blob = new Blob([bytes], { type: 'application/pdf' });
+        return URL.createObjectURL(blob);
+    } catch (err) {
+        console.error("Error creating PDF blob URL:", err);
+        return dataUriOrBase64;
+    }
 }
 
 // 1. ດຶງຂໍ້ມູນ Library ຈາກ Supabase
@@ -60,7 +91,7 @@ async function loadLibraryItems() {
     updateAppNotificationsWithLibrary();
 }
 
-// 2. MUTATION OBSERVER: ປ້ອງກັນແຈ້ງເຕືອນຫາຍ
+// 2. MUTATION OBSERVER
 var _isInjectingNotifs = false;
 function setupNotificationObserver() {
     var listContainer = document.getElementById('notifDropdownList');
@@ -534,7 +565,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     }
 }
 
-// ⭐ 8. RENDER CARDS GRID (ຮອງຮັບທັງຮູບພາບ ແລະ ປ້າຍເອກະສານ PDF)
+// 8. RENDER CARDS GRID
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -572,7 +603,6 @@ function renderLibraryGrid() {
         var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
         var brandSymbolsHtml = renderBrandOrCategoryBadge(item.title, item.category);
 
-        // ⭐ ກວດສອບໄຟລ໌ແນບ (ຮູບພາບ ຫຼື PDF)
         var attachmentHtml = '';
         if (item.imageUrl) {
             if (isPdfFile(item.imageUrl)) {
@@ -852,7 +882,7 @@ async function promptDeleteLibraryItem(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
 }
 
-// ⭐ 13. DETAIL MODAL (IN-APP VIEWER: ເປີດອ່ານ PDF ແລະ ຮູບພາບພາຍໃນແອັບ 100%)
+// ⭐ 13. DETAIL MODAL (IN-APP BLOB VIEWER: ແກ້ໄຂບັນຫາ PREVIEW PDF ບໍ່ໄດ້ 100%)
 function openLibraryDetailModal(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -889,30 +919,45 @@ function openLibraryDetailModal(id) {
         }
     }
 
-    // ⭐ ຈັດການສະແດງໄຟລ໌ແນບ (ຮູບພາບ ຫຼື PDF) ພາຍໃນແອັບ
+    // ⭐ ຈັດການສະແດງໄຟລ໌ແນບຜ່ານ BLOB URL
     var attachBox = document.getElementById('libDetailImageBox');
     var imgViewer = document.getElementById('libDetailImageViewer');
     var pdfViewer = document.getElementById('libDetailPdfViewer');
     var attachLabel = document.getElementById('libDetailAttachmentLabel');
     var attachIcon = document.getElementById('libDetailAttachmentIcon');
+    var downloadBtn = document.getElementById('libDetailPdfDownloadBtn');
 
     if (attachBox) {
         if (item.imageUrl) {
             attachBox.classList.remove('hidden');
 
             if (isPdfFile(item.imageUrl)) {
-                // ສະແດງ PDF ໃນ iFrame ພາຍໃນແອັບ
                 if (imgViewer) imgViewer.classList.add('hidden');
                 if (pdfViewer) {
                     pdfViewer.classList.remove('hidden');
                     var pdfFrame = document.getElementById('libDetailPdfFrame');
-                    if (pdfFrame) pdfFrame.src = item.imageUrl + '#toolbar=1&navpanes=0';
+                    if (pdfFrame) {
+                        // ລ້າງ Blob ເກົ່າອອກເພື່ອປ້ອງກັນ Memory Leak
+                        if (window._currentPdfBlobUrl) {
+                            try { URL.revokeObjectURL(window._currentPdfBlobUrl); } catch(e) {}
+                        }
+                        // ⭐ ແປງ Base64 ເປັນ Blob URL ແທ້
+                        var blobUrl = getPdfBlobUrl(item.imageUrl);
+                        window._currentPdfBlobUrl = blobUrl;
+                        pdfFrame.src = blobUrl;
+
+                        if (downloadBtn) {
+                            downloadBtn.href = blobUrl;
+                            downloadBtn.download = (item.title || 'document') + '.pdf';
+                            downloadBtn.classList.remove('hidden');
+                        }
+                    }
                 }
                 if (attachLabel) attachLabel.innerText = 'ເອກະສານ PDF ແນບ (ອ່ານໃນແອັບ):';
                 if (attachIcon) attachIcon.innerText = 'picture_as_pdf';
             } else {
-                // ສະແດງຮູບພາບ
                 if (pdfViewer) pdfViewer.classList.add('hidden');
+                if (downloadBtn) downloadBtn.classList.add('hidden');
                 if (imgViewer) {
                     imgViewer.classList.remove('hidden');
                     var imgEl = document.getElementById('libDetailImage');
@@ -929,6 +974,7 @@ function openLibraryDetailModal(id) {
                 if (pdfFrame) pdfFrame.src = '';
             }
             if (imgViewer) imgViewer.classList.add('hidden');
+            if (downloadBtn) downloadBtn.classList.add('hidden');
         }
     }
 
@@ -953,9 +999,15 @@ function openLibraryDetailModal(id) {
 function closeLibraryDetailModal() {
     var modal = document.getElementById('libraryDetailModal');
     if (modal) modal.classList.add('hidden');
-    // ລ້າງ iFrame ເມື່ອປິດ modal
+    
     var pdfFrame = document.getElementById('libDetailPdfFrame');
     if (pdfFrame) pdfFrame.src = '';
+
+    // ລຶບ Object URL ເມື່ອປິດ modal
+    if (window._currentPdfBlobUrl) {
+        try { URL.revokeObjectURL(window._currentPdfBlobUrl); } catch(e) {}
+        window._currentPdfBlobUrl = null;
+    }
 }
 
 async function toggleItemOutdated(id) {
@@ -987,22 +1039,20 @@ async function toggleItemOutdated(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
 }
 
-// ⭐ 14. ຟັງຊັນອັບໂຫຼດໄຟລ໌ (ຮອງຮັບທັງຮູບພາບ ແລະ ໄຟລ໌ PDF)
+// 14. ຟັງຊັນອັບໂຫຼດໄຟລ໌
 function handleLibraryFileUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
 
-    // 1. ຖ້າເປັນໄຟລ໌ PDF
+    // ຖ້າເປັນໄຟລ໌ PDF
     if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
         var reader = new FileReader();
         reader.onload = function(e) {
-            window.currentLibraryImageBase64 = e.target.result; // DataURL: data:application/pdf;base64,...
+            window.currentLibraryImageBase64 = e.target.result;
             
-            // ເຊື່ອງ Image Preview
             var imgBox = document.getElementById('libImagePreviewContainer');
             if (imgBox) imgBox.classList.add('hidden');
             
-            // ສະແດງ PDF Preview
             var pdfBox = document.getElementById('libPdfPreviewContainer');
             if (pdfBox) pdfBox.classList.remove('hidden');
             var pdfName = document.getElementById('libPdfPreviewName');
@@ -1015,7 +1065,7 @@ function handleLibraryFileUpload(event) {
         return;
     }
 
-    // 2. ຖ້າເປັນໄຟລ໌ຮູບພາບ (PNG, JPG, JPEG)
+    // ຖ້າເປັນໄຟລ໌ຮູບພາບ
     var imgReader = new FileReader();
     imgReader.onload = function(e) {
         var img = new Image();
@@ -1031,11 +1081,9 @@ function handleLibraryFileUpload(event) {
 
             window.currentLibraryImageBase64 = compressedBase64;
 
-            // ເຊື່ອງ PDF Preview
             var pdfBox = document.getElementById('libPdfPreviewContainer');
             if (pdfBox) pdfBox.classList.add('hidden');
 
-            // ສະແດງ Image Preview
             var preview = document.getElementById('libImagePreview');
             if (preview) preview.src = compressedBase64;
             var pBox = document.getElementById('libImagePreviewContainer');
@@ -1049,10 +1097,8 @@ function handleLibraryFileUpload(event) {
     imgReader.readAsDataURL(file);
 }
 
-// ຜູກຊື່ເກົ່າໄວ້ເພື່ອປ້ອງກັນ error
 window.handleLibraryImageUpload = handleLibraryFileUpload;
 
-// ລຶບ Preview ໄຟລ໌
 function removeLibraryFilePreview() {
     window.currentLibraryImageBase64 = '';
     var preview = document.getElementById('libImagePreview');
@@ -1184,6 +1230,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ຜູກ Functions ເຂົ້າ Window
 window.loadLibraryItems = loadLibraryItems;
 window.isPdfFile = isPdfFile;
+window.getPdfBlobUrl = getPdfBlobUrl;
 window.handleLibraryFileUpload = handleLibraryFileUpload;
 window.removeLibraryFilePreview = removeLibraryFilePreview;
 window.setupNotificationObserver = setupNotificationObserver;
