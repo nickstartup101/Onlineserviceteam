@@ -1,8 +1,9 @@
-// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (PERMANENT NOTIFICATIONS FIX) =================
+// ================= ⭐ PRODUCT & FEE KNOWLEDGE LIBRARY MODULE (PDF & IN-APP VIEWER) =================
 
 window.libraryItems = [];
 window.showOutdatedLibraryItems = true;
 window.currentLibraryImageBase64 = '';
+window.currentLibraryFileType = ''; // 'image' ຫຼື 'pdf'
 
 var DEFAULT_LIBRARY_CATEGORIES = [
     'ໂອນເງິນພາຍໃນ & ຕ່າງປະເທດ',
@@ -11,6 +12,12 @@ var DEFAULT_LIBRARY_CATEGORIES = [
     'ໂປຣໂມຊັ່ນການຕະຫຼາດ',
     'ຜະລິດຕະພັນອື່ນໆ'
 ];
+
+// Helper ກວດສອບວ່າແມ່ນໄຟລ໌ PDF ຫຼື ບໍ່
+function isPdfFile(urlOrBase64) {
+    if (!urlOrBase64) return false;
+    return urlOrBase64.indexOf('data:application/pdf') !== -1 || urlOrBase64.toLowerCase().indexOf('.pdf') !== -1;
+}
 
 // 1. ດຶງຂໍ້ມູນ Library ຈາກ Supabase
 async function loadLibraryItems() {
@@ -53,7 +60,7 @@ async function loadLibraryItems() {
     updateAppNotificationsWithLibrary();
 }
 
-// ⭐ 2. ລະບົບປ້ອງກັນການຂຽນທັບ (MUTATION OBSERVER: ຫ້າມບໍ່ໃຫ້ແຈ້ງເຕືອນຫາຍເດັດຂາດ)
+// 2. MUTATION OBSERVER: ປ້ອງກັນແຈ້ງເຕືອນຫາຍ
 var _isInjectingNotifs = false;
 function setupNotificationObserver() {
     var listContainer = document.getElementById('notifDropdownList');
@@ -68,7 +75,6 @@ function setupNotificationObserver() {
         var container = document.getElementById('notifDropdownList');
         if (!container) return;
 
-        // ຖ້າ app.js ພະຍາຍາມລຶບ ຫຼື ຂຽນທັບ ໃຫ້ແຊກ Library ກັບຄືນມາເທິງສຸດທັນທີ 0 ວິນາທີ!
         if (!container.querySelector('.library-notif-card')) {
             _isInjectingNotifs = true;
             injectLibraryNotificationsIntoDropdown();
@@ -79,18 +85,15 @@ function setupNotificationObserver() {
     window._libraryNotifObserver.observe(listContainer, { childList: true, subtree: false });
 }
 
-// ⭐ 3. ແຊກບັດແຈ້ງເຕືອນ LIBRARY ເຂົ້າໄປທາງເທິງສຸດຂອງລາຍການແຈ້ງເຕືອນ
+// 3. ແຊກບັດແຈ້ງເຕືອນເຂົ້າໃນກະດິ່ງ 🔔
 function injectLibraryNotificationsIntoDropdown() {
     var listContainer = document.getElementById('notifDropdownList');
     if (!listContainer) return;
-
-    // ຖ້າມີແລ້ວ ບໍ່ຕ້ອງແຊກຊໍ້າ
     if (listContainer.querySelector('.library-notif-card')) return;
 
     var items = window.libraryItems || [];
     if (items.length === 0) return;
 
-    // ລຶບຂໍ້ຄວາມ "ບໍ່ມີການແຈ້ງເຕືອນ" ອອກຖ້າມີ
     var emptyMsg = listContainer.querySelector('p');
     if (emptyMsg && emptyMsg.innerText.indexOf('ບໍ່ມີການແຈ້ງເຕືອນ') !== -1) {
         emptyMsg.remove();
@@ -127,7 +130,6 @@ function injectLibraryNotificationsIntoDropdown() {
     listContainer.insertAdjacentHTML('afterbegin', html);
 }
 
-// ⭐ 4. ອັບເດດເລກສີແດງເທິງກະດິ່ງແຈ້ງເຕືອນ 🔔
 function updateAppNotificationsWithLibrary() {
     var currentUser = (typeof getCurrentUserSafe === 'function') ? getCurrentUserSafe() : window.currentUser;
     var myName = currentUser ? (currentUser.nameLao || currentUser.fullName || '') : '';
@@ -156,7 +158,6 @@ function updateAppNotificationsWithLibrary() {
     injectLibraryNotificationsIntoDropdown();
 }
 
-// ເປີດບົດຄວາມເມື່ອກົດໃສ່ແຈ້ງເຕືອນ
 function openLibraryFromNotif(id) {
     if (typeof switchTab === 'function') switchTab('library');
     var dd = document.getElementById('notifDropdown');
@@ -164,7 +165,6 @@ function openLibraryFromNotif(id) {
     openLibraryDetailModal(id);
 }
 
-// ⭐ 5. ໝາຍວ່າອ່ານແລ້ວທັງໝົດ
 var _origMarkAllRead = window.markAllNotificationsAsRead;
 window.markAllNotificationsAsRead = function() {
     if (typeof _origMarkAllRead === 'function') _origMarkAllRead();
@@ -185,14 +185,13 @@ window.markAllNotificationsAsRead = function() {
     }
 };
 
-// ⭐ 6. ຜູກເມື່ອກົດປຸ່ມກະດິ່ງ
 var _origToggleNotif = window.toggleNotificationDropdown;
 window.toggleNotificationDropdown = function() {
     if (typeof _origToggleNotif === 'function') _origToggleNotif();
     setTimeout(injectLibraryNotificationsIntoDropdown, 1);
 };
 
-// ⭐ 7. REALTIME LISTENER ດັກຈັບການແຈ້ງເຕືອນຈາກ USER ອື່ນໆ ແບບສົດໆ 0 ວິນາທີ
+// 4. REALTIME LISTENER
 function initRealtimeLibraryListener() {
     if (!window.supabaseClient) return;
     try {
@@ -214,7 +213,7 @@ function initRealtimeLibraryListener() {
     } catch(e) {}
 }
 
-// 8. BRAND LOGOS & BADGES
+// 5. BRAND LOGOS & BADGES
 function getSingleBrandLogo(titleInput, categoryInput) {
     var title = (titleInput || '').toLowerCase();
     var cat = (categoryInput || '').toLowerCase();
@@ -293,7 +292,7 @@ function renderBrandOrCategoryBadge(title, category) {
     return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-700"><span class="material-symbols-outlined text-[13px] text-slate-500">local_offer</span> ຜະລິດຕະພັນ</span>';
 }
 
-// 9. ດຶງລາຍການໝວດໝູ່
+// 6. ດຶງລາຍການໝວດໝູ່
 function getUniqueCategoriesList() {
     var catList = [];
     try {
@@ -375,7 +374,7 @@ function handleCategorySelectChange() {
     }
 }
 
-// 10. ຈັດການໝວດໝູ່
+// 7. ຈັດການໝວດໝູ່
 function openManageCategoryModal() {
     renderManageCategoryList();
     var modal = document.getElementById('manageCategoryModal');
@@ -499,7 +498,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     localStorage.setItem('ot_all_categories', JSON.stringify(cats));
 
     var deletedCats = JSON.parse(localStorage.getItem('ot_deleted_categories') || '[]');
-    if (deletedCats.indexOf(catName) === -1) {
+    if (!deletedCats.indexOf(catName) === -1) {
         deletedCats.push(catName);
         localStorage.setItem('ot_deleted_categories', JSON.stringify(deletedCats));
     }
@@ -535,7 +534,7 @@ async function promptDeleteCategorySafe(encodedCat, count) {
     }
 }
 
-// 11. RENDER CARDS GRID
+// ⭐ 8. RENDER CARDS GRID (ຮອງຮັບທັງຮູບພາບ ແລະ ປ້າຍເອກະສານ PDF)
 function renderLibraryGrid() {
     var container = document.getElementById('libraryGridContainer');
     if (!container) return;
@@ -573,6 +572,27 @@ function renderLibraryGrid() {
         var updatedDateStr = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
         var brandSymbolsHtml = renderBrandOrCategoryBadge(item.title, item.category);
 
+        // ⭐ ກວດສອບໄຟລ໌ແນບ (ຮູບພາບ ຫຼື PDF)
+        var attachmentHtml = '';
+        if (item.imageUrl) {
+            if (isPdfFile(item.imageUrl)) {
+                attachmentHtml = '<div onclick="openLibraryDetailModal(\'' + item.id + '\')" class="pt-1 cursor-pointer">' +
+                    '<div class="p-2.5 bg-red-50/60 hover:bg-red-50 border border-red-200 rounded-2xl flex items-center justify-between transition group">' +
+                        '<div class="flex items-center gap-2">' +
+                            '<span class="material-symbols-outlined text-brand-red text-xl">picture_as_pdf</span>' +
+                            '<div>' +
+                                '<p class="font-bold text-[11px] text-slate-800 group-hover:text-brand-red">ເອກະສານ PDF</p>' +
+                                '<p class="text-[9px] text-slate-400">ກົດເພື່ອເປີດອ່ານໃນແອັບ</p>' +
+                            '</div>' +
+                        '</div>' +
+                        '<span class="material-symbols-outlined text-slate-400 group-hover:text-brand-red text-base">visibility</span>' +
+                    '</div>' +
+                '</div>';
+            } else {
+                attachmentHtml = '<div class="pt-1"><img src="' + item.imageUrl + '" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="h-28 w-full object-cover rounded-2xl border cursor-pointer hover:opacity-90 transition"/></div>';
+            }
+        }
+
         container.innerHTML += '<div class="bg-white border ' + (isOutdated ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200') + ' rounded-3xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between gap-3 text-xs">' +
             '<div class="space-y-2.5">' +
                 '<div class="flex justify-between items-start gap-2">' +
@@ -583,7 +603,7 @@ function renderLibraryGrid() {
                 '<h3 class="font-bold text-sm text-slate-800 leading-snug cursor-pointer hover:text-brand-red transition" onclick="openLibraryDetailModal(\'' + item.id + '\')">' + item.title + '</h3>' +
                 (item.fee ? '<div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-brand-red border border-red-200 rounded-xl font-bold text-[11px]"><span class="material-symbols-outlined text-sm">payments</span> ' + item.fee + '</div>' : '') +
                 '<p class="text-slate-500 line-clamp-3 leading-relaxed text-[11px]">' + item.content + '</p>' +
-                (item.imageUrl ? '<div class="pt-1"><img src="' + item.imageUrl + '" onclick="openLibraryDetailModal(\'' + item.id + '\')" class="h-28 w-full object-cover rounded-2xl border cursor-pointer hover:opacity-90 transition"/></div>' : '') +
+                attachmentHtml +
             '</div>' +
             '<div class="pt-3 border-t border-slate-100 flex flex-col gap-2">' +
                 '<div class="flex justify-between items-center text-[10px] text-slate-400"><span>ໂດຍ: <strong class="text-slate-600">' + (item.updatedBy || item.createdBy) + '</strong></span><span>' + updatedDateStr + '</span></div>' +
@@ -608,7 +628,7 @@ function toggleShowOutdated() {
     renderLibraryGrid();
 }
 
-// 12. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່
+// 9. MODAL ເພີ່ມຫົວຂໍ້ໃໝ່
 function openAddLibraryModal() {
     refreshCategoryDatalistAndFilter();
 
@@ -636,13 +656,13 @@ function openAddLibraryModal() {
     if (outEl) outEl.checked = false;
 
     window.currentLibraryImageBase64 = '';
-    removeLibraryImagePreview();
+    removeLibraryFilePreview();
 
     var modal = document.getElementById('libraryItemModal');
     if (modal) modal.classList.remove('hidden');
 }
 
-// 13. MODAL ແກ້ໄຂຫົວຂໍ້
+// 10. MODAL ແກ້ໄຂຫົວຂໍ້
 function openEditLibraryModal(id) {
     refreshCategoryDatalistAndFilter();
 
@@ -689,14 +709,23 @@ function openEditLibraryModal(id) {
 
     window.currentLibraryImageBase64 = item.imageUrl || '';
     if (item.imageUrl) {
-        var preview = document.getElementById('libImagePreview');
-        if (preview) preview.src = item.imageUrl;
-        var pBox = document.getElementById('libImagePreviewContainer');
-        if (pBox) pBox.classList.remove('hidden');
-        var rBtn = document.getElementById('libRemoveImageBtn');
-        if (rBtn) rBtn.classList.remove('hidden');
+        if (isPdfFile(item.imageUrl)) {
+            var pdfBox = document.getElementById('libPdfPreviewContainer');
+            if (pdfBox) pdfBox.classList.remove('hidden');
+            var pName = document.getElementById('libPdfPreviewName');
+            if (pName) pName.innerText = 'ເອກະສານ PDF ແນບໄວ້ແລ້ວ';
+            var rBtn = document.getElementById('libRemoveImageBtn');
+            if (rBtn) rBtn.classList.remove('hidden');
+        } else {
+            var preview = document.getElementById('libImagePreview');
+            if (preview) preview.src = item.imageUrl;
+            var pBox = document.getElementById('libImagePreviewContainer');
+            if (pBox) pBox.classList.remove('hidden');
+            var rBtn = document.getElementById('libRemoveImageBtn');
+            if (rBtn) rBtn.classList.remove('hidden');
+        }
     } else {
-        removeLibraryImagePreview();
+        removeLibraryFilePreview();
     }
 
     var modal = document.getElementById('libraryItemModal');
@@ -708,7 +737,7 @@ function closeLibraryModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// 14. ບັນທຶກຫົວຂໍ້
+// 11. ບັນທຶກຫົວຂໍ້
 async function handleSaveLibraryItem() {
     var idEl = document.getElementById('libItemId');
     var id = idEl ? idEl.value : '';
@@ -793,7 +822,6 @@ async function handleSaveLibraryItem() {
     }
 
     updateAppNotificationsWithLibrary();
-
     closeLibraryModal();
     refreshCategoryDatalistAndFilter();
     renderLibraryGrid();
@@ -801,7 +829,7 @@ async function handleSaveLibraryItem() {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', isEdit ? 'ອັບເດດຂໍ້ມູນຮຽບຮ້ອຍ!' : 'ເພີ່ມຂໍ້ມູນໃໝ່ຮຽບຮ້ອຍ!', 'success');
 }
 
-// 15. ລຶບຫົວຂໍ້ບົດຄວາມ
+// 12. ລຶບຫົວຂໍ້ບົດຄວາມ
 async function promptDeleteLibraryItem(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -824,7 +852,7 @@ async function promptDeleteLibraryItem(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ລຶບຫົວຂໍ້ອອກຈາກ Library ແລ້ວ', 'success');
 }
 
-// 16. DETAIL MODAL
+// ⭐ 13. DETAIL MODAL (IN-APP VIEWER: ເປີດອ່ານ PDF ແລະ ຮູບພາບພາຍໃນແອັບ 100%)
 function openLibraryDetailModal(id) {
     var targetId = String(id);
     var item = (window.libraryItems || []).find(function(i) { return String(i.id) === targetId; });
@@ -861,16 +889,46 @@ function openLibraryDetailModal(id) {
         }
     }
 
-    var imgBox = document.getElementById('libDetailImageBox');
-    if (imgBox) {
+    // ⭐ ຈັດການສະແດງໄຟລ໌ແນບ (ຮູບພາບ ຫຼື PDF) ພາຍໃນແອັບ
+    var attachBox = document.getElementById('libDetailImageBox');
+    var imgViewer = document.getElementById('libDetailImageViewer');
+    var pdfViewer = document.getElementById('libDetailPdfViewer');
+    var attachLabel = document.getElementById('libDetailAttachmentLabel');
+    var attachIcon = document.getElementById('libDetailAttachmentIcon');
+
+    if (attachBox) {
         if (item.imageUrl) {
-            var imgEl = document.getElementById('libDetailImage');
-            if (imgEl) imgEl.src = item.imageUrl;
-            var linkEl = document.getElementById('libDetailImageLink');
-            if (linkEl) linkEl.href = item.imageUrl;
-            imgBox.classList.remove('hidden');
+            attachBox.classList.remove('hidden');
+
+            if (isPdfFile(item.imageUrl)) {
+                // ສະແດງ PDF ໃນ iFrame ພາຍໃນແອັບ
+                if (imgViewer) imgViewer.classList.add('hidden');
+                if (pdfViewer) {
+                    pdfViewer.classList.remove('hidden');
+                    var pdfFrame = document.getElementById('libDetailPdfFrame');
+                    if (pdfFrame) pdfFrame.src = item.imageUrl + '#toolbar=1&navpanes=0';
+                }
+                if (attachLabel) attachLabel.innerText = 'ເອກະສານ PDF ແນບ (ອ່ານໃນແອັບ):';
+                if (attachIcon) attachIcon.innerText = 'picture_as_pdf';
+            } else {
+                // ສະແດງຮູບພາບ
+                if (pdfViewer) pdfViewer.classList.add('hidden');
+                if (imgViewer) {
+                    imgViewer.classList.remove('hidden');
+                    var imgEl = document.getElementById('libDetailImage');
+                    if (imgEl) imgEl.src = item.imageUrl;
+                }
+                if (attachLabel) attachLabel.innerText = 'ຮູບພາບປະກອບ:';
+                if (attachIcon) attachIcon.innerText = 'image';
+            }
         } else {
-            imgBox.classList.add('hidden');
+            attachBox.classList.add('hidden');
+            if (pdfViewer) {
+                pdfViewer.classList.add('hidden');
+                var pdfFrame = document.getElementById('libDetailPdfFrame');
+                if (pdfFrame) pdfFrame.src = '';
+            }
+            if (imgViewer) imgViewer.classList.add('hidden');
         }
     }
 
@@ -895,6 +953,9 @@ function openLibraryDetailModal(id) {
 function closeLibraryDetailModal() {
     var modal = document.getElementById('libraryDetailModal');
     if (modal) modal.classList.add('hidden');
+    // ລ້າງ iFrame ເມື່ອປິດ modal
+    var pdfFrame = document.getElementById('libDetailPdfFrame');
+    if (pdfFrame) pdfFrame.src = '';
 }
 
 async function toggleItemOutdated(id) {
@@ -926,13 +987,37 @@ async function toggleItemOutdated(id) {
     if (typeof showToast === 'function') showToast('ສຳເລັດ', 'ປ່ຽນສະຖານະເປັນ "' + statusString + '" ແລ້ວ', 'info');
 }
 
-// 17. ຮູບພາບ
-function handleLibraryImageUpload(event) {
+// ⭐ 14. ຟັງຊັນອັບໂຫຼດໄຟລ໌ (ຮອງຮັບທັງຮູບພາບ ແລະ ໄຟລ໌ PDF)
+function handleLibraryFileUpload(event) {
     var file = event.target.files[0];
     if (!file) return;
 
-    var reader = new FileReader();
-    reader.onload = function(e) {
+    // 1. ຖ້າເປັນໄຟລ໌ PDF
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            window.currentLibraryImageBase64 = e.target.result; // DataURL: data:application/pdf;base64,...
+            
+            // ເຊື່ອງ Image Preview
+            var imgBox = document.getElementById('libImagePreviewContainer');
+            if (imgBox) imgBox.classList.add('hidden');
+            
+            // ສະແດງ PDF Preview
+            var pdfBox = document.getElementById('libPdfPreviewContainer');
+            if (pdfBox) pdfBox.classList.remove('hidden');
+            var pdfName = document.getElementById('libPdfPreviewName');
+            if (pdfName) pdfName.innerText = file.name;
+
+            var rBtn = document.getElementById('libRemoveImageBtn');
+            if (rBtn) rBtn.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+        return;
+    }
+
+    // 2. ຖ້າເປັນໄຟລ໌ຮູບພາບ (PNG, JPG, JPEG)
+    var imgReader = new FileReader();
+    imgReader.onload = function(e) {
         var img = new Image();
         img.onload = function() {
             var canvas = document.createElement('canvas');
@@ -945,31 +1030,48 @@ function handleLibraryImageUpload(event) {
             var compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
 
             window.currentLibraryImageBase64 = compressedBase64;
+
+            // ເຊື່ອງ PDF Preview
+            var pdfBox = document.getElementById('libPdfPreviewContainer');
+            if (pdfBox) pdfBox.classList.add('hidden');
+
+            // ສະແດງ Image Preview
             var preview = document.getElementById('libImagePreview');
             if (preview) preview.src = compressedBase64;
             var pBox = document.getElementById('libImagePreviewContainer');
             if (pBox) pBox.classList.remove('hidden');
+
             var rBtn = document.getElementById('libRemoveImageBtn');
             if (rBtn) rBtn.classList.remove('hidden');
         };
         img.src = e.target.result;
     };
-    reader.readAsDataURL(file);
+    imgReader.readAsDataURL(file);
 }
 
-function removeLibraryImagePreview() {
+// ຜູກຊື່ເກົ່າໄວ້ເພື່ອປ້ອງກັນ error
+window.handleLibraryImageUpload = handleLibraryFileUpload;
+
+// ລຶບ Preview ໄຟລ໌
+function removeLibraryFilePreview() {
     window.currentLibraryImageBase64 = '';
     var preview = document.getElementById('libImagePreview');
     if (preview) preview.src = '';
     var pBox = document.getElementById('libImagePreviewContainer');
     if (pBox) pBox.classList.add('hidden');
+
+    var pdfBox = document.getElementById('libPdfPreviewContainer');
+    if (pdfBox) pdfBox.classList.add('hidden');
+
     var rBtn = document.getElementById('libRemoveImageBtn');
     if (rBtn) rBtn.classList.add('hidden');
+
     var fileInput = document.getElementById('libImageFileInput');
     if (fileInput) fileInput.value = '';
 }
+window.removeLibraryImagePreview = removeLibraryFilePreview;
 
-// 18. SEARCH
+// 15. SEARCH
 function openSearchDropdown() {
     renderSearchDropdownList();
     var dropdown = document.getElementById('libSearchDropdown');
@@ -1064,7 +1166,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ⭐ Auto-load
+// Auto-load
 var _origTabForLib = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForLib === 'function') _origTabForLib(tab);
@@ -1075,12 +1177,15 @@ window.switchTab = function(tab) {
 
 document.addEventListener('DOMContentLoaded', function() {
     loadLibraryItems();
-    setTimeout(setupNotificationObserver, 300); // ເລີ່ມຕົ້ນລະບົບປ້ອງກັນການຂຽນທັບ
+    setTimeout(setupNotificationObserver, 300);
     setTimeout(initRealtimeLibraryListener, 1000);
 });
 
 // ຜູກ Functions ເຂົ້າ Window
 window.loadLibraryItems = loadLibraryItems;
+window.isPdfFile = isPdfFile;
+window.handleLibraryFileUpload = handleLibraryFileUpload;
+window.removeLibraryFilePreview = removeLibraryFilePreview;
 window.setupNotificationObserver = setupNotificationObserver;
 window.updateAppNotificationsWithLibrary = updateAppNotificationsWithLibrary;
 window.injectLibraryNotificationsIntoDropdown = injectLibraryNotificationsIntoDropdown;
@@ -1109,8 +1214,6 @@ window.toggleShowOutdated = toggleShowOutdated;
 window.openAddLibraryModal = openAddLibraryModal;
 window.openEditLibraryModal = openEditLibraryModal;
 window.closeLibraryModal = closeLibraryModal;
-window.handleLibraryImageUpload = handleLibraryImageUpload;
-window.removeLibraryImagePreview = removeLibraryImagePreview;
 window.handleSaveLibraryItem = handleSaveLibraryItem;
 window.openLibraryDetailModal = openLibraryDetailModal;
 window.closeLibraryDetailModal = closeLibraryDetailModal;
