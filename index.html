@@ -108,7 +108,7 @@
             <button type="button" onclick="switchTab('schedule'); toggleMobileDrawer();" id="mob-side-schedule" class="mob-side-btn flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">table_view</span> ຕາຕະລາງປະຈຳການ</div><span class="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold">All</span></button>
             <button type="button" onclick="switchTab('groups')" id="mob-side-groups" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
             <button type="button" onclick="switchTab('employees')" id="mob-side-employees" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
-            <button type="button" onclick="switchTab('profile'); toggleMobileDrawer();" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
+            <button type="button" onclick="switchTab('profile')" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
             <button type="button" onclick="switchTab('library'); toggleMobileDrawer();" id="mob-side-library" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">menu_book</span> Library ຄວາມຮູ້</button>
         </nav>
         <div class="pt-4 border-t border-slate-100">
@@ -184,7 +184,7 @@
                         <div class="flex items-center gap-2 text-xs font-semibold mb-1 text-slate-500">
                             <span class="material-symbols-outlined text-base text-brand-red">today</span>
                             <span>ເລືອກວັນທີຕິດຕາມ:</span>
-                            <input type="date" id="dashDateInput" value="2026-09-01" onchange="renderDashboard()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-brand-red cursor-pointer"/>
+                            <input type="date" id="dashDateInput" onchange="renderDashboard()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-brand-red cursor-pointer"/>
                         </div>
                         <h2 class="text-lg md:text-xl font-bold text-slate-800">Daily Operational Monitor (ລວມທຸກທີມປະຈຳການ)</h2>
                     </div>
@@ -255,7 +255,7 @@
                 <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
                     <div class="flex justify-between items-center border-b pb-3">
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-lg">event_available</span> ລາຍການລາພັກ ແລະ ປ່ຽນກະປະຈຳວັນ</h3>
-                        <span class="text-xs text-slate-500" id="dashActivityDateLabel">ວັນທີ 01/09/2026</span>
+                        <span class="text-xs text-slate-500" id="dashActivityDateLabel">ວັນທີ ...</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-2"><p class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><span class="material-symbols-outlined text-sm text-brand-red">event_busy</span> ພະນັກງານລາພັກມື້ນີ້</p><div id="dashLeavesContainer" class="space-y-1.5 text-xs"></div></div>
@@ -352,7 +352,7 @@
                 <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
                         <div class="text-center font-bold text-sm py-1.5 border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
-                            ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 09/2026
+                            ຕາຕະລາງປະຈຳການບໍລິການອອນໄລ
                         </div>
                         <table class="excel-table" id="mainScheduleTable">
                             <tbody id="scheduleTableBody"></tbody>
@@ -576,8 +576,8 @@
                                             <option value="COVER">ຍາມແທນ / ຄວບກະໃນວັນເສົາ-ອາທິດ (Weekend Double Shift / Cover)</option>
                                         </select>
                                     </div>
-                                    <div><label class="block font-semibold text-slate-600 mb-1">ແຕ່ວັນທີ (From Date)</label><input type="date" id="swapDateStart" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
-                                    <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ (To Date)</label><input type="date" id="swapDateEnd" value="2026-09-01" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
+                                    <div><label class="block font-semibold text-slate-600 mb-1">ແຕ່ວັນທີ (From Date)</label><input type="date" id="swapDateStart" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
+                                    <div><label class="block font-semibold text-slate-600 mb-1">ຮອດວັນທີ (To Date)</label><input type="date" id="swapDateEnd" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red"/></div>
                                     <div>
                                         <label class="block font-semibold text-slate-600 mb-1">ເລືອກເພື່ອນຮ່ວມງານທີ່ຈະປ່ຽນນຳ</label>
                                         <select id="swapTargetPeer" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none focus:ring-1 focus:ring-brand-red bg-white"></select>
@@ -640,7 +640,7 @@
             </div>
         </main>
 
-       <!-- VIEW 6: PRODUCT & KNOWLEDGE LIBRARY -->
+        <!-- VIEW 6: PRODUCT & KNOWLEDGE LIBRARY -->
         <main id="view-library" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-5">
                 
@@ -684,7 +684,7 @@
                             <option value="ALL">ທຸກໝວດໝູ່ (All Categories)</option>
                         </select>
                         
-                        <!-- ⭐ ປຸ່ມຈັດການໝວດໝູ່ (ແກ້ໄຂ / ລຶບ) -->
+                        <!-- ປຸ່ມຈັດການໝວດໝູ່ (ແກ້ໄຂ / ລຶບ) -->
                         <button type="button" onclick="openManageCategoryModal()" class="px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 transition flex items-center gap-1.5 cursor-pointer" title="ຈັດການໝວດໝູ່ (ແກ້ໄຂ / ລຶບ)">
                             <span class="material-symbols-outlined text-sm text-slate-500">category</span>
                             <span>ຈັດການໝວດໝູ່</span>
@@ -700,8 +700,9 @@
                 <div id="libraryGridContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
         </main>
+    </div>
 
-    <!-- ⭐ MODAL ຈັດການໝວດໝູ່ -->
+    <!-- ⭐ MODAL ຈັດການໝວດໝູ່ (ແກ້ໄຂ / ລຶບ / ເພີ່ມ) -->
     <div id="manageCategoryModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[90vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
@@ -958,7 +959,7 @@
                 <div><label class="block font-semibold mb-1">ຊື່ຫຍໍ້ໃນຕາຕະລາງ (Lao Name)</label><input type="text" id="modalEmpNameLao" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div class="grid grid-cols-2 gap-2">
                     <div><label class="block font-semibold mb-1">ພາກສ່ວນ / ຝ່າຍ</label><input type="text" id="modalEmpDept" value="ຂະແໜງບໍລິການອອນລາຍ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
-                    <div><label class="block font-semibold mb-1">ເ变ໂທຕິດຕໍ່</label><input type="text" id="modalEmpPhone" placeholder="020 55XX XXXX" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                    <div><label class="block font-semibold mb-1">ເບີໂທຕິດຕໍ່</label><input type="text" id="modalEmpPhone" placeholder="020 55XX XXXX" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 </div>
                 <div><label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label><input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 <div class="flex items-center gap-2 pt-1"><input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/><label for="modalEmpIsLeader" class="font-bold text-brand-red">ກຳນົດເປັນຫົວໜ້າກະ (ສີແດງ)</label></div>
@@ -1033,7 +1034,7 @@
         </div>
     </div>
 
-    <!-- ⭐ MODAL ເພີ່ມ / ແກ້ໄຂ ຂໍ້ມູນ LIBRARY (ຄົບຖ້ວນທຸກຊ່ອງຂໍ້ມູນ 100%) -->
+    <!-- ⭐ MODAL ເພີ່ມ / ແກ້ໄຂ ຂໍ້ມູນ LIBRARY (ຮອງຮັບທັງຮູບພາບ ແລະ ໄຟລ໌ PDF) -->
     <div id="libraryItemModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
@@ -1048,7 +1049,7 @@
             <div class="p-5 md:p-6 space-y-3.5 text-xs overflow-y-auto flex-1">
                 <input type="hidden" id="libItemId"/>
                 
-                <!-- ⭐ ຊ່ອງໝວດໝູ່ທີ່ເປັນ Dropdown ແທ້ ພ້ອມຕົວເລືອກພິມໝວດໃໝ່ໄດ້ -->
+                <!-- ຊ່ອງໝວດໝູ່ທີ່ເປັນ Dropdown ແທ້ ພ້ອມຕົວເລືອກພິມໝວດໃໝ່ໄດ້ -->
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700 flex items-center justify-between">
                         <span>ໝວດໝູ່ຜະລິດຕະພັນ (Category) *</span>
@@ -1059,13 +1060,13 @@
                     <input type="text" id="libCustomCategoryInput" placeholder="ພິມຊື່ໝວດໝູ່ໃໝ່ທີ່ນີ້..." class="hidden w-full mt-2 border border-slate-300 rounded-xl p-2.5 outline-none bg-slate-50 text-xs font-semibold focus:ring-1 focus:ring-brand-red"/>
                 </div>
 
-                <!-- ⭐ ຊ່ອງຫົວຂໍ້ (Title) -->
+                <!-- ຊ່ອງຫົວຂໍ້ (Title) -->
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700">ຫົວຂໍ້ຂໍ້ມູນ (Title) *</label>
                     <input type="text" id="libItemTitle" placeholder="ເຊັ່ນ: ຄ່າທຳນຽມການຖອນເງິນສົດຜ່ານບັດ UnionPay ຢູ່ຕ່າງປະເທດ" class="w-full border border-slate-300 rounded-xl p-2.5 outline-none font-bold text-xs focus:ring-1 focus:ring-brand-red"/>
                 </div>
 
-                <!-- ⭐ ຊ່ອງຄ່າທຳນຽມ & ໄລຍະເວລາ -->
+                <!-- ຊ່ອງຄ່າທຳນຽມ & ໄລຍະເວລາ -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block font-semibold mb-1 text-slate-700">ຄ່າທຳນຽມ (Fee / Rate) [ບໍ່ບັງຄັບ]</label>
@@ -1077,24 +1078,36 @@
                     </div>
                 </div>
 
-                <!-- ⭐ ຊ່ອງເນື້ອໃນ (Content) -->
+                <!-- ຊ່ອງເນື້ອໃນ (Content) -->
                 <div>
                     <label class="block font-semibold mb-1 text-slate-700">ເນື້ອໃນແບບກະທັດຮັດ (Content / Details) *</label>
                     <textarea id="libItemContent" rows="4" placeholder="ຂຽນລາຍລະອຽດ ຫຼື ຂັ້ນຕອນສຳຄັນແບບເຂົ້າໃຈງ່າຍ ເພື່ອໃຫ້ຕອບລູກຄ້າໄດ້ທັນທີ..." class="w-full border border-slate-300 rounded-xl p-2.5 outline-none leading-relaxed text-xs"></textarea>
                 </div>
 
-                <!-- ຮູບພາບປະກອບ -->
+                <!-- ⭐ ຮູບພາບ ຫຼື ເອກະສານ PDF (Image / PDF Document) -->
                 <div>
-                    <label class="block font-semibold mb-1 text-slate-700">ຮູບພາບປະກອບ (Image / Infographic)</label>
+                    <label class="block font-semibold mb-1 text-slate-700">ຮູບພາບ ຫຼື ເອກະສານ PDF (Image / PDF Document)</label>
                     <div class="flex items-center gap-3">
-                        <label for="libImageFileInput" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-50 rounded-xl font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer">
-                            <span class="material-symbols-outlined text-base">add_photo_alternate</span> ເລືອກຮູບພາບ
+                        <label for="libImageFileInput" class="px-3.5 py-2 border border-slate-300 hover:bg-slate-50 rounded-xl font-bold text-slate-600 flex items-center gap-1.5 cursor-pointer text-xs">
+                            <span class="material-symbols-outlined text-base text-brand-red">upload_file</span>
+                            <span>ເລືອກຮູບພາບ ຫຼື ໄຟລ໌ PDF</span>
                         </label>
-                        <input type="file" id="libImageFileInput" accept="image/*" onchange="handleLibraryImageUpload(event)" class="hidden"/>
-                        <button type="button" id="libRemoveImageBtn" onclick="removeLibraryImagePreview()" class="text-brand-red text-xs font-bold hover:underline hidden cursor-pointer">ລຶບຮູບອອກ</button>
+                        <input type="file" id="libImageFileInput" accept="image/*,application/pdf" onchange="handleLibraryFileUpload(event)" class="hidden"/>
+                        <button type="button" id="libRemoveImageBtn" onclick="removeLibraryFilePreview()" class="text-brand-red text-xs font-bold hover:underline hidden cursor-pointer">ລຶບໄຟລ໌ອອກ</button>
                     </div>
+
+                    <!-- Preview ຮູບພາບ -->
                     <div id="libImagePreviewContainer" class="mt-2 hidden">
                         <img id="libImagePreview" src="" class="max-h-40 rounded-xl border object-contain bg-slate-50"/>
+                    </div>
+
+                    <!-- Preview ໄຟລ໌ PDF -->
+                    <div id="libPdfPreviewContainer" class="mt-2 hidden p-3 bg-red-50/60 border border-red-200 rounded-2xl flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-2xl text-brand-red">picture_as_pdf</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-xs text-slate-800 truncate" id="libPdfPreviewName">ເອກະສານ PDF</p>
+                            <p class="text-[10px] text-emerald-600 font-semibold">ພ້ອມສະແດງໃນແອັບແລ້ວ</p>
+                        </div>
                     </div>
                 </div>
 
@@ -1114,7 +1127,7 @@
         </div>
     </div>
 
-    <!-- Modal: ເບິ່ງລາຍລະອຽດຫົວຂໍ້ເຕັມ (Detail Popover Modal) -->
+    <!-- ⭐ MODAL ເບິ່ງລາຍລະອຽດຫົວຂໍ້ເຕັມ (IN-APP VIEWER: ເປີດອ່ານ PDF ແລະ ຮູບພາບໃນແອັບໄດ້ທັນທີ) -->
     <div id="libraryDetailModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-900 text-white flex justify-between items-center shrink-0">
@@ -1142,11 +1155,22 @@
                     <p id="libDetailContent" class="text-slate-600 leading-relaxed whitespace-pre-line text-xs"></p>
                 </div>
 
+                <!-- ບ່ອນສະແດງຮູບພາບ ຫຼື PDF ພາຍໃນແອັບ (In-App Viewer) -->
                 <div id="libDetailImageBox" class="hidden">
-                    <p class="font-bold text-slate-700 mb-1.5">ຮູບພາບປະກອບ:</p>
-                    <a id="libDetailImageLink" href="#" target="_blank">
-                        <img id="libDetailImage" src="" class="w-full max-h-80 object-contain rounded-2xl border bg-slate-50 shadow-xs"/>
-                    </a>
+                    <p class="font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-brand-red text-base" id="libDetailAttachmentIcon">attach_file</span>
+                        <span id="libDetailAttachmentLabel">ໄຟລ໌ແນບ:</span>
+                    </p>
+
+                    <!-- 1. ສະແດງຖ້າເປັນຮູບພາບ -->
+                    <div id="libDetailImageViewer" class="hidden">
+                        <img id="libDetailImage" src="" class="w-full max-h-96 object-contain rounded-2xl border bg-slate-50 shadow-xs"/>
+                    </div>
+
+                    <!-- 2. ສະແດງຖ້າເປັນ PDF (ອ່ານໃນແອັບທັນທີ ບໍ່ເປີດແທັບແຍກ) -->
+                    <div id="libDetailPdfViewer" class="hidden">
+                        <iframe id="libDetailPdfFrame" src="" class="w-full h-[480px] rounded-2xl border border-slate-200 bg-slate-100 shadow-inner"></iframe>
+                    </div>
                 </div>
 
                 <div class="pt-3 border-t text-[11px] text-slate-400 flex flex-col sm:flex-row justify-between gap-1">
