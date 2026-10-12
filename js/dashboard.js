@@ -1,4 +1,4 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR & CLOUD SUPABASE AUTO-SYNC =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & OFFLINE LEAVE TRACKER =================
 
 // 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
@@ -21,10 +21,11 @@ function getTodayLocalDateStr() {
 }
 
 // 0.2 HELPER ດຶງຮູບ Avatar
-function getStaffPhotoHtml(nameLao) {
+function getStaffPhotoHtml(nameLao, isOffline) {
     var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
     if (user && user.photo) {
-        return '<img src="' + user.photo + '" class="w-4 h-4 rounded-full object-cover inline-block mr-1 border border-slate-300" alt="' + nameLao + '"/>';
+        var extraClass = isOffline ? 'grayscale opacity-50' : 'border border-slate-300';
+        return '<img src="' + user.photo + '" class="w-4 h-4 rounded-full object-cover inline-block mr-1 ' + extraClass + '" alt="' + nameLao + '"/>';
     }
     return '';
 }
@@ -45,7 +46,33 @@ function normalizeShiftKey(s) {
     return null;
 }
 
-// 0.5 ດຶງ Sheet ຂອງເດືອນທີ່ກົງກັບວັນທີ
+// ⭐ 0.5 HELPER ກວດສອບວ່າພະນັກງານຄົນນີ້ລາພັກໃນກະນີ້ມື້ນີ້ຫຼືບໍ່
+function getStaffLeaveInfo(nameLao, shiftKey, targetDate) {
+    var leaves = (window.annualBookings || []).filter(function(b) {
+        var bStart = b.startDate || b.start_date;
+        var bEnd = b.endDate || b.end_date;
+        var bStatus = String(b.status || '').toUpperCase();
+        return bStatus === 'CONFIRMED' && (targetDate >= bStart && targetDate <= bEnd);
+    });
+
+    for (var i = 0; i < leaves.length; i++) {
+        var l = leaves[i];
+        var lName = l.nameLao || l.name_lao;
+        if (isDashNameMatch(lName, nameLao)) {
+            var normShift = normalizeShiftKey(l.shift);
+            // ຖ້າເປັນ 'ທຸກກະ' ຫຼື ກົງກັບກະນີ້
+            if (!normShift || normShift === shiftKey) {
+                return {
+                    shift: l.shift || 'ທຸກກະ',
+                    reason: l.reason || 'ລາພັກ'
+                };
+            }
+        }
+    }
+    return null;
+}
+
+// 0.6 ດຶງ Sheet ຂອງເດືອນທີ່ກົງກັບວັນທີ
 function getSheetsForMonth(dateStr) {
     var monthKey = dateStr.slice(0, 7); // YYYY-MM
     var sheets = (window.scheduleSheets || []).filter(function(s) {
@@ -60,7 +87,7 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
-// 0.6 ດຶງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
+// 0.7 ດຶງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
 function openStaffInfoModal(encodedOrRawName) {
     var nameLao = decodeURIComponent(encodedOrRawName || '');
     var user = (window.users || []).find(function(u) {
@@ -126,7 +153,7 @@ function closeStaffInfoModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// 0.7 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD
+// 0.8 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD
 async function fetchDashboardDataFromCloud() {
     try {
         var cachedLeaves = localStorage.getItem('ot_annual_bookings');
@@ -197,7 +224,7 @@ async function fetchDashboardDataFromCloud() {
     }
 }
 
-// 0.8 AUTO-APPLY SWAPS ອັດຕະໂນມັດ
+// 0.9 AUTO-APPLY SWAPS ອັດຕະໂນມັດ
 function autoApplyCompletedSwapsForDate(targetDate) {
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         var sStart = s.startDate || s.start_date;
@@ -366,7 +393,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
-// 3. RENDER CARDS ທັງ 3 ກະ
+// ⭐ 3. RENDER CARDS ທັງ 3 ກະ (ຕັດຈຳນວນຄົນລາພັກອອກ & ສະແດງຊື່ຈາງແບບ OFFLINE PERSON)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -388,7 +415,9 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
 
         if (!container) return;
         container.innerHTML = '';
-        var totalShiftCount = 0;
+
+        var totalActiveStaffCount = 0; // ຄົນທີ່ມາປະຈຳການຕົວຈິງ
+        var totalLeaveStaffCount = 0;  // ຄົນທີ່ລາພັກ
 
         if (sheets.length === 0) {
             container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">ບໍ່ພົບຕາຕະລາງໃນເດືອນນີ້</p>';
@@ -399,34 +428,62 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
         sheets.forEach(function(sheet) {
             var dayData = (sheet.data && sheet.data[targetDate]) ? sheet.data[targetDate] : null;
             var staffInSlot = dayData ? (dayData[s.key] || []) : [];
-            totalShiftCount += staffInSlot.length;
+
+            var sheetActiveCount = 0;
+            var sheetLeaveCount = 0;
+
+            // ກວດສອບສະຖານະແຕ່ລະຄົນໃນ Sheet ນີ້
+            staffInSlot.forEach(function(name) {
+                var leaveInfo = getStaffLeaveInfo(name, s.key, targetDate);
+                if (leaveInfo) {
+                    sheetLeaveCount++;
+                    totalLeaveStaffCount++;
+                } else {
+                    sheetActiveCount++;
+                    totalActiveStaffCount++;
+                }
+            });
 
             if (staffInSlot.length > 0 || sheets.length > 1) {
                 var sheetTitle = sheet.title || sheet.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ';
 
+                // ສ່ວນຫົວຂໍ້ຂອງແຕ່ລະ Sheet (ສະແດງຈຳນວນຄົນມາປະຈຳການຕົວຈິງ)
+                var leaveNoteInHeader = sheetLeaveCount > 0 ? ' <span class="text-rose-500 font-normal">(-' + sheetLeaveCount + ' ພັກ)</span>' : '';
                 var sheetHeader = '<div class="pt-1.5 pb-1 flex justify-between items-center text-[11px] text-slate-500 font-bold border-b border-slate-100">' +
                                     '<span class="truncate max-w-[210px] flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-brand-red"></span> ' + sheetTitle + '</span>' +
-                                    '<span class="text-slate-400 text-[10px]">' + staffInSlot.length + ' ຄົນ</span>' +
+                                    '<span class="text-slate-600 text-[10px] font-bold">' + sheetActiveCount + ' ຄົນ' + leaveNoteInHeader + '</span>' +
                                   '</div>';
 
                 var pillsHtml = '<div class="flex flex-wrap gap-1.5 pt-1.5 pb-2">';
                 staffInSlot.forEach(function(name) {
                     var isLeader = isStaffLeader(name);
                     var isSwapped = swappedStaffSet.has(name);
-                    var avatarHtml = getStaffPhotoHtml(name);
+                    var leaveInfo = getStaffLeaveInfo(name, s.key, targetDate);
+                    var isOffline = Boolean(leaveInfo);
+                    var avatarHtml = getStaffPhotoHtml(name, isOffline);
                     var safeName = encodeURIComponent(name);
 
-                    var leaderDot = isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : '';
-                    var swapIcon = isSwapped 
-                        ? '<span class="material-symbols-outlined text-[13px] text-amber-600 ml-0.5 leading-none align-middle" title="ປ່ຽນກະມາ">sync_alt</span>' 
-                        : '';
+                    if (isOffline) {
+                        // ⭐ ຮູບແບບຄົນລາພັກ (OFFLINE PERSON: ສີເທົາຈາງ, ຂີດຂ້າ, ມີເສັ້ນປະ border-dashed)
+                        pillsHtml += '<button type="button" onclick="openStaffInfoModal(\'' + safeName + '\')" class="inline-flex items-center px-2 py-0.5 rounded-xl text-xs border border-dashed border-slate-300 bg-slate-100/70 text-slate-400 opacity-50 grayscale cursor-pointer hover:opacity-90 transition" title="ລາພັກມື້ນີ້ (' + (leaveInfo.reason || 'ລາພັກ') + ')">' +
+                                        avatarHtml +
+                                        '<span class="line-through decoration-slate-400">' + name + '</span>' +
+                                        '<span class="text-[9px] bg-rose-100 text-rose-600 font-bold px-1 py-0.2 rounded ml-1">ພັກ</span>' +
+                                     '</button>';
+                    } else {
+                        // ຮູບແບບຄົນປົກກະຕິ (ONLINE / ON-DUTY)
+                        var leaderDot = isLeader ? '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-0.5" title="ຫົວໜ້າກະ"></span>' : '';
+                        var swapIcon = isSwapped 
+                            ? '<span class="material-symbols-outlined text-[13px] text-amber-600 ml-0.5 leading-none align-middle" title="ປ່ຽນກະມາ">sync_alt</span>' 
+                            : '';
 
-                    var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100/60' : 'border-slate-200 bg-slate-50 hover:bg-slate-100';
-                    var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
+                        var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100/60' : 'border-slate-200 bg-slate-50 hover:bg-slate-100';
+                        var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
 
-                    pillsHtml += '<button type="button" onclick="openStaffInfoModal(\'' + safeName + '\')" class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs cursor-pointer hover:border-brand-red hover:scale-[1.03] transition ' + borderClass + ' ' + textClass + '" title="ກົດເພື່ອເບິ່ງຂໍ້ມູນພະນັກງານ">' +
-                                    avatarHtml + '<span>' + name + '</span>' + leaderDot + swapIcon +
-                                 '</button>';
+                        pillsHtml += '<button type="button" onclick="openStaffInfoModal(\'' + safeName + '\')" class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs cursor-pointer hover:border-brand-red hover:scale-[1.03] transition ' + borderClass + ' ' + textClass + '" title="ກົດເພື່ອເບິ່ງຂໍ້ມູນພະນັກງານ">' +
+                                        avatarHtml + '<span>' + name + '</span>' + leaderDot + swapIcon +
+                                     '</button>';
+                    }
                 });
                 pillsHtml += '</div>';
 
@@ -434,11 +491,15 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
             }
         });
 
-        if (totalShiftCount === 0) {
+        if (totalActiveStaffCount === 0 && totalLeaveStaffCount === 0) {
             container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">ບໍ່ມີພະນັກງານໃນກະນີ້</p>';
         }
 
-        if (badge) badge.innerText = totalShiftCount + ' ຄົນ';
+        // ⭐ ຈຳນວນຄົນປະຈຳການຫຼຸດລົງ 1 ຄົນ (ຄິດໄລ່ສະເພາະຄົນທີ່ມາປະຈຳການຕົວຈິງ)
+        if (badge) {
+            var leaveBadgeTag = totalLeaveStaffCount > 0 ? ' <span class="text-[10px] text-rose-500 font-normal">(-' + totalLeaveStaffCount + ' ພັກ)</span>' : '';
+            badge.innerHTML = totalActiveStaffCount + ' ຄົນ' + leaveBadgeTag;
+        }
     });
 }
 
@@ -709,6 +770,7 @@ window.fetchDashboardDataFromCloud = fetchDashboardDataFromCloud;
 window.getTodayLocalDateStr = getTodayLocalDateStr;
 window.openStaffInfoModal = openStaffInfoModal;
 window.closeStaffInfoModal = closeStaffInfoModal;
+window.getStaffLeaveInfo = getStaffLeaveInfo;
 window.updateLiveShiftIndicators = updateLiveShiftIndicators;
 window.autoApplyCompletedSwapsForDate = autoApplyCompletedSwapsForDate;
 window.updateDayTypeBadge = updateDayTypeBadge;
