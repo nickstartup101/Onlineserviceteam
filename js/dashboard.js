@@ -60,7 +60,7 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
-// ⭐ 0.6 ຟັງຊັນເປີດເບິ່ງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
+// 0.6 ດຶງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
 function openStaffInfoModal(encodedOrRawName) {
     var nameLao = decodeURIComponent(encodedOrRawName || '');
     var user = (window.users || []).find(function(u) {
@@ -126,9 +126,8 @@ function closeStaffInfoModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ 0.7 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD ໂດຍກົງ (ແກ້ໄຂບັນຫາບໍ່ດຶງຂໍ້ມູນ 100%)
+// 0.7 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD
 async function fetchDashboardDataFromCloud() {
-    // 1. ອ່ານຈາກ LocalStorage ກ່ອນເພື່ອຄວາມວ່ອງໄວ
     try {
         var cachedLeaves = localStorage.getItem('ot_annual_bookings');
         if (cachedLeaves) window.annualBookings = JSON.parse(cachedLeaves);
@@ -136,10 +135,8 @@ async function fetchDashboardDataFromCloud() {
         if (cachedSwaps) window.swapHistory = JSON.parse(cachedSwaps);
     } catch(e) {}
 
-    // 2. ດຶງຂໍ້ມູນສົດໆຈາກ Supabase Tables
     if (window.supabaseClient) {
         try {
-            // 2.1 ດຶງ Table: annual_bookings
             var resLeaves = await window.supabaseClient.from('annual_bookings').select('*');
             if (!resLeaves.error && resLeaves.data) {
                 window.annualBookings = resLeaves.data.map(function(d) {
@@ -158,7 +155,6 @@ async function fetchDashboardDataFromCloud() {
                 localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
             }
 
-            // 2.2 ດຶງ Table: shift_swaps
             var resSwaps = await window.supabaseClient.from('shift_swaps').select('*');
             if (!resSwaps.error && resSwaps.data) {
                 window.swapHistory = resSwaps.data.map(function(d) {
@@ -179,7 +175,6 @@ async function fetchDashboardDataFromCloud() {
                 localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
             }
 
-            // 2.3 ດຶງ Table: schedule_sheets (ຖ້າໃນເຄື່ອງຍັງບໍ່ມີ)
             if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
                 var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
                 if (!resSheets.error && resSheets.data) {
@@ -202,7 +197,7 @@ async function fetchDashboardDataFromCloud() {
     }
 }
 
-// ⭐ 0.8 AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
+// 0.8 AUTO-APPLY SWAPS ອັດຕະໂນມັດ
 function autoApplyCompletedSwapsForDate(targetDate) {
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         var sStart = s.startDate || s.start_date;
@@ -289,7 +284,7 @@ function autoApplyCompletedSwapsForDate(targetDate) {
     return hasAnyChange;
 }
 
-// ⭐ 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD (ASYNC ດຶງ SUPABASE 100%)
+// 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
 async function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
     
@@ -299,17 +294,12 @@ async function renderDashboard() {
 
     var targetDate = dateInput ? dateInput.value : getTodayLocalDateStr();
 
-    // 1. ອັບເດດ Badge ປະເພດວັນ
     updateDayTypeBadge(targetDate);
     updateLiveShiftIndicators(targetDate);
 
-    // ⭐ 2. ດຶງຂໍ້ມູນຫຼ້າສຸດຈາກ Supabase Cloud ກ່ອນ Render ສະເໝີ!
     await fetchDashboardDataFromCloud();
-
-    // 3. ສັ່ງ Auto-Apply ທຸກຄູ່ທີ່ປ່ຽນກະສຳເລັດໃຫ້ສະລັບບ່ອນນັ່ງ
     autoApplyCompletedSwapsForDate(targetDate);
 
-    // 4. ດຶງ Sheet ແລະ ລາຍການ Swap ຂອງວັນນີ້
     var sheets = getSheetsForMonth(targetDate);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         var sStart = s.startDate || s.start_date;
@@ -324,13 +314,8 @@ async function renderDashboard() {
         swappedStaffSet.add(s.toName || s.to_name);
     });
 
-    // 5. Render 3 ກະ (Shift 1, Shift 2, Shift 3)
     renderShiftCards(targetDate, sheets, swappedStaffSet);
-
-    // 6. ⭐ Render ພະນັກງານລາພັກມື້ນີ້ (ດຶງຈາກ Supabase)
     renderLeavesToday(targetDate);
-
-    // 7. ⭐ Render ລາຍການປ່ຽນກະ & Swap Chain Inspector (ດຶງຈາກ Supabase)
     renderDashboardSwapsWithChains(targetDate, swapsToday);
 }
 
@@ -457,7 +442,7 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     });
 }
 
-// ⭐ 4. RENDER ພະນັກງານລາພັກມື້ນີ້ (ດຶງຈາກ SUPABASE: ຮອງຮັບທັງ name_lao ແລະ start_date)
+// 4. RENDER ພະນັກງານລາພັກມື້ນີ້
 function renderLeavesToday(targetDate) {
     var container = document.getElementById('dashLeavesContainer');
     if (!container) return;
@@ -490,7 +475,7 @@ function renderLeavesToday(targetDate) {
     });
 }
 
-// ⭐ 5. RENDER ລາຍການປ່ຽນກະ (ດຶງຈາກ SUPABASE: ຮອງຮັບທັງ from_name, to_name, start_date)
+// 5. RENDER ລາຍການປ່ຽນກະ
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -671,7 +656,7 @@ function openSwapChainInspectorModal(dateStr) {
                 '</div>' +
             '</div>' +
             '<button type="button" onclick="closeSwapChainInspectorModal()" class="text-white/80 hover:text-white cursor-pointer"><span class="material-symbols-outlined text-xl">close</span></button>' +
-        } +
+        '</div>' +
         '<div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">' +
             '<div>' +
                 '<h4 class="font-bold text-slate-700 mb-2.5 flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-brand-red">timeline</span> ລຳດັບການສະລັບກະ (Swap Steps):</h4>' +
