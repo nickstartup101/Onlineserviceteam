@@ -34,7 +34,37 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// 0.3 FUNCTION ດຶງ SHEET ປັດຈຸບັນແບບ AUTO-HEALING
+// ⭐ 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE ເຂົ້າ SCHEDULE.JS ໂດຍກົງ
+async function fetchScheduleSwapsFromCloud() {
+    if (!window.supabaseClient) return;
+    try {
+        var res = await window.supabaseClient.from('shift_swaps').select('*').order('created_at', { ascending: false });
+        if (!res.error && res.data) {
+            window.swapHistory = res.data.map(function(d) {
+                var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
+                return {
+                    id: String(d.id),
+                    swapType: isCover ? 'COVER' : 'SWAP',
+                    fromName: d.from_name || d.fromName,
+                    toName: d.to_name || d.toName,
+                    startDate: d.start_date || d.startDate,
+                    endDate: d.end_date || d.endDate,
+                    fromShift: d.from_shift || d.fromShift,
+                    toShift: d.to_shift || d.toShift,
+                    reason: d.reason || '',
+                    status: String(d.status || '').toUpperCase()
+                };
+            });
+            try {
+                localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+            } catch(e) {}
+        }
+    } catch(err) {
+        console.warn("Could not fetch swaps in schedule.js:", err);
+    }
+}
+
+// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນແບບ AUTO-HEALING
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         try {
@@ -83,7 +113,7 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// 0.4 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກວດສອບ ERROR
+// 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກວດສອບ ERROR
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return false;
 
@@ -116,9 +146,16 @@ async function syncScheduleToSupabase(sheet) {
     }
 }
 
-// ⭐ 0.5 ລະບົບ AUTO-SYNC ທຸກຄຳຮ້ອງປ່ຽນກະເຂົ້າໃນຕາຕະລາງໃຫຍ່ທຸກໆວັນ (ແກ້ໄຂບັນຫາບາງມື້ປ່ຽນ ບາງມື້ບໍ່ປ່ຽນ)
+// ⭐ 0.6 ລະບົບ AUTO-SYNC ທຸກຄຳຮ້ອງປ່ຽນກະ (ສະລັບ ໂທມິກ & ເອກສະຫວ່າງ 100% ບໍ່ມີພາດ)
 function syncAllApprovedSwapsIntoSheet(sheet) {
     if (!sheet || !sheet.data) return false;
+
+    if (!window.swapHistory || window.swapHistory.length === 0) {
+        try {
+            var cached = localStorage.getItem('ot_swap_history');
+            if (cached) window.swapHistory = JSON.parse(cached);
+        } catch(e) {}
+    }
 
     var swaps = (window.swapHistory || []).filter(function(s) {
         var st = String(s.status || '').toUpperCase();
@@ -134,13 +171,9 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         var personB = req.toName || req.to_name;
         var sStart = req.startDate || req.start_date;
         var sEnd = req.endDate || req.end_date || sStart;
-        var targetShiftA = normalizeSchedShiftKey(req.toShift || req.to_shift);
-        var targetShiftB = normalizeSchedShiftKey(req.fromShift || req.from_shift);
-        var isCover = (req.swapType === 'COVER');
 
         if (!personA || !personB || !sStart) return;
 
-        // ວົນລູບທຸກໆມື້ໃນຊ່ວງວັນທີທີ່ຂໍປ່ຽນ (ເຊັ່ນ: 12 ຫາ 16 ຕຸລາ)
         var cur = new Date(sStart + 'T00:00:00Z');
         var end = new Date(sEnd + 'T00:00:00Z');
 
@@ -151,6 +184,13 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
             var day = sheet.data[dStr];
             if (!day) continue;
 
+            // ⭐ ປ້ອງກັນບໍ່ໃຫ້ສະລັບຊໍ້າຊ້ອນ
+            if (!day._swappedReqs) day._swappedReqs = {};
+            var swapKey = String(req.id) + '_' + dStr;
+            if (day._swappedReqs[swapKey]) continue;
+
+            var isCover = (req.swapType === 'COVER');
+
             if (isCover) {
                 ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
                     var arr = day[sName] || [];
@@ -158,6 +198,7 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
                         if (isSchedNameMatch(arr[i], personB)) {
                             arr[i] = personA;
                             hasChange = true;
+                            day._swappedReqs[swapKey] = true;
                         }
                     }
                 });
@@ -177,21 +218,23 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
                 var posA = findSlot(personA);
                 var posB = findSlot(personB);
 
+                // ⭐ ກໍລະນີທີ 1: ທັງສອງຄົນມີກະປະຈຳການຄົນລະກະ -> ສະລັບບ່ອນນັ່ງກັນທັນທີ!
                 if (posA && posB && posA.shift !== posB.shift) {
-                    var needsSwap = false;
-                    if (targetShiftA && targetShiftB) {
-                        if (posA.shift !== targetShiftA && posB.shift !== targetShiftB) {
-                            needsSwap = true;
-                        }
-                    } else {
-                        needsSwap = true;
-                    }
-
-                    if (needsSwap) {
-                        day[posA.shift][posA.index] = personB;
-                        day[posB.shift][posB.index] = personA;
-                        hasChange = true;
-                    }
+                    day[posA.shift][posA.index] = personB;
+                    day[posB.shift][posB.index] = personA;
+                    hasChange = true;
+                    day._swappedReqs[swapKey] = true;
+                }
+                // ⭐ ກໍລະນີທີ 2: ຄົນໜຶ່ງມີກະ ແຕ່ອີກຄົນໜຶ່ງພັກ (OFF) -> ແທນທີ່ກະທັນທີ
+                else if (posA && !posB) {
+                    day[posA.shift][posA.index] = personB;
+                    hasChange = true;
+                    day._swappedReqs[swapKey] = true;
+                }
+                else if (!posA && posB) {
+                    day[posB.shift][posB.index] = personA;
+                    hasChange = true;
+                    day._swappedReqs[swapKey] = true;
                 }
             }
         }
@@ -518,7 +561,7 @@ async function executeGroupRandomSchedule() {
         localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
     } catch(e) {}
 
-    renderScheduleTable();
+    await renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງ Zigzag ຮຽບຮ້ອຍ!', 'success');
@@ -614,20 +657,23 @@ async function executeBatchMonthGenerate() {
 
     document.getElementById('batchMonthModal')?.classList.add('hidden');
     renderSheetDropdown();
-    renderScheduleTable();
+    await renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 7. RENDER ຕາຕະລາງໃຫຍ່ (SYNC ຄຳຮ້ອງປ່ຽນກະທຸກໆວັນອັດຕະໂນມັດ 100%)
-function renderScheduleTable() {
+// ⭐ 7. RENDER ຕາຕະລາງໃຫຍ່ (ASYNC DYNAMIC SYNC 100%)
+async function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
     
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    // ⭐ Auto-Sync ທຸກຄຳຮ້ອງປ່ຽນກະທີ່ອະນຸມັດແລ້ວໃຫ້ສະລັບຄົບທຸກໆວັນໃນ Sheet ນີ້ທັນທີ!
+    // ⭐ 1. ດຶງຂໍ້ມູນການປ່ຽນກະຫຼ້າສຸດຈາກ Supabase Cloud ທຸກຄັ້ງ!
+    await fetchScheduleSwapsFromCloud();
+
+    // ⭐ 2. ສັ່ງ Auto-Sync ສະລັບ ໂທມິກ & ເອກສະຫວ່າງ ຄົບທຸກໆວັນທັນທີ!
     syncAllApprovedSwapsIntoSheet(sheet);
 
     var scheduleData = sheet.data || {};
@@ -858,7 +904,7 @@ async function applyCellUpdate(sheet, date, shift, index, nameLao) {
     } catch(e) {}
 
     closeCellModal();
-    renderScheduleTable();
+    await renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
 
     var isSynced = await syncScheduleToSupabase(sheet);
@@ -977,7 +1023,7 @@ async function handleCreateNewSheet() {
 
     document.getElementById('newSheetModal')?.classList.add('hidden');
     renderSheetDropdown();
-    renderScheduleTable();
+    await renderScheduleTable();
     showToast('ສຳເລັດ', 'ສ້າງ "' + title + '" ສຳເລັດ!', 'success');
 
     try {
@@ -1016,7 +1062,7 @@ async function handleSaveSheetInfo() {
 
     document.getElementById('editSheetInfoModal')?.classList.add('hidden');
     renderSheetDropdown();
-    renderScheduleTable();
+    await renderScheduleTable();
     showToast('ສຳເລັດ', 'ບັນທຶກຫົວຂໍ້ & ໝາຍເຫດ ສຳເລັດ!', 'success');
     await syncScheduleToSupabase(sheet);
 }
@@ -1087,7 +1133,7 @@ async function saveDraft() {
     var sheet = getActiveSheet();
     sheet.status = 'DRAFT'; 
     renderSheetDropdown(); 
-    renderScheduleTable(); 
+    await renderScheduleTable(); 
     showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); 
     await syncScheduleToSupabase(sheet);
 }
@@ -1096,7 +1142,7 @@ async function publishSchedule() {
     var sheet = getActiveSheet();
     sheet.status = 'PUBLISHED';
     renderSheetDropdown();
-    renderScheduleTable();
+    await renderScheduleTable();
     showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ!', 'success');
     await syncScheduleToSupabase(sheet);
 }
@@ -1247,7 +1293,7 @@ async function handleSaveHolidayRange() {
     window.specialHolidayRanges.push(newHol);
 
     document.getElementById('holidayModal')?.classList.add('hidden');
-    renderScheduleTable();
+    await renderScheduleTable();
     showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
 
     try {
@@ -1295,6 +1341,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ຜູກ Functions ເຂົ້າ Window (ຄົບຖ້ວນທຸກອັນ 100%)
 window.isDateInHolidayRange = isDateInHolidayRange;
 window.syncScheduleToSupabase = syncScheduleToSupabase;
+window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
 window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
 window.getMondayBasedWeekIndex = getMondayBasedWeekIndex;
 window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
