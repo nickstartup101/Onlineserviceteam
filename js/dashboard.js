@@ -1,14 +1,17 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR & STAFF PROFILE POPOVER =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & CLOUD SUPABASE AUTO-SYNC =================
 
 // 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
     if (!a || !b) return false;
-    var cleanA = a.toString().trim().toLowerCase().replace(/\s+/g, '');
-    var cleanB = b.toString().trim().toLowerCase().replace(/\s+/g, '');
-    return cleanA === cleanB;
+    var clean = function(s) {
+        return s.toString().trim().toLowerCase()
+            .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '')
+            .replace(/\s+/g, '');
+    };
+    return clean(a) === clean(b);
 }
 
-// 0.1 HELPER ດຶງວັນທີມື້ປັດຈຸບັນຕົວຈິງຂອງເຄື່ອງ (Local Time YYYY-MM-DD)
+// 0.1 HELPER ດຶງວັນທີມື້ປັດຈຸບັນຕົວຈິງ (Local Time YYYY-MM-DD)
 function getTodayLocalDateStr() {
     var now = new Date();
     var y = now.getFullYear();
@@ -123,10 +126,89 @@ function closeStaffInfoModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// 0.7 ລະບົບ AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
+// ⭐ 0.7 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD ໂດຍກົງ (ແກ້ໄຂບັນຫາບໍ່ດຶງຂໍ້ມູນ 100%)
+async function fetchDashboardDataFromCloud() {
+    // 1. ອ່ານຈາກ LocalStorage ກ່ອນເພື່ອຄວາມວ່ອງໄວ
+    try {
+        var cachedLeaves = localStorage.getItem('ot_annual_bookings');
+        if (cachedLeaves) window.annualBookings = JSON.parse(cachedLeaves);
+        var cachedSwaps = localStorage.getItem('ot_swap_history');
+        if (cachedSwaps) window.swapHistory = JSON.parse(cachedSwaps);
+    } catch(e) {}
+
+    // 2. ດຶງຂໍ້ມູນສົດໆຈາກ Supabase Tables
+    if (window.supabaseClient) {
+        try {
+            // 2.1 ດຶງ Table: annual_bookings
+            var resLeaves = await window.supabaseClient.from('annual_bookings').select('*');
+            if (!resLeaves.error && resLeaves.data) {
+                window.annualBookings = resLeaves.data.map(function(d) {
+                    return {
+                        id: d.id,
+                        user: d.user_code || d.user,
+                        nameLao: d.name_lao || d.nameLao,
+                        startDate: d.start_date || d.startDate,
+                        endDate: d.end_date || d.endDate,
+                        days: d.days,
+                        shift: d.shift || 'ທຸກກະ',
+                        reason: d.reason || '',
+                        status: String(d.status || '').toUpperCase()
+                    };
+                });
+                localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
+            }
+
+            // 2.2 ດຶງ Table: shift_swaps
+            var resSwaps = await window.supabaseClient.from('shift_swaps').select('*');
+            if (!resSwaps.error && resSwaps.data) {
+                window.swapHistory = resSwaps.data.map(function(d) {
+                    var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
+                    return {
+                        id: d.id,
+                        swapType: isCover ? 'COVER' : 'SWAP',
+                        fromName: d.from_name || d.fromName,
+                        toName: d.to_name || d.toName,
+                        startDate: d.start_date || d.startDate,
+                        endDate: d.end_date || d.endDate,
+                        fromShift: d.from_shift || d.fromShift,
+                        toShift: d.to_shift || d.toShift,
+                        reason: d.reason || '',
+                        status: String(d.status || '').toUpperCase()
+                    };
+                });
+                localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+            }
+
+            // 2.3 ດຶງ Table: schedule_sheets (ຖ້າໃນເຄື່ອງຍັງບໍ່ມີ)
+            if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
+                var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
+                if (!resSheets.error && resSheets.data) {
+                    window.scheduleSheets = resSheets.data.map(function(d) {
+                        return {
+                            id: d.id,
+                            title: d.title,
+                            monthKey: d.month_key || d.monthKey,
+                            notes: d.notes,
+                            status: d.status,
+                            data: d.data
+                        };
+                    });
+                    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+                }
+            }
+        } catch(err) {
+            console.warn("Cloud sync exception in dashboard:", err);
+        }
+    }
+}
+
+// ⭐ 0.8 AUTO-APPLY SWAPS ອັດຕະໂນມັດ 100%
 function autoApplyCompletedSwapsForDate(targetDate) {
     var swapsToday = (window.swapHistory || []).filter(function(s) {
-        return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
+        var sStart = s.startDate || s.start_date;
+        var sEnd = s.endDate || s.end_date;
+        var sStatus = String(s.status || '').toUpperCase();
+        return sStatus === 'COMPLETED' && (targetDate >= sStart && targetDate <= sEnd);
     });
 
     if (swapsToday.length === 0) return false;
@@ -140,10 +222,10 @@ function autoApplyCompletedSwapsForDate(targetDate) {
     var hasAnyChange = false;
 
     swapsToday.forEach(function(req) {
-        var personA = req.fromName;
-        var personB = req.toName;
-        var targetShiftA = normalizeShiftKey(req.toShift);
-        var targetShiftB = normalizeShiftKey(req.fromShift);
+        var personA = req.fromName || req.from_name;
+        var personB = req.toName || req.to_name;
+        var targetShiftA = normalizeShiftKey(req.toShift || req.to_shift);
+        var targetShiftB = normalizeShiftKey(req.fromShift || req.from_shift);
         var isCover = (req.swapType === 'COVER');
 
         sheets.forEach(function(sheet) {
@@ -207,8 +289,8 @@ function autoApplyCompletedSwapsForDate(targetDate) {
     return hasAnyChange;
 }
 
-// 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
-function renderDashboard() {
+// ⭐ 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD (ASYNC ດຶງ SUPABASE 100%)
+async function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
     
     if (dateInput && (!dateInput.value || !window._dashUserHasPickedDate)) {
@@ -217,27 +299,42 @@ function renderDashboard() {
 
     var targetDate = dateInput ? dateInput.value : getTodayLocalDateStr();
 
+    // 1. ອັບເດດ Badge ປະເພດວັນ
     updateDayTypeBadge(targetDate);
     updateLiveShiftIndicators(targetDate);
+
+    // ⭐ 2. ດຶງຂໍ້ມູນຫຼ້າສຸດຈາກ Supabase Cloud ກ່ອນ Render ສະເໝີ!
+    await fetchDashboardDataFromCloud();
+
+    // 3. ສັ່ງ Auto-Apply ທຸກຄູ່ທີ່ປ່ຽນກະສຳເລັດໃຫ້ສະລັບບ່ອນນັ່ງ
     autoApplyCompletedSwapsForDate(targetDate);
 
+    // 4. ດຶງ Sheet ແລະ ລາຍການ Swap ຂອງວັນນີ້
     var sheets = getSheetsForMonth(targetDate);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
-        return s.status === 'COMPLETED' && (targetDate >= s.startDate && targetDate <= s.endDate);
+        var sStart = s.startDate || s.start_date;
+        var sEnd = s.endDate || s.end_date;
+        var sStatus = String(s.status || '').toUpperCase();
+        return sStatus === 'COMPLETED' && (targetDate >= sStart && targetDate <= sEnd);
     });
 
     var swappedStaffSet = new Set();
     swapsToday.forEach(function(s) {
-        swappedStaffSet.add(s.fromName);
-        swappedStaffSet.add(s.toName);
+        swappedStaffSet.add(s.fromName || s.from_name);
+        swappedStaffSet.add(s.toName || s.to_name);
     });
 
+    // 5. Render 3 ກະ (Shift 1, Shift 2, Shift 3)
     renderShiftCards(targetDate, sheets, swappedStaffSet);
+
+    // 6. ⭐ Render ພະນັກງານລາພັກມື້ນີ້ (ດຶງຈາກ Supabase)
     renderLeavesToday(targetDate);
+
+    // 7. ⭐ Render ລາຍການປ່ຽນກະ & Swap Chain Inspector (ດຶງຈາກ Supabase)
     renderDashboardSwapsWithChains(targetDate, swapsToday);
 }
 
-// 1.1 ອັບເດດປ້າຍ LIVE ຕາມໂມງປັດຈຸບັນ
+// 1.1 ອັບເດດປ້າຍ LIVE
 function updateLiveShiftIndicators(targetDate) {
     var todayStr = getTodayLocalDateStr();
     var isToday = (targetDate === todayStr);
@@ -284,7 +381,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
-// ⭐ 3. RENDER CARDS ທັງ 3 ກະ (ຄລິກຊື່ພະນັກງານເພື່ອເບິ່ງຂໍ້ມູນໄດ້ທຸກຄົນ)
+// 3. RENDER CARDS ທັງ 3 ກະ
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -342,7 +439,6 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
                     var borderClass = isSwapped ? 'border-amber-300 bg-amber-50/50 hover:bg-amber-100/60' : 'border-slate-200 bg-slate-50 hover:bg-slate-100';
                     var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-semibold';
 
-                    // ⭐ ປຸ່ມຄລິກເປີດ openStaffInfoModal
                     pillsHtml += '<button type="button" onclick="openStaffInfoModal(\'' + safeName + '\')" class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs border shadow-2xs cursor-pointer hover:border-brand-red hover:scale-[1.03] transition ' + borderClass + ' ' + textClass + '" title="ກົດເພື່ອເບິ່ງຂໍ້ມູນພະນັກງານ">' +
                                     avatarHtml + '<span>' + name + '</span>' + leaderDot + swapIcon +
                                  '</button>';
@@ -361,14 +457,17 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     });
 }
 
-// 4. RENDER ພະນັກງານລາພັກມື້ນີ້
+// ⭐ 4. RENDER ພະນັກງານລາພັກມື້ນີ້ (ດຶງຈາກ SUPABASE: ຮອງຮັບທັງ name_lao ແລະ start_date)
 function renderLeavesToday(targetDate) {
     var container = document.getElementById('dashLeavesContainer');
     if (!container) return;
     container.innerHTML = '';
 
     var leaves = (window.annualBookings || []).filter(function(b) {
-        return b.status === 'CONFIRMED' && (targetDate >= b.startDate && targetDate <= b.endDate);
+        var bStart = b.startDate || b.start_date;
+        var bEnd = b.endDate || b.end_date;
+        var bStatus = String(b.status || '').toUpperCase();
+        return bStatus === 'CONFIRMED' && (targetDate >= bStart && targetDate <= bEnd);
     });
 
     if (leaves.length === 0) {
@@ -377,10 +476,12 @@ function renderLeavesToday(targetDate) {
     }
 
     leaves.forEach(function(l) {
-        var safeName = encodeURIComponent(l.nameLao);
+        var staffName = l.nameLao || l.name_lao || 'ພະນັກງານ';
+        var safeName = encodeURIComponent(staffName);
+
         container.innerHTML += '<div onclick="openStaffInfoModal(\'' + safeName + '\')" class="p-2.5 bg-red-50/60 hover:bg-red-50 border border-red-100 rounded-xl flex justify-between items-center text-xs font-lao cursor-pointer transition">' +
             '<div>' +
-                '<span class="font-bold text-brand-red hover:underline">' + l.nameLao + '</span>' +
+                '<span class="font-bold text-brand-red hover:underline">' + staffName + '</span>' +
                 '<span class="text-slate-500 text-[11px] ml-2">[' + (l.shift || 'ທຸກກະ') + ']</span>' +
                 (l.reason ? '<p class="text-[10px] text-slate-400 italic mt-0.5">"' + l.reason + '"</p>' : '') +
             '</div>' +
@@ -389,7 +490,7 @@ function renderLeavesToday(targetDate) {
     });
 }
 
-// 5. RENDER ລາຍການປ່ຽນກະ (GOOGLE MATERIAL SYMBOLS)
+// ⭐ 5. RENDER ລາຍການປ່ຽນກະ (ດຶງຈາກ SUPABASE: ຮອງຮັບທັງ from_name, to_name, start_date)
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -401,8 +502,10 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
 
     var countMap = {};
     swapsToday.forEach(function(s) {
-        countMap[s.fromName] = (countMap[s.fromName] || 0) + 1;
-        countMap[s.toName] = (countMap[s.toName] || 0) + 1;
+        var pFrom = s.fromName || s.from_name;
+        var pTo = s.toName || s.to_name;
+        countMap[pFrom] = (countMap[pFrom] || 0) + 1;
+        countMap[pTo] = (countMap[pTo] || 0) + 1;
     });
 
     var formatShiftTag = function(shift) {
@@ -424,9 +527,11 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
             '</div>';
 
     swapsToday.forEach(function(s) {
-        var isChained = (countMap[s.fromName] > 1 || countMap[s.toName] > 1);
-        var sA = formatShiftTag(s.fromShift);
-        var sB = formatShiftTag(s.toShift);
+        var pFrom = s.fromName || s.from_name;
+        var pTo = s.toName || s.to_name;
+        var isChained = (countMap[pFrom] > 1 || countMap[pTo] > 1);
+        var sA = formatShiftTag(s.fromShift || s.from_shift);
+        var sB = formatShiftTag(s.toShift || s.to_shift);
 
         var remarkTag = (sA && sB) 
             ? '<span class="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">' +
@@ -446,9 +551,9 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
         html += '<div onclick="openSwapChainInspectorModal(\'' + targetDate + '\')" class="p-2.5 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50/80 rounded-2xl flex justify-between items-center gap-2 cursor-pointer transition shadow-2xs font-lao group">' +
                     '<div class="flex-1 min-w-0">' +
                         '<div class="flex items-center gap-1.5 flex-wrap text-xs">' +
-                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.fromName + '</span>' +
+                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + pFrom + '</span>' +
                             '<span class="material-symbols-outlined text-[13px] text-slate-400">arrow_forward</span>' +
-                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + s.toName + '</span>' +
+                            '<span class="font-bold text-slate-800 group-hover:text-brand-red transition">' + pTo + '</span>' +
                             remarkTag +
                             chainedBadge +
                         '</div>' +
@@ -471,7 +576,10 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
 function openSwapChainInspectorModal(dateStr) {
     var sheets = getSheetsForMonth(dateStr);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
-        return s.status === 'COMPLETED' && (dateStr >= s.startDate && dateStr <= s.endDate);
+        var sStart = s.startDate || s.start_date;
+        var sEnd = s.endDate || s.end_date;
+        var sStatus = String(s.status || '').toUpperCase();
+        return sStatus === 'COMPLETED' && (dateStr >= sStart && dateStr <= sEnd);
     }).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
 
     if (swapsToday.length === 0) {
@@ -481,8 +589,8 @@ function openSwapChainInspectorModal(dateStr) {
 
     var involvedStaff = new Set();
     swapsToday.forEach(function(s) {
-        involvedStaff.add(s.fromName);
-        involvedStaff.add(s.toName);
+        involvedStaff.add(s.fromName || s.from_name);
+        involvedStaff.add(s.toName || s.to_name);
     });
 
     var modal = document.getElementById('swapChainInspectorModal');
@@ -495,21 +603,23 @@ function openSwapChainInspectorModal(dateStr) {
 
     var timelineHtml = '';
     swapsToday.forEach(function(s, idx) {
+        var pFrom = s.fromName || s.from_name;
+        var pTo = s.toName || s.to_name;
         timelineHtml += '<div class="flex items-start gap-3 relative">' +
                             '<div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 z-10">' + (idx + 1) + '</div>' +
                             '<div class="flex-1 bg-slate-50 border border-slate-200 rounded-2xl p-3 text-xs">' +
                                 '<div class="flex justify-between items-center mb-1">' +
                                     '<span class="font-bold text-slate-800 flex items-center gap-1.5">' +
-                                        s.fromName +
+                                        pFrom +
                                         '<span class="material-symbols-outlined text-[13px] text-slate-400">sync_alt</span>' +
-                                        s.toName +
+                                        pTo +
                                     '</span>' +
                                     '<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">' +
                                         '<span class="material-symbols-outlined text-[11px]">check_circle</span> ສຳເລັດ' +
                                     '</span>' +
                                 '</div>' +
                                 '<p class="text-slate-600 text-[11px] leading-relaxed">' +
-                                    '• <strong>' + s.fromName + '</strong> ສະລັບກະກັບ <strong>' + s.toName + '</strong> (' + (s.fromShift || 'ກະເດີມ') + ' ↔ ' + (s.toShift || 'ກະເດີມ') + ')' +
+                                    '• <strong>' + pFrom + '</strong> ສະລັບກະກັບ <strong>' + pTo + '</strong> (' + (s.fromShift || s.from_shift || 'ກະເດີມ') + ' ↔ ' + (s.toShift || s.to_shift || 'ກະເດີມ') + ')' +
                                 '</p>' +
                                 (s.reason ? '<p class="text-slate-400 text-[10px] mt-1 italic">ໝາຍເຫດ: "' + s.reason + '"</p>' : '') +
                             '</div>' +
@@ -561,7 +671,7 @@ function openSwapChainInspectorModal(dateStr) {
                 '</div>' +
             '</div>' +
             '<button type="button" onclick="closeSwapChainInspectorModal()" class="text-white/80 hover:text-white cursor-pointer"><span class="material-symbols-outlined text-xl">close</span></button>' +
-        '</div>' +
+        } +
         '<div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">' +
             '<div>' +
                 '<h4 class="font-bold text-slate-700 mb-2.5 flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-brand-red">timeline</span> ລຳດັບການສະລັບກະ (Swap Steps):</h4>' +
@@ -610,6 +720,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ຜູກ Functions ເຂົ້າ Window
 window.renderDashboard = renderDashboard;
+window.fetchDashboardDataFromCloud = fetchDashboardDataFromCloud;
 window.getTodayLocalDateStr = getTodayLocalDateStr;
 window.openStaffInfoModal = openStaffInfoModal;
 window.closeStaffInfoModal = closeStaffInfoModal;
