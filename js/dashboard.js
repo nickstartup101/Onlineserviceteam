@@ -1,5 +1,6 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR (UNIVERSAL ENGINE SYNC) =================
+// ================= ⭐ DAILY OPERATIONAL MONITOR & OFFLINE LEAVE TRACKER =================
 
+// 0. HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isDashNameMatch(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
@@ -10,6 +11,7 @@ function isDashNameMatch(a, b) {
     return clean(a) === clean(b);
 }
 
+// 0.1 HELPER ດຶງວັນທີມື້ປັດຈຸບັນຕົວຈິງ (Local Time YYYY-MM-DD)
 function getTodayLocalDateStr() {
     var now = new Date();
     var y = now.getFullYear();
@@ -18,6 +20,7 @@ function getTodayLocalDateStr() {
     return y + '-' + m + '-' + d;
 }
 
+// 0.2 HELPER ດຶງຮູບ Avatar
 function getStaffPhotoHtml(nameLao, isOffline) {
     var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
     if (user && user.photo) {
@@ -27,11 +30,13 @@ function getStaffPhotoHtml(nameLao, isOffline) {
     return '';
 }
 
+// 0.3 HELPER ກວດສອບຫົວໜ້າກະ
 function isStaffLeader(nameLao) {
     var user = (window.users || []).find(function(u) { return isDashNameMatch(u.nameLao, nameLao); });
     return user ? Boolean(user.isLeader) : false;
 }
 
+// ⭐ 0.4 ແປງຊື່ກະໃຫ້ເປັນ Standard Key (ແກ້ໄຂບໍ່ໃຫ້ຕິດເລກ 1 ໃນ 12:00)
 function normalizeShiftKey(s) {
     if (!s) return null;
     var str = s.toString().toLowerCase().trim();
@@ -42,6 +47,7 @@ function normalizeShiftKey(s) {
     return null;
 }
 
+// ⭐ 0.5 HELPER ກວດສອບວ່າພະນັກງານຄົນນີ້ລາພັກໃນກະນີ້ມື້ນີ້ຫຼືບໍ່
 function getStaffLeaveInfo(nameLao, shiftKey, targetDate) {
     var leaves = (window.annualBookings || []).filter(function(b) {
         var bStart = b.startDate || b.start_date;
@@ -66,8 +72,9 @@ function getStaffLeaveInfo(nameLao, shiftKey, targetDate) {
     return null;
 }
 
+// 0.6 ດຶງ Sheet ຂອງເດືອນທີ່ກົງກັບວັນທີ
 function getSheetsForMonth(dateStr) {
-    var monthKey = dateStr.slice(0, 7);
+    var monthKey = dateStr.slice(0, 7); // YYYY-MM
     var sheets = (window.scheduleSheets || []).filter(function(s) {
         var sMKey = (s.monthKey || s.month_key || '').slice(0, 7);
         return sMKey === monthKey;
@@ -80,6 +87,7 @@ function getSheetsForMonth(dateStr) {
     return sheets;
 }
 
+// 0.7 ດຶງຂໍ້ມູນພະນັກງານ (STAFF QUICK INFO MODAL)
 function openStaffInfoModal(encodedOrRawName) {
     var nameLao = decodeURIComponent(encodedOrRawName || '');
     var user = (window.users || []).find(function(u) {
@@ -145,6 +153,7 @@ function closeStaffInfoModal() {
     if (modal) modal.classList.add('hidden');
 }
 
+// 0.8 ດຶງຂໍ້ມູນຈາກ CLOUD SUPABASE ເຂົ້າ DASHBOARD
 async function fetchDashboardDataFromCloud() {
     try {
         var cachedLeaves = localStorage.getItem('ot_annual_bookings');
@@ -192,13 +201,117 @@ async function fetchDashboardDataFromCloud() {
                 });
                 localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
             }
+
+            if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
+                var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
+                if (!resSheets.error && resSheets.data) {
+                    window.scheduleSheets = resSheets.data.map(function(d) {
+                        return {
+                            id: d.id,
+                            title: d.title,
+                            monthKey: d.month_key || d.monthKey,
+                            notes: d.notes,
+                            status: d.status,
+                            data: d.data
+                        };
+                    });
+                    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+                }
+            }
         } catch(err) {
             console.warn("Cloud sync exception in dashboard:", err);
         }
     }
 }
 
-// ⭐ 1. RENDER DASHBOARD (ເຊື່ອມຕໍ່ສູດດຽວກັນກັບ SCHEDULE.JS 100%)
+// 0.9 AUTO-APPLY SWAPS ອັດຕະໂນມັດ
+function autoApplyCompletedSwapsForDate(targetDate) {
+    var swapsToday = (window.swapHistory || []).filter(function(s) {
+        var sStart = s.startDate || s.start_date;
+        var sEnd = s.endDate || s.end_date;
+        var sStatus = String(s.status || '').toUpperCase();
+        return sStatus === 'COMPLETED' && (targetDate >= sStart && targetDate <= sEnd);
+    });
+
+    if (swapsToday.length === 0) return false;
+
+    var sheets = (window.scheduleSheets || []).filter(function(s) {
+        return Boolean(s && s.data && s.data[targetDate]);
+    });
+
+    if (sheets.length === 0) return false;
+
+    var hasAnyChange = false;
+
+    swapsToday.forEach(function(req) {
+        var personA = req.fromName || req.from_name;
+        var personB = req.toName || req.to_name;
+        var targetShiftA = normalizeShiftKey(req.toShift || req.to_shift);
+        var targetShiftB = normalizeShiftKey(req.fromShift || req.from_shift);
+        var isCover = (req.swapType === 'COVER');
+
+        sheets.forEach(function(sheet) {
+            var day = sheet.data[targetDate];
+            if (!day) return;
+
+            if (isCover) {
+                ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
+                    var arr = day[sName] || [];
+                    for (var i = 0; i < arr.length; i++) {
+                        if (isDashNameMatch(arr[i], personB)) {
+                            arr[i] = personA;
+                            hasAnyChange = true;
+                        }
+                    }
+                });
+            } else {
+                var findSlot = function(name) {
+                    for (var sName of ['shift1', 'shift2', 'shift3']) {
+                        var arr = day[sName] || [];
+                        for (var i = 0; i < arr.length; i++) {
+                            if (isDashNameMatch(arr[i], name)) {
+                                return { shift: sName, index: i };
+                            }
+                        }
+                    }
+                    return null;
+                };
+
+                var posA = findSlot(personA);
+                var posB = findSlot(personB);
+
+                if (posA && posB && posA.shift !== posB.shift) {
+                    var needsSwap = false;
+                    if (targetShiftA && targetShiftB) {
+                        if (posA.shift !== targetShiftA && posB.shift !== targetShiftB) {
+                            needsSwap = true;
+                        }
+                    } else {
+                        needsSwap = true;
+                    }
+
+                    if (needsSwap) {
+                        day[posA.shift][posA.index] = personB;
+                        day[posB.shift][posB.index] = personA;
+                        hasAnyChange = true;
+                    }
+                }
+            }
+        });
+    });
+
+    if (hasAnyChange) {
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+            if (typeof saveAll === 'function') saveAll();
+        } catch(e) {}
+    }
+
+    return hasAnyChange;
+}
+
+// 1. ຟັງຊັນຫຼັກ RENDER DASHBOARD
 async function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
     
@@ -212,16 +325,9 @@ async function renderDashboard() {
     updateLiveShiftIndicators(targetDate);
 
     await fetchDashboardDataFromCloud();
+    autoApplyCompletedSwapsForDate(targetDate);
 
     var sheets = getSheetsForMonth(targetDate);
-    
-    // ⭐ ຮຽກໃຊ້ Universal State Engine ຈາກ schedule.js ເພື່ອໃຫ້ກົງກັນ 100%
-    sheets.forEach(function(sheet) {
-        if (typeof syncAllApprovedSwapsIntoSheet === 'function') {
-            syncAllApprovedSwapsIntoSheet(sheet);
-        }
-    });
-
     var swapsToday = (window.swapHistory || []).filter(function(s) {
         var sStart = s.startDate || s.start_date;
         var sEnd = s.endDate || s.end_date;
@@ -240,6 +346,7 @@ async function renderDashboard() {
     renderDashboardSwapsWithChains(targetDate, swapsToday);
 }
 
+// 1.1 ອັບເດດປ້າຍ LIVE
 function updateLiveShiftIndicators(targetDate) {
     var todayStr = getTodayLocalDateStr();
     var isToday = (targetDate === todayStr);
@@ -258,6 +365,7 @@ function updateLiveShiftIndicators(targetDate) {
     if (lb3) { lb3.classList.toggle('hidden', !s3Live); lb3.classList.toggle('inline-flex', s3Live); }
 }
 
+// 2. ອັບເດດ BADGE ວັນທີ
 function updateDayTypeBadge(dateStr) {
     var badge = document.getElementById('dayTypeBadge');
     if (!badge) return;
@@ -285,6 +393,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
+// ⭐ 3. RENDER CARDS ທັງ 3 ກະ (ຕັດຄົນລາພັກອອກ 1 ຄົນ & ສະແດງສີຈາງແບບ OFFLINE PERSON)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -384,6 +493,7 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     });
 }
 
+// 4. RENDER ພະນັກງານລາພັກມື້ນີ້
 function renderLeavesToday(targetDate) {
     var container = document.getElementById('dashLeavesContainer');
     if (!container) return;
@@ -416,6 +526,7 @@ function renderLeavesToday(targetDate) {
     });
 }
 
+// 5. RENDER ລາຍການປ່ຽນກະ
 function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     var container = document.getElementById('dashSwapsContainer');
     if (!container) return;
@@ -497,6 +608,7 @@ function renderDashboardSwapsWithChains(targetDate, swapsToday) {
     container.innerHTML = html;
 }
 
+// ⭐ 6. MODAL INSPECTOR (ແກ້ໄຂ syntax ສົມບູນ 100%)
 function openSwapChainInspectorModal(dateStr) {
     var sheets = getSheetsForMonth(dateStr);
     var swapsToday = (window.swapHistory || []).filter(function(s) {
@@ -619,6 +731,7 @@ function closeSwapChainInspectorModal() {
     if (modal) modal.classList.add('hidden');
 }
 
+// ເມື່ອຜູ້ໃຊ້ຄລິກເລືອກວັນທີເອງ
 document.addEventListener('change', function(e) {
     if (e.target && e.target.id === 'dashDateInput') {
         window._dashUserHasPickedDate = true;
@@ -626,6 +739,7 @@ document.addEventListener('change', function(e) {
     }
 });
 
+// Auto-load ເມື່ອກົດ Tab Dashboard
 var _origTabForDash = window.switchTab;
 window.switchTab = function(tab) {
     if (typeof _origTabForDash === 'function') _origTabForDash(tab);
@@ -640,6 +754,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(renderDashboard, 100);
 });
 
+// ຜູກ Functions ເຂົ້າ Window
 window.renderDashboard = renderDashboard;
 window.fetchDashboardDataFromCloud = fetchDashboardDataFromCloud;
 window.getTodayLocalDateStr = getTodayLocalDateStr;
@@ -647,6 +762,7 @@ window.openStaffInfoModal = openStaffInfoModal;
 window.closeStaffInfoModal = closeStaffInfoModal;
 window.getStaffLeaveInfo = getStaffLeaveInfo;
 window.updateLiveShiftIndicators = updateLiveShiftIndicators;
+window.autoApplyCompletedSwapsForDate = autoApplyCompletedSwapsForDate;
 window.updateDayTypeBadge = updateDayTypeBadge;
 window.renderShiftCards = renderShiftCards;
 window.renderLeavesToday = renderLeavesToday;
