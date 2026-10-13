@@ -1,6 +1,6 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & FULL REALTIME SWAP SYNC (100% BUG-FREE) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & CLEAN MINIMALIST SWAP DESIGN =================
 
-// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ (ປ້ອງກັນ Crash)
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
@@ -23,7 +23,7 @@ function isSchedNameMatch(a, b) {
     return clean(a) === clean(b);
 }
 
-// 0.2 ແປງຊື່ກະໃຫ້ເປັນ Standard Key ('shift1', 'shift2', 'shift3')
+// 0.2 ແປງຊື່ກະໃຫ້ເປັນ Standard Key
 function normalizeSchedShiftKey(s) {
     if (!s) return null;
     var str = s.toString().toLowerCase().trim();
@@ -144,7 +144,7 @@ async function syncScheduleToSupabase(sheet) {
     }
 }
 
-// ⭐ 0.6 MASTER SWAP ENGINE: ແກ້ໄຂບັນຫາຕາຕະລາງພ້ຽນ 100% (IDEMPOTENT & CHRONOLOGICAL)
+// 0.6 MASTER SWAP ENGINE (IDEMPOTENT & CHRONOLOGICAL)
 function syncAllApprovedSwapsIntoSheet(sheet) {
     if (!sheet || !sheet.data) return false;
 
@@ -155,7 +155,6 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         } catch(e) {}
     }
 
-    // ⭐ ລຽງຄຳຮ້ອງຕາມ ID ແຕ່ອັນທຳອິດຫາອັນຫຼ້າສຸດສະເໝີ (ປ້ອງກັນ Chained Swap ແລ່ນຜິດລຳດັບ)
     var swaps = (window.swapHistory || []).filter(function(s) {
         return String(s.status || '').toUpperCase() === 'COMPLETED';
     }).sort(function(a, b) {
@@ -171,8 +170,8 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         var personB = req.toName || req.to_name;
         var sStart = req.startDate || req.start_date;
         var sEnd = req.endDate || req.end_date || sStart;
-        var reqTargetA = normalizeSchedShiftKey(req.toShift || req.to_shift);   // ກະທີ່ personA ຕ້ອງການໄປຢູ່
-        var reqTargetB = normalizeSchedShiftKey(req.fromShift || req.from_shift); // ກະທີ່ personB ຕ້ອງການໄປຢູ່
+        var reqTargetA = normalizeSchedShiftKey(req.toShift || req.to_shift);
+        var reqTargetB = normalizeSchedShiftKey(req.fromShift || req.from_shift);
         var isCover = (req.swapType === 'COVER');
 
         if (!personA || !personB || !sStart) return;
@@ -188,7 +187,6 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
             if (!day) continue;
 
             if (isCover) {
-                // ກໍລະນີຍາມແທນ (Cover): ແທນທີ່ personB ດ້ວຍ personA
                 ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
                     var arr = day[sName] || [];
                     for (var i = 0; i < arr.length; i++) {
@@ -199,7 +197,6 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
                     }
                 });
             } else {
-                // ຄົ້ນຫາຕຳແໜ່ງປັດຈຸບັນຂອງທັງສອງຄົນ
                 var findSlot = function(name) {
                     for (var sName of ['shift1', 'shift2', 'shift3']) {
                         var arr = day[sName] || [];
@@ -215,31 +212,25 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
                 var posA = findSlot(personA);
                 var posB = findSlot(personB);
 
-                // ⭐ ກວດສອບເປົ້າໝາຍ: ຖ້າທັງສອງຄົນຢູ່ກະເປົ້າໝາຍແລ້ວ ➔ ຫ້າມສະລັບຊໍ້າເດັດຂາດ!
                 if (posA && posB && reqTargetA && reqTargetB) {
                     if (posA.shift === reqTargetA && posB.shift === reqTargetB) {
-                        continue; // ສຳເລັດແລ້ວ ຂ້າມໄປເລີຍ
+                        continue;
                     }
                 }
 
-                // ກໍລະນີ 1: ທັງສອງຄົນຢູ່ຄົນລະກະ ➔ ສະລັບບ່ອນນັ່ງ
                 if (posA && posB && posA.shift !== posB.shift) {
                     day[posA.shift][posA.index] = personB;
                     day[posB.shift][posB.index] = personA;
                     hasChange = true;
-                }
-                // ກໍລະນີ 2: ຄົນໜຶ່ງມີກະ ແຕ່ອີກຄົນໜຶ່ງພັກ (Day Off) ➔ ແທນທີ່ກະ
-                else if (posA && !posB) {
+                } else if (posA && !posB) {
                     day[posA.shift][posA.index] = personB;
                     hasChange = true;
-                }
-                else if (!posA && posB) {
+                } else if (!posA && posB) {
                     day[posB.shift][posB.index] = personA;
                     hasChange = true;
                 }
             }
 
-            // ⭐ ລ້າງຊື່ຊໍ້າໃນແຕ່ລະກະອອກ (Sanitize Duplicates)
             ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
                 if (day[sName] && Array.isArray(day[sName])) {
                     day[sName] = day[sName].filter(function(n, idx, arr) {
@@ -322,7 +313,7 @@ async function rebalanceNightShifts() {
         }
     });
 
-    renderScheduleTable();
+    await renderScheduleTable();
     showToast('Rebalance ສຳເລັດ', 'ປັບສົມດຸນຮຽບຮ້ອຍ!', 'success');
 }
 
@@ -360,7 +351,7 @@ function renderActiveFixedShiftsList() {
         var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
         container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
             '<div>' +
-                '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
+                '<span class="font-bold text-slate-800">${f.nameLao}</span>' +
                 '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
             '</div>' +
             '<button type="button" onclick="removeFixedShift(' + idx + ')" class="text-brand-red hover:underline font-bold text-xs cursor-pointer">ລຶບ</button>' +
@@ -672,7 +663,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 7. RENDER ຕາຕະລາງໃຫຍ່ (ASYNC DYNAMIC SYNC 100%)
+// 7. RENDER ຕາຕະລາງໃຫຍ່
 async function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -680,10 +671,7 @@ async function renderScheduleTable() {
     var sheet = getActiveSheet();
     if (!sheet) return;
 
-    // ⭐ 1. ດຶງຂໍ້ມູນການປ່ຽນກະຫຼ້າສຸດຈາກ Supabase Cloud ທຸກຄັ້ງ!
     await fetchScheduleSwapsFromCloud();
-
-    // ⭐ 2. ສັ່ງ Master Engine Sync ທຸກຄຳຮ້ອງປ່ຽນກະຄົບທຸກວັນໃນ Sheet ນີ້ທັນທີ!
     syncAllApprovedSwapsIntoSheet(sheet);
 
     var scheduleData = sheet.data || {};
@@ -786,7 +774,7 @@ async function renderScheduleTable() {
     }
 }
 
-// ⭐ 8. CELL GRID: ສະແດງຊື່, HIGHLIGHT ຄົນປ່ຽນກະ & ຄົນລາພັກ
+// ⭐ 8. CELL GRID: ອອກແບບໃໝ່ໃຫ້ງາມ, ສະອາດຕາ ແລະ Minimalist 100%
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 2); rows = Math.max(rows, 1);
     var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
@@ -807,22 +795,48 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
                    (isSchedNameMatch(sw.fromName || sw.from_name, name) || isSchedNameMatch(sw.toName || sw.to_name, name));
         });
 
-        var isModified = isSwapped || (window.scheduleAuditLogs || []).some(function(l) {
-            return l.sheetId === sheetId && l.date === date && l.shift === shift && l.newName === name;
-        });
-
-        var highlightClass = isModified ? 'bg-amber-100 font-bold text-amber-950 border border-amber-300 shadow-2xs' : '';
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
         // ກວດສອບຄົນລາພັກ
         var leaveInfo = (typeof getStaffLeaveInfo === 'function') ? getStaffLeaveInfo(name, shift, date) : null;
-        var leaveClass = leaveInfo ? 'line-through text-slate-400 opacity-60' : '';
-        var leaveTag = leaveInfo ? '<span class="text-[8px] bg-rose-100 text-rose-600 px-1 py-0.2 rounded font-bold ml-0.5 no-underline">ພັກ</span>' : '';
-        var swapIcon = isSwapped ? '<span class="material-symbols-outlined text-[10px] text-amber-700 ml-0.5 align-middle no-print" title="ປ່ຽນກະມາ">sync_alt</span>' : '';
 
-        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + (isAdmin ? 'editable cursor-pointer' : '') + ' ' + highlightClass + ' ' + (isLeader ? 'text-brand-red font-semibold' : 'text-slate-800') + '" ' + clickHandler + '>' +
-            '<span class="' + leaveClass + '">' + name + '</span>' + leaveTag + swapIcon +
+        // ⭐ 1. ປັບສີພື້ນຫຼັງໃຫ້ສະອາດຕາ: ບໍ່ໃຊ້ສີເຫຼືອງເຂັ້ມປານຕາໝາກຮຸກ ແຕ່ໃຊ້ສີຄຣີມອ່ອນໆ (Soft Amber Pastel)
+        var cellBg = 'bg-white';
+        if (isSwapped) {
+            cellBg = 'bg-amber-50/50 hover:bg-amber-100/60'; // ສີຄຣີມອ່ອນລະມຸນຕາ
+        } else if (leaveInfo) {
+            cellBg = 'bg-slate-50/60';
+        } else if (isAdmin) {
+            cellBg = 'bg-white hover:bg-slate-50';
+        }
+
+        // ⭐ 2. ສີຕົວໜັງສື
+        var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-medium';
+        if (leaveInfo) {
+            textClass = 'line-through text-slate-400 opacity-60';
+        }
+
+        // ⭐ 3. Micro-Badges ທີ່ສະອາດ ແລະ ເບິ່ງງ່າຍ
+        var badgesHtml = '';
+        if (isLeader) {
+            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block" title="ຫົວໜ້າກະ"></span>';
+        }
+        if (isSwapped) {
+            // ປ້າຍມົນນ້ອຍໆພ້ອມໄອຄອນ sync_alt ທີ່ສວຍງາມ ແລະ ສະອາດຕາ
+            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs" title="ປ່ຽນກະມາ">' +
+                            '<span class="material-symbols-outlined text-[10px] leading-none">sync_alt</span>' +
+                          '</span>';
+        }
+        if (leaveInfo) {
+            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline">ພັກ</span>';
+        }
+
+        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-pointer' : '') + '" ' + clickHandler + '>' +
+            '<span class="inline-flex items-center justify-center ' + textClass + '">' +
+                '<span>' + name + '</span>' +
+                badgesHtml +
+            '</span>' +
         '</div>';
     }
     html += '</div>';
@@ -923,7 +937,7 @@ async function applyCellUpdate(sheet, date, shift, index, nameLao) {
     }
 }
 
-// 10. MODAL REMARK ການດັດແກ້
+// 10. MODAL REMARK
 function openEditPublishedRemarkModal(editData) {
     window.pendingPublishedCellEdit = editData;
     var targetEl = document.getElementById('remarkModalTargetInfo');
@@ -1348,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(renderScheduleTable, 100);
 });
 
-// ຜູກ Functions ເຂົ້າ Window (ຄົບຖ້ວນທຸກອັນ 100%)
+// ຜູກ Functions ເຂົ້າ Window
 window.isDateInHolidayRange = isDateInHolidayRange;
 window.syncScheduleToSupabase = syncScheduleToSupabase;
 window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
