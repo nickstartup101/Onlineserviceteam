@@ -64,20 +64,19 @@ async function fetchScheduleSwapsFromCloud() {
     }
 }
 
-// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD (ປ້ອງກັນການເອີ້ນສູດສ້າງ Default ທັບ)
+// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD (ແກ້ໄຂ GET 400: ຕັດ .order ອອກ)
 async function fetchScheduleSheetsFromCloud() {
     if (!window.supabaseClient) return false;
     try {
         var res = await window.supabaseClient
             .from('schedule_sheets')
-            .select('*')
-            .order('created_at', { ascending: false });
+            .select('*');
 
         if (!res.error && res.data && res.data.length > 0) {
             window.scheduleSheets = res.data.map(function(s) {
                 return {
                     id: s.id,
-                    monthKey: s.month_key || s.monthKey,
+                    monthKey: s.monthKey || s.month_key,
                     title: s.title,
                     notes: s.notes,
                     status: s.status || 'DRAFT',
@@ -144,7 +143,7 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// ⭐ 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE (ແກ້ໄຂ Error Catching & Upsert ແບບສົມບູນ 100%)
+// ⭐ 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE (ແກ້ໄຂ Error 400: ໃຊ້ monthKey ໂຕດຽວເທົ່ານັ້ນ 100%)
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return false;
 
@@ -154,26 +153,38 @@ async function syncScheduleToSupabase(sheet) {
         notes: sheet.notes || ''
     };
 
+    var mKey = sheet.monthKey || sheet.month_key || '2026-10';
+
+    // ✅ ສົ່ງສະເພາະຖັນທີ່ມີຕົວຈິງໃນ Supabase (ຫ້າມໃສ່ month_key ຫຼື updated_at)
     var payload = {
         id: sheet.id,
         title: sheet.title || '',
         status: sheet.status || 'DRAFT',
-        data: sheet.data,
-        updated_at: new Date().toISOString()
+        monthKey: mKey,
+        notes: sheet.notes || '',
+        data: sheet.data
     };
-    if (sheet.monthKey) payload.month_key = sheet.monthKey;
-    if (sheet.notes) payload.notes = sheet.notes;
 
     try {
-        var resUpsert = await window.supabaseClient.from('schedule_sheets').upsert(payload, { onConflict: 'id' });
+        var resUpsert = await window.supabaseClient
+            .from('schedule_sheets')
+            .upsert(payload, { onConflict: 'id' });
+
         if (resUpsert.error) {
             console.warn("Upsert failed, trying direct update fallback...", resUpsert.error);
-            var resUpd = await window.supabaseClient.from('schedule_sheets').update(payload).eq('id', sheet.id);
+            var resUpd = await window.supabaseClient
+                .from('schedule_sheets')
+                .update(payload)
+                .eq('id', sheet.id);
+
             if (resUpd.error) {
-                console.error("Direct update also failed:", resUpd.error);
+                console.error("❌ Direct update also failed:", resUpd.error);
+                alert("Supabase Sync ບໍ່ຜ່ານ: " + resUpd.error.message);
                 return false;
             }
         }
+
+        console.log("✅ Sync schedule to Supabase ສຳເລັດ 100%:", sheet.id);
         return true;
     } catch (err) {
         console.error("Supabase sync exception:", err);
@@ -867,7 +878,7 @@ async function clearCurrentCell() {
     await applyCellUpdate(sheet, act.date, act.shift, act.index, '');
 }
 
-// ⭐ 9.1 APPLY CELL UPDATE (ແກ້ໄຂບັນຫາ Revert ຊື່: Sync Cloud ກ່ອນ Render ສະເໝີ)
+// ⭐ 9.1 APPLY CELL UPDATE (Sync Cloud ກ່ອນ Render ສະເໝີ)
 async function applyCellUpdate(sheet, date, shift, index, nameLao) {
     if (!sheet) return;
     if (!sheet.data) sheet.data = {};
