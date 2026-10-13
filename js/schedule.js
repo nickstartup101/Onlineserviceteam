@@ -1,6 +1,6 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & CLEAN MINIMALIST SWAP DESIGN =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & FULL REALTIME SWAP SYNC (CHAINED FIX) =================
 
-// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ (ປ້ອງກັນ Crash)
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
@@ -144,7 +144,7 @@ async function syncScheduleToSupabase(sheet) {
     }
 }
 
-// 0.6 MASTER SWAP ENGINE (IDEMPOTENT & CHRONOLOGICAL)
+// ⭐ 0.6 DETERMINISTIC TARGET RESOLVER: ແກ້ໄຂ CHAINED SWAP ບຸນຮັກ ➔ ກະ 3, ເອກສະຫວ່າງ ➔ ກະ 2 100%
 function syncAllApprovedSwapsIntoSheet(sheet) {
     if (!sheet || !sheet.data) return false;
 
@@ -155,90 +155,97 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         } catch(e) {}
     }
 
-    var swaps = (window.swapHistory || []).filter(function(s) {
+    // ລຽງລຳດັບຄຳຮ້ອງແຕ່ອັນເລີ່ມຕົ້ນຫາອັນຫຼ້າສຸດສະເໝີ
+    var allCompletedSwaps = (window.swapHistory || []).filter(function(s) {
         return String(s.status || '').toUpperCase() === 'COMPLETED';
     }).sort(function(a, b) {
         return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
 
-    if (swaps.length === 0) return false;
+    if (allCompletedSwaps.length === 0) return false;
 
     var hasChange = false;
+    var allDates = Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); });
 
-    swaps.forEach(function(req) {
-        var personA = req.fromName || req.from_name;
-        var personB = req.toName || req.to_name;
-        var sStart = req.startDate || req.start_date;
-        var sEnd = req.endDate || req.end_date || sStart;
-        var reqTargetA = normalizeSchedShiftKey(req.toShift || req.to_shift);
-        var reqTargetB = normalizeSchedShiftKey(req.fromShift || req.from_shift);
-        var isCover = (req.swapType === 'COVER');
+    allDates.forEach(function(dStr) {
+        var day = sheet.data[dStr];
+        if (!day) return;
 
-        if (!personA || !personB || !sStart) return;
+        // ດຶງຄຳຮ້ອງທີ່ກວມເອົາວັນທີນີ້
+        var daySwaps = allCompletedSwaps.filter(function(s) {
+            var sStart = s.startDate || s.start_date;
+            var sEnd = s.endDate || s.end_date || sStart;
+            return (dStr >= sStart && dStr <= sEnd);
+        });
 
-        var cur = new Date(sStart + 'T00:00:00Z');
-        var end = new Date(sEnd + 'T00:00:00Z');
+        if (daySwaps.length === 0) return;
 
-        while (cur <= end) {
-            var dStr = cur.toISOString().split('T')[0];
-            cur.setUTCDate(cur.getUTCDate() + 1);
+        // 1. ບັນທຶກຕຳແໜ່ງເລີ່ມຕົ້ນຂອງທຸກຄົນໃນມື້ນີ້
+        var originalLocation = {};
+        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+            (day[sKey] || []).forEach(function(name) {
+                originalLocation[name] = sKey;
+            });
+        });
 
-            var day = sheet.data[dStr];
-            if (!day) continue;
+        // 2. ຄິດໄລ່ກະເປົ້າໝາຍສຸດທ້າຍຂອງທຸກຄົນ (Final Target Shifts) ຕາມລຳດັບເວລາ
+        var finalTarget = {};
+
+        daySwaps.forEach(function(req) {
+            var personA = req.fromName || req.from_name;
+            var personB = req.toName || req.to_name;
+            var reqFromShift = normalizeSchedShiftKey(req.fromShift || req.from_shift);
+            var reqToShift = normalizeSchedShiftKey(req.toShift || req.to_shift);
+            var isCover = (req.swapType === 'COVER');
+
+            if (!personA || !personB) return;
 
             if (isCover) {
-                ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
-                    var arr = day[sName] || [];
-                    for (var i = 0; i < arr.length; i++) {
-                        if (isSchedNameMatch(arr[i], personB)) {
-                            arr[i] = personA;
-                            hasChange = true;
-                        }
-                    }
-                });
-            } else {
-                var findSlot = function(name) {
-                    for (var sName of ['shift1', 'shift2', 'shift3']) {
-                        var arr = day[sName] || [];
-                        for (var i = 0; i < arr.length; i++) {
-                            if (isSchedNameMatch(arr[i], name)) {
-                                return { shift: sName, index: i };
-                            }
-                        }
-                    }
-                    return null;
-                };
-
-                var posA = findSlot(personA);
-                var posB = findSlot(personB);
-
-                if (posA && posB && reqTargetA && reqTargetB) {
-                    if (posA.shift === reqTargetA && posB.shift === reqTargetB) {
-                        continue;
-                    }
+                var bShift = finalTarget[personB] || originalLocation[personB] || reqToShift || reqFromShift;
+                if (bShift && bShift !== 'OFF') {
+                    finalTarget[personA] = bShift;
+                    finalTarget[personB] = 'OFF';
                 }
+            } else {
+                // ຄົ້ນຫາກະທີ່ personA ແລະ personB ຖືຄອງຢູ່ກ່ອນຈະປ່ຽນຄັ້ງນີ້
+                var curA = finalTarget[personA] || originalLocation[personA] || reqFromShift;
+                var curB = finalTarget[personB] || originalLocation[personB] || reqToShift;
 
-                if (posA && posB && posA.shift !== posB.shift) {
-                    day[posA.shift][posA.index] = personB;
-                    day[posB.shift][posB.index] = personA;
-                    hasChange = true;
-                } else if (posA && !posB) {
-                    day[posA.shift][posA.index] = personB;
-                    hasChange = true;
-                } else if (!posA && posB) {
-                    day[posB.shift][posB.index] = personA;
+                // ສະລັບກະທີ່ຖືຄອງກັນ
+                finalTarget[personA] = curB || reqToShift;
+                finalTarget[personB] = curA || reqFromShift;
+            }
+        });
+
+        var involvedNames = Object.keys(finalTarget);
+        if (involvedNames.length === 0) return;
+
+        // 3. ຖອນຄົນທີ່ມີການປ່ຽນກະອອກຈາກກະເກົ່າ
+        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+            day[sKey] = (day[sKey] || []).filter(function(name) {
+                return !involvedNames.some(function(inName) { return isSchedNameMatch(inName, name); });
+            });
+        });
+
+        // 4. ⭐ ວາງຄົນໃສ່ກະເປົ້າໝາຍສຸດທ້າຍຕົວຈິງ (ບຸນຮັກ ➔ shift3, ເອກສະຫວ່າງ ➔ shift2, ສຸລິຍະສັກ ➔ shift1)
+        involvedNames.forEach(function(name) {
+            var tShift = finalTarget[name];
+            if (tShift && tShift !== 'OFF' && day[tShift]) {
+                if (!day[tShift].some(function(n) { return isSchedNameMatch(n, name); })) {
+                    day[tShift].push(name);
                     hasChange = true;
                 }
             }
+        });
 
-            ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
-                if (day[sName] && Array.isArray(day[sName])) {
-                    day[sName] = day[sName].filter(function(n, idx, arr) {
-                        return n && n.trim() !== '' && arr.indexOf(n) === idx;
-                    });
-                }
-            });
-        }
+        // 5. ລ້າງຊື່ຊໍ້າອອກ
+        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+            if (day[sKey] && Array.isArray(day[sKey])) {
+                day[sKey] = day[sKey].filter(function(n, idx, arr) {
+                    return n && n.trim() !== '' && arr.indexOf(n) === idx;
+                });
+            }
+        });
     });
 
     if (hasChange) {
@@ -351,7 +358,7 @@ function renderActiveFixedShiftsList() {
         var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
         container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
             '<div>' +
-                '<span class="font-bold text-slate-800">${f.nameLao}</span>' +
+                '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
                 '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
             '</div>' +
             '<button type="button" onclick="removeFixedShift(' + idx + ')" class="text-brand-red hover:underline font-bold text-xs cursor-pointer">ລຶບ</button>' +
@@ -663,7 +670,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// 7. RENDER ຕາຕະລາງໃຫຍ່
+// ⭐ 7. RENDER ຕາຕະລາງໃຫຍ່
 async function renderScheduleTable() {
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -774,7 +781,7 @@ async function renderScheduleTable() {
     }
 }
 
-// ⭐ 8. CELL GRID: ອອກແບບໃໝ່ໃຫ້ງາມ, ສະອາດຕາ ແລະ Minimalist 100%
+// 8. CELL GRID: ສະແດງຊື່ & ໄອຄອນ
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 2); rows = Math.max(rows, 1);
     var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
@@ -798,32 +805,27 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
-        // ກວດສອບຄົນລາພັກ
         var leaveInfo = (typeof getStaffLeaveInfo === 'function') ? getStaffLeaveInfo(name, shift, date) : null;
 
-        // ⭐ 1. ປັບສີພື້ນຫຼັງໃຫ້ສະອາດຕາ: ບໍ່ໃຊ້ສີເຫຼືອງເຂັ້ມປານຕາໝາກຮຸກ ແຕ່ໃຊ້ສີຄຣີມອ່ອນໆ (Soft Amber Pastel)
         var cellBg = 'bg-white';
         if (isSwapped) {
-            cellBg = 'bg-amber-50/50 hover:bg-amber-100/60'; // ສີຄຣີມອ່ອນລະມຸນຕາ
+            cellBg = 'bg-amber-50/50 hover:bg-amber-100/60';
         } else if (leaveInfo) {
             cellBg = 'bg-slate-50/60';
         } else if (isAdmin) {
             cellBg = 'bg-white hover:bg-slate-50';
         }
 
-        // ⭐ 2. ສີຕົວໜັງສື
         var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-medium';
         if (leaveInfo) {
             textClass = 'line-through text-slate-400 opacity-60';
         }
 
-        // ⭐ 3. Micro-Badges ທີ່ສະອາດ ແລະ ເບິ່ງງ່າຍ
         var badgesHtml = '';
         if (isLeader) {
             badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block" title="ຫົວໜ້າກະ"></span>';
         }
         if (isSwapped) {
-            // ປ້າຍມົນນ້ອຍໆພ້ອມໄອຄອນ sync_alt ທີ່ສວຍງາມ ແລະ ສະອາດຕາ
             badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs" title="ປ່ຽນກະມາ">' +
                             '<span class="material-symbols-outlined text-[10px] leading-none">sync_alt</span>' +
                           '</span>';
