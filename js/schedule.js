@@ -1,4 +1,4 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & FULL REALTIME SWAP SYNC (CHAINED FIX) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & UNIVERSAL SWAP SYNC (ALL USERS SUPPORT) =================
 
 // 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
@@ -12,7 +12,7 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH (ຕັດ ທ້າວ/ນາງ ອອກ)
+// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isSchedNameMatch(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
@@ -144,7 +144,7 @@ async function syncScheduleToSupabase(sheet) {
     }
 }
 
-// ⭐ 0.6 DETERMINISTIC TARGET RESOLVER: ແກ້ໄຂ CHAINED SWAP ບຸນຮັກ ➔ ກະ 3, ເອກສະຫວ່າງ ➔ ກະ 2 100%
+// ⭐ 0.6 UNIVERSAL STATE ENGINE: ຮອງຮັບທຸກ USERS, ທຸກຄູ່, ທຸກຮູບແບບ SWAP 100%
 function syncAllApprovedSwapsIntoSheet(sheet) {
     if (!sheet || !sheet.data) return false;
 
@@ -155,7 +155,7 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         } catch(e) {}
     }
 
-    // ລຽງລຳດັບຄຳຮ້ອງແຕ່ອັນເລີ່ມຕົ້ນຫາອັນຫຼ້າສຸດສະເໝີ
+    // ລຽງລຳດັບຄຳຮ້ອງຕາມ ID ແຕ່ອັນທຳອິດຫາອັນຫຼ້າສຸດສະເໝີ
     var allCompletedSwaps = (window.swapHistory || []).filter(function(s) {
         return String(s.status || '').toUpperCase() === 'COMPLETED';
     }).sort(function(a, b) {
@@ -164,89 +164,117 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
 
     if (allCompletedSwaps.length === 0) return false;
 
+    var parts = (sheet.monthKey || '2026-10').split('-').map(Number);
+    var year = parts[0] || 2026;
+    var month = parts[1] || 10;
+    var daysCount = new Date(year, month, 0).getDate();
+
+    // ດຶງສະມາຊິກຂອງກຸ່ມ
+    var groupMembers = null;
+    if (sheet.isG7GroupSheet) {
+        var g7 = (window.employeeGroups || []).find(function(g) { return (g.members || []).length === 7; });
+        if (g7) groupMembers = g7.members;
+    }
+
+    // ⭐ ດຶງໂຄງສ້າງເລີ່ມຕົ້ນທີ່ສະອາດ (Baseline Data) ເພື່ອບໍ່ໃຫ້ມີຂໍ້ມູນເກົ່າທີ່ເຄີຍສັບຊ້ອນຄ້າງຢູ່
+    var cleanBaseData = generateMonthDataZigzag(year, month, groupMembers);
     var hasChange = false;
-    var allDates = Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); });
 
-    allDates.forEach(function(dStr) {
-        var day = sheet.data[dStr];
-        if (!day) return;
+    for (var d = 1; d <= daysCount; d++) {
+        var dNum = d < 10 ? '0' + d : '' + d;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dNum;
 
-        // ດຶງຄຳຮ້ອງທີ່ກວມເອົາວັນທີນີ້
+        var baseDay = cleanBaseData[dStr];
+        if (!baseDay) continue;
+
+        // ຄັດລອກໂຄງສ້າງເລີ່ມຕົ້ນມາໃສ່
+        var currentShifts = {
+            shift1: (baseDay.shift1 || []).slice(),
+            shift2: (baseDay.shift2 || []).slice(),
+            shift3: (baseDay.shift3 || []).slice()
+        };
+
+        // ຄົ້ນຫາຄຳຮ້ອງທັງໝົດທີ່ກວມເອົາວັນທີນີ້
         var daySwaps = allCompletedSwaps.filter(function(s) {
             var sStart = s.startDate || s.start_date;
             var sEnd = s.endDate || s.end_date || sStart;
             return (dStr >= sStart && dStr <= sEnd);
         });
 
-        if (daySwaps.length === 0) return;
+        if (daySwaps.length > 0) {
+            // ⭐ STATE MACHINE: ຈຳລອງການປ່ຽນກະແຕ່ລະຄູ່ຕາມລຳດັບເວລາແທ້ໆ
+            daySwaps.forEach(function(req) {
+                var pA = req.fromName || req.from_name;
+                var pB = req.toName || req.to_name;
+                var isCover = (req.swapType === 'COVER');
 
-        // 1. ບັນທຶກຕຳແໜ່ງເລີ່ມຕົ້ນຂອງທຸກຄົນໃນມື້ນີ້
-        var originalLocation = {};
-        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
-            (day[sKey] || []).forEach(function(name) {
-                originalLocation[name] = sKey;
-            });
-        });
+                if (!pA || !pB) return;
 
-        // 2. ຄິດໄລ່ກະເປົ້າໝາຍສຸດທ້າຍຂອງທຸກຄົນ (Final Target Shifts) ຕາມລຳດັບເວລາ
-        var finalTarget = {};
+                // ຄົ້ນຫາກະປັດຈຸບັນຂອງ pA ແລະ pB
+                var findPersonShift = function(personName) {
+                    for (var sKey of ['shift1', 'shift2', 'shift3']) {
+                        var idx = currentShifts[sKey].findIndex(function(n) { return isSchedNameMatch(n, personName); });
+                        if (idx !== -1) return { shift: sKey, index: idx };
+                    }
+                    return null;
+                };
 
-        daySwaps.forEach(function(req) {
-            var personA = req.fromName || req.from_name;
-            var personB = req.toName || req.to_name;
-            var reqFromShift = normalizeSchedShiftKey(req.fromShift || req.from_shift);
-            var reqToShift = normalizeSchedShiftKey(req.toShift || req.to_shift);
-            var isCover = (req.swapType === 'COVER');
+                var locA = findPersonShift(pA);
+                var locB = findPersonShift(pB);
 
-            if (!personA || !personB) return;
-
-            if (isCover) {
-                var bShift = finalTarget[personB] || originalLocation[personB] || reqToShift || reqFromShift;
-                if (bShift && bShift !== 'OFF') {
-                    finalTarget[personA] = bShift;
-                    finalTarget[personB] = 'OFF';
+                if (isCover) {
+                    // ກໍລະນີຍາມແທນ: pA ໄປຍາມແທນ pB
+                    if (locB) {
+                        currentShifts[locB.shift][locB.index] = pA;
+                        if (locA && locA.shift !== locB.shift) {
+                            currentShifts[locA.shift].splice(locA.index, 1);
+                        }
+                    }
+                } else {
+                    // ກໍລະນີ 1:1 Swap: ທັງສອງຄົນສະລັບກະກັນ
+                    if (locA && locB && locA.shift !== locB.shift) {
+                        currentShifts[locA.shift][locA.index] = pB;
+                        currentShifts[locB.shift][locB.index] = pA;
+                    } else if (locA && !locB) {
+                        currentShifts[locA.shift][locA.index] = pB;
+                    } else if (!locA && locB) {
+                        currentShifts[locB.shift][locB.index] = pA;
+                    }
                 }
-            } else {
-                // ຄົ້ນຫາກະທີ່ personA ແລະ personB ຖືຄອງຢູ່ກ່ອນຈະປ່ຽນຄັ້ງນີ້
-                var curA = finalTarget[personA] || originalLocation[personA] || reqFromShift;
-                var curB = finalTarget[personB] || originalLocation[personB] || reqToShift;
-
-                // ສະລັບກະທີ່ຖືຄອງກັນ
-                finalTarget[personA] = curB || reqToShift;
-                finalTarget[personB] = curA || reqFromShift;
-            }
-        });
-
-        var involvedNames = Object.keys(finalTarget);
-        if (involvedNames.length === 0) return;
-
-        // 3. ຖອນຄົນທີ່ມີການປ່ຽນກະອອກຈາກກະເກົ່າ
-        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
-            day[sKey] = (day[sKey] || []).filter(function(name) {
-                return !involvedNames.some(function(inName) { return isSchedNameMatch(inName, name); });
             });
-        });
 
-        // 4. ⭐ ວາງຄົນໃສ່ກະເປົ້າໝາຍສຸດທ້າຍຕົວຈິງ (ບຸນຮັກ ➔ shift3, ເອກສະຫວ່າງ ➔ shift2, ສຸລິຍະສັກ ➔ shift1)
-        involvedNames.forEach(function(name) {
-            var tShift = finalTarget[name];
-            if (tShift && tShift !== 'OFF' && day[tShift]) {
-                if (!day[tShift].some(function(n) { return isSchedNameMatch(n, name); })) {
-                    day[tShift].push(name);
-                    hasChange = true;
-                }
-            }
-        });
-
-        // 5. ລ້າງຊື່ຊໍ້າອອກ
-        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
-            if (day[sKey] && Array.isArray(day[sKey])) {
-                day[sKey] = day[sKey].filter(function(n, idx, arr) {
+            // ລ້າງຊື່ຊໍ້າອອກ
+            ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+                currentShifts[sKey] = currentShifts[sKey].filter(function(n, idx, arr) {
                     return n && n.trim() !== '' && arr.indexOf(n) === idx;
                 });
+            });
+        }
+
+        // ຖ້າມີການດັດແກ້ດ້ວຍມືຈາກ Admin (Audit Logs) ໃຫ້ຮັກສາໄວ້
+        var dayAuditLogs = (window.scheduleAuditLogs || []).filter(function(l) {
+            return l.sheetId === sheet.id && l.date === dStr;
+        });
+        dayAuditLogs.forEach(function(log) {
+            if (log.shift && currentShifts[log.shift]) {
+                var oldIdx = currentShifts[log.shift].findIndex(function(n) { return isSchedNameMatch(n, log.oldName); });
+                if (oldIdx !== -1) {
+                    if (!log.newName || log.newName === '(ວ່າງ)') currentShifts[log.shift].splice(oldIdx, 1);
+                    else currentShifts[log.shift][oldIdx] = log.newName;
+                }
             }
         });
-    });
+
+        // ບັນທຶກຄ່າທີ່ສົມບູນລົງ sheet.data
+        if (!sheet.data[dStr]) sheet.data[dStr] = {};
+        sheet.data[dStr].isWeekend = baseDay.isWeekend;
+        sheet.data[dStr].isG7Team = baseDay.isG7Team;
+        sheet.data[dStr].shift1 = currentShifts.shift1;
+        sheet.data[dStr].shift2 = currentShifts.shift2;
+        sheet.data[dStr].shift3 = currentShifts.shift3;
+        hasChange = true;
+    }
 
     if (hasChange) {
         try {
@@ -258,6 +286,7 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
 
     return hasChange;
 }
+window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
 
 // 1. ສູດຄຳນວນອາທິດ
 function getMondayBasedWeekIndex(dateObj) {
@@ -358,7 +387,7 @@ function renderActiveFixedShiftsList() {
         var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
         container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
             '<div>' +
-                '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
+                '<span class="font-bold text-slate-800">${f.nameLao}</span>' +
                 '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
             '</div>' +
             '<button type="button" onclick="removeFixedShift(' + idx + ')" class="text-brand-red hover:underline font-bold text-xs cursor-pointer">ລຶບ</button>' +
@@ -384,7 +413,7 @@ async function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// 4. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2
+// 4. ສູດກຸ່ມ 7 ຄົນ
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -590,7 +619,7 @@ function openBatchMonthModal() {
             select.innerHTML += '<option value="' + grp.id + '">' + grp.name + ' (' + grp.members.length + ' ຄົນ)' + tag + '</option>';
         });
     }
-    document.getElementById('batchMonthModal')?.classList.remove('hidden');
+    document.getElementById('batchMonthModal')?.classList.add('hidden');
 }
 
 async function executeBatchMonthGenerate() {
@@ -1364,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(renderScheduleTable, 100);
 });
 
-// ຜູກ Functions ເຂົ້າ Window
+// ຜູກ Functions ເຂົ້າ Window (ຄົບຖ້ວນທຸກອັນ 100%)
 window.isDateInHolidayRange = isDateInHolidayRange;
 window.syncScheduleToSupabase = syncScheduleToSupabase;
 window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
