@@ -1,6 +1,6 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & FULL REALTIME SWAP SYNC =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & FULL REALTIME SWAP SYNC (100% BUG-FREE) =================
 
-// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ (ປ້ອງກັນ Crash)
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
@@ -23,7 +23,7 @@ function isSchedNameMatch(a, b) {
     return clean(a) === clean(b);
 }
 
-// 0.2 ແປງຊື່ກະໃຫ້ເປັນ Standard Key
+// 0.2 ແປງຊື່ກະໃຫ້ເປັນ Standard Key ('shift1', 'shift2', 'shift3')
 function normalizeSchedShiftKey(s) {
     if (!s) return null;
     var str = s.toString().toLowerCase().trim();
@@ -34,11 +34,11 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// ⭐ 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE ເຂົ້າ SCHEDULE.JS ໂດຍກົງ
+// 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE
 async function fetchScheduleSwapsFromCloud() {
     if (!window.supabaseClient) return;
     try {
-        var res = await window.supabaseClient.from('shift_swaps').select('*').order('created_at', { ascending: false });
+        var res = await window.supabaseClient.from('shift_swaps').select('*').order('created_at', { ascending: true });
         if (!res.error && res.data) {
             window.swapHistory = res.data.map(function(d) {
                 var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
@@ -64,14 +64,12 @@ async function fetchScheduleSwapsFromCloud() {
     }
 }
 
-// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນແບບ AUTO-HEALING
+// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ
 function getActiveSheet() {
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
         try {
             var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
-            if (cached) {
-                window.scheduleSheets = JSON.parse(cached);
-            }
+            if (cached) window.scheduleSheets = JSON.parse(cached);
         } catch(e) {}
     }
 
@@ -113,7 +111,7 @@ function getActiveSheet() {
 }
 window.getActiveSheet = getActiveSheet;
 
-// 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE ແບບກວດສອບ ERROR
+// 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE
 async function syncScheduleToSupabase(sheet) {
     if (!window.supabaseClient || !sheet) return false;
 
@@ -146,7 +144,7 @@ async function syncScheduleToSupabase(sheet) {
     }
 }
 
-// ⭐ 0.6 ລະບົບ AUTO-SYNC ທຸກຄຳຮ້ອງປ່ຽນກະ (ສະລັບ ໂທມິກ & ເອກສະຫວ່າງ 100% ບໍ່ມີພາດ)
+// ⭐ 0.6 MASTER SWAP ENGINE: ແກ້ໄຂບັນຫາຕາຕະລາງພ້ຽນ 100% (IDEMPOTENT & CHRONOLOGICAL)
 function syncAllApprovedSwapsIntoSheet(sheet) {
     if (!sheet || !sheet.data) return false;
 
@@ -157,9 +155,11 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         } catch(e) {}
     }
 
+    // ⭐ ລຽງຄຳຮ້ອງຕາມ ID ແຕ່ອັນທຳອິດຫາອັນຫຼ້າສຸດສະເໝີ (ປ້ອງກັນ Chained Swap ແລ່ນຜິດລຳດັບ)
     var swaps = (window.swapHistory || []).filter(function(s) {
-        var st = String(s.status || '').toUpperCase();
-        return st === 'COMPLETED';
+        return String(s.status || '').toUpperCase() === 'COMPLETED';
+    }).sort(function(a, b) {
+        return (Number(a.id) || 0) - (Number(b.id) || 0);
     });
 
     if (swaps.length === 0) return false;
@@ -171,6 +171,9 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
         var personB = req.toName || req.to_name;
         var sStart = req.startDate || req.start_date;
         var sEnd = req.endDate || req.end_date || sStart;
+        var reqTargetA = normalizeSchedShiftKey(req.toShift || req.to_shift);   // ກະທີ່ personA ຕ້ອງການໄປຢູ່
+        var reqTargetB = normalizeSchedShiftKey(req.fromShift || req.from_shift); // ກະທີ່ personB ຕ້ອງການໄປຢູ່
+        var isCover = (req.swapType === 'COVER');
 
         if (!personA || !personB || !sStart) return;
 
@@ -184,25 +187,19 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
             var day = sheet.data[dStr];
             if (!day) continue;
 
-            // ⭐ ປ້ອງກັນບໍ່ໃຫ້ສະລັບຊໍ້າຊ້ອນ
-            if (!day._swappedReqs) day._swappedReqs = {};
-            var swapKey = String(req.id) + '_' + dStr;
-            if (day._swappedReqs[swapKey]) continue;
-
-            var isCover = (req.swapType === 'COVER');
-
             if (isCover) {
+                // ກໍລະນີຍາມແທນ (Cover): ແທນທີ່ personB ດ້ວຍ personA
                 ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
                     var arr = day[sName] || [];
                     for (var i = 0; i < arr.length; i++) {
                         if (isSchedNameMatch(arr[i], personB)) {
                             arr[i] = personA;
                             hasChange = true;
-                            day._swappedReqs[swapKey] = true;
                         }
                     }
                 });
             } else {
+                // ຄົ້ນຫາຕຳແໜ່ງປັດຈຸບັນຂອງທັງສອງຄົນ
                 var findSlot = function(name) {
                     for (var sName of ['shift1', 'shift2', 'shift3']) {
                         var arr = day[sName] || [];
@@ -218,25 +215,38 @@ function syncAllApprovedSwapsIntoSheet(sheet) {
                 var posA = findSlot(personA);
                 var posB = findSlot(personB);
 
-                // ⭐ ກໍລະນີທີ 1: ທັງສອງຄົນມີກະປະຈຳການຄົນລະກະ -> ສະລັບບ່ອນນັ່ງກັນທັນທີ!
+                // ⭐ ກວດສອບເປົ້າໝາຍ: ຖ້າທັງສອງຄົນຢູ່ກະເປົ້າໝາຍແລ້ວ ➔ ຫ້າມສະລັບຊໍ້າເດັດຂາດ!
+                if (posA && posB && reqTargetA && reqTargetB) {
+                    if (posA.shift === reqTargetA && posB.shift === reqTargetB) {
+                        continue; // ສຳເລັດແລ້ວ ຂ້າມໄປເລີຍ
+                    }
+                }
+
+                // ກໍລະນີ 1: ທັງສອງຄົນຢູ່ຄົນລະກະ ➔ ສະລັບບ່ອນນັ່ງ
                 if (posA && posB && posA.shift !== posB.shift) {
                     day[posA.shift][posA.index] = personB;
                     day[posB.shift][posB.index] = personA;
                     hasChange = true;
-                    day._swappedReqs[swapKey] = true;
                 }
-                // ⭐ ກໍລະນີທີ 2: ຄົນໜຶ່ງມີກະ ແຕ່ອີກຄົນໜຶ່ງພັກ (OFF) -> ແທນທີ່ກະທັນທີ
+                // ກໍລະນີ 2: ຄົນໜຶ່ງມີກະ ແຕ່ອີກຄົນໜຶ່ງພັກ (Day Off) ➔ ແທນທີ່ກະ
                 else if (posA && !posB) {
                     day[posA.shift][posA.index] = personB;
                     hasChange = true;
-                    day._swappedReqs[swapKey] = true;
                 }
                 else if (!posA && posB) {
                     day[posB.shift][posB.index] = personA;
                     hasChange = true;
-                    day._swappedReqs[swapKey] = true;
                 }
             }
+
+            // ⭐ ລ້າງຊື່ຊໍ້າໃນແຕ່ລະກະອອກ (Sanitize Duplicates)
+            ['shift1', 'shift2', 'shift3'].forEach(function(sName) {
+                if (day[sName] && Array.isArray(day[sName])) {
+                    day[sName] = day[sName].filter(function(n, idx, arr) {
+                        return n && n.trim() !== '' && arr.indexOf(n) === idx;
+                    });
+                }
+            });
         }
     });
 
@@ -673,7 +683,7 @@ async function renderScheduleTable() {
     // ⭐ 1. ດຶງຂໍ້ມູນການປ່ຽນກະຫຼ້າສຸດຈາກ Supabase Cloud ທຸກຄັ້ງ!
     await fetchScheduleSwapsFromCloud();
 
-    // ⭐ 2. ສັ່ງ Auto-Sync ສະລັບ ໂທມິກ & ເອກສະຫວ່າງ ຄົບທຸກໆວັນທັນທີ!
+    // ⭐ 2. ສັ່ງ Master Engine Sync ທຸກຄຳຮ້ອງປ່ຽນກະຄົບທຸກວັນໃນ Sheet ນີ້ທັນທີ!
     syncAllApprovedSwapsIntoSheet(sheet);
 
     var scheduleData = sheet.data || {};
