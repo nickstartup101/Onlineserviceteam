@@ -1,6 +1,6 @@
 // ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% FIXED) =================
 
-// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ (ປ້ອງກັນ Error 100%)
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
@@ -13,12 +13,13 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH (ຕັດ ທ້າວ/ນາງ ອອກ)
+// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH (ຕັດ ທ້າວ/ນາງ ແລະ ຕັດ ຫົວໜ້າກະ ອອກ)
 function isSchedNameMatch(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
         return s.toString().trim().toLowerCase()
             .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '')
+            .replace(/\s*ຫົວໜ້າກະ|\s*ຫົວໜ້າ/g, '')
             .replace(/\s+/g, '');
     };
     return clean(a) === clean(b);
@@ -35,14 +36,14 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles)
+// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles) ຕາມທີ່ກຳນົດ
 function getPermanentStaffList() {
     var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
-    // ລາຍຊື່ 17 ທ່ານຂອງວິຊາການສົມບູນ (ສະກົດຖືກຕ້ອງຕາມ Database 100%)
+    // ລາຍຊື່ທາງການ 17 ທ່ານຂອງວິຊາການສົມບູນ
     var canonicalNames = [
         'ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ',
-        'ສົມທະຍາ', 'ມິກກີ້', 'ໜູຮັກ', 'ແພັກກີ້',
-        'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ', 'ປະສົງສິນ',
+        'ສົນທະຍາ', 'ນິກກີ້', 'ໜູຮັກ', 'ແພັກເກີ້',
+        'ເອກສະຫວ່າງ', 'ໂທນິກ', 'ບຸນຮັກ', 'ປະສົງສິນ',
         'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊົມພູ', 'ສຸລິຍະສັກ', 'ໄກສະຫວາດ'
     ];
 
@@ -56,10 +57,18 @@ function getPermanentStaffList() {
 
 function getContractStaffList() {
     var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
-    var permNames = getPermanentStaffList();
-    return all
-        .filter(function(u) { return u && u.nameLao && !permNames.some(function(pn) { return isSchedNameMatch(u.nameLao, pn); }); })
-        .map(function(u) { return u.nameLao; });
+    // ລາຍຊື່ທາງການ 7 ທ່ານຂອງວິຊາການສັນຍາ
+    var canonicalContract = [
+        'ໄຊຍະສິດ', 'ລິດຕະສອນ', 'ທອງສະຫວັນ', 'ໄຊຍະພອນ',
+        'ແກ້ວວິໄລ', 'ຈິດສະດາ', 'ນະລົງສັກ'
+    ];
+
+    var matched = [];
+    canonicalContract.forEach(function(cn) {
+        var found = all.find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, cn); });
+        matched.push(found ? found.nameLao : cn);
+    });
+    return matched;
 }
 
 // 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE
@@ -131,7 +140,7 @@ async function fetchScheduleSheetsFromCloud() {
     return false;
 }
 
-// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (ມີ Auto-Generate ຖ້າຕາຕະລາງວ່າງ)
+// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (Self-Healing & Auto-Generate ຖ້າຕາຕະລາງວ່າງ)
 function getActiveSheet() {
     if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
         try {
@@ -175,12 +184,13 @@ function getActiveSheet() {
 
     window.activeSheetId = found ? found.id : 'sheet-2026-10-main';
 
-    // ⭐ ຖ້າ Sheet ວ່າງເປົ່າ (ຍັງບໍ່ມີຂໍ້ມູນວັນທີ): Auto-Generate ໃຫ້ທັນທີ!
+    // ຖ້າ Sheet ວ່າງເປົ່າ: Auto-Generate ໃຫ້ທັນທີ!
     if (found && (!found.data || Object.keys(found.data).filter(function(k) { return !k.startsWith('_'); }).length === 0)) {
         var parts = (found.monthKey || '2026-10').split('-').map(Number);
         var y = parts[0] || 2026;
         var m = parts[1] || 10;
-        found.data = generateMonthDataZigzag(y, m, null);
+        var isContract = (found.title && found.title.includes('ສັນຍາ'));
+        found.data = generateMonthDataZigzag(y, m, isContract ? getContractStaffList() : getPermanentStaffList());
         syncScheduleToSupabase(found);
     }
 
@@ -284,14 +294,14 @@ function getGlobalWeekendDayIndex(dateObj) {
     return weekendCount;
 }
 
-// ⭐ 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ກົງກັບຮູບເດືອນ 10/2026 ເປະໆ)
+// ⭐ 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ກົງກັບຮູບເດືອນ 10/2026 ເປະໆ 100%)
 function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
 
     var listToUse = (staffList && staffList.length >= 17) ? staffList.slice(0, 17) : getPermanentStaffList();
 
-    // 4 ຫົວໜ້າກະ (ດຶງຊື່ຈາກ Database)
+    // 4 ຫົວໜ້າກະ (ດຶງຊື່ຈາກ Database ຕົວຈິງ)
     var allUsers = window.users || [];
     var leaderNames = listToUse.filter(function(name) {
         var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
@@ -336,10 +346,12 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             var s3 = [];
 
             if (isSunday) {
+                // ວັນອາທິດ: ກະ 1 ມີ 1 ຄົນ (ຊ່ອງກາງ), ກະ 2 ມີ 3 ຄົນ, ກະ 3 ມີ 3 ຄົນ
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSun, wStaff[1], wStaff[2]];
                 s3 = [leaderNames[(gWeekend) % 4], wStaff[3], wStaff[4]];
             } else {
+                // ວັນເສົາ: ກະ 1 ມີ 1 ຄົນ (ຊ່ອງກາງ), ກະ 2 ມີ 3 ຄົນ, ກະ 3 ມີ 3 ຄົນ
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSat, wStaff[1], wStaff[2]];
                 s3 = [leaderNames[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
@@ -356,11 +368,13 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             // ⭐ ວັນທຳມະດາ (Mon-Fri): ວັນຈັນ ຫາ ວັນສຸກ ປະຈຳການກະດຽວກັນທັງອາທິດ (Continuous Weekly Zigzag)
             var W = getMondayBasedWeekIndex(dateObj);
 
+            // ໝູນວຽນ 4 ຫົວໜ້າກະປະຈຳອາທິດ
             var l_1A = leaderNames[(W + 0) % 4];
             var l_1B = leaderNames[(W + 1) % 4];
             var l_S2 = leaderNames[(W + 2) % 4];
             var l_S3 = leaderNames[(W + 3) % 4];
 
+            // ໝູນວຽນ 13 ພະນັກງານ
             var staffOffset = (13000 - W * 3) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
@@ -387,12 +401,13 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ສຳລັບກຸ່ມ 7 ຄົນ)
+// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ສຳລັບທີມວິຊາການສັນຍາ 7 ຄົນ)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
     var N = 7;
     var epochDate = new Date(Date.UTC(2026, 0, 1));
+    var list = (staffList && staffList.length === 7) ? staffList : getContractStaffList();
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
@@ -406,7 +421,7 @@ function generate7PersonFlexZigzag(year, month, staffList) {
         var dailySlots = [];
         for (var p = 0; p < N; p++) {
             var assignedSlot = (p + totalDays) % N;
-            dailySlots[assignedSlot] = staffList[p];
+            dailySlots[assignedSlot] = list[p];
         }
 
         var mode = totalDays % 3;
@@ -463,12 +478,12 @@ function openRandomGroupSelectModal() {
     select.appendChild(optMain);
 
     var optContract = document.createElement('option');
-    optContract.value = 'GRP_CONTRACT';
-    optContract.innerText = 'ກຸ່ມທີມວິຊາການສັນຍາ (Contract Staff)';
+    optContract.value = 'GRP_CONTRACT_7';
+    optContract.innerText = 'ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)';
     select.appendChild(optContract);
 
     (window.employeeGroups || []).forEach(function(grp) {
-        if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
+        if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT_7') {
             var opt = document.createElement('option');
             opt.value = grp.id;
             opt.innerText = grp.name + ' (' + (grp.members || []).length + ' ຄົນ)';
@@ -488,9 +503,9 @@ async function executeGroupRandomSchedule() {
     if (selectedGrpId === 'GRP_MAIN_17') {
         members = getPermanentStaffList();
         sheet.isG7GroupSheet = false;
-    } else if (selectedGrpId === 'GRP_CONTRACT') {
+    } else if (selectedGrpId === 'GRP_CONTRACT_7') {
         members = getContractStaffList();
-        sheet.isG7GroupSheet = false;
+        sheet.isG7GroupSheet = true;
     } else {
         var found = (window.employeeGroups || []).find(function(g) { return g && g.id === selectedGrpId; });
         if (found && found.members) {
@@ -518,10 +533,10 @@ async function executeGroupRandomSchedule() {
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
     if (select) {
-        select.innerHTML = '<option value="GRP_MAIN_17">ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ)</option>' +
-                           '<option value="GRP_CONTRACT">ກຸ່ມທີມວິຊາການສັນຍາ (Contract Staff)</option>';
+        select.innerHTML = '<option value="GRP_MAIN_17">ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)</option>' +
+                           '<option value="GRP_CONTRACT_7">ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)</option>';
         (window.employeeGroups || []).forEach(function(grp) {
-            if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
+            if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT_7') {
                 select.innerHTML += '<option value="' + grp.id + '">' + grp.name + '</option>';
             }
         });
@@ -539,8 +554,9 @@ async function executeBatchMonthGenerate() {
         return;
     }
 
-    var selectedMembers = (selectedGrpId === 'GRP_CONTRACT') ? getContractStaffList() : getPermanentStaffList();
-    var groupNameTag = (selectedGrpId === 'GRP_CONTRACT') ? ' (ສັນຍາ)' : ' (ສົມບູນ)';
+    var isContract = (selectedGrpId === 'GRP_CONTRACT_7');
+    var selectedMembers = isContract ? getContractStaffList() : getPermanentStaffList();
+    var groupNameTag = isContract ? ' (ສັນຍາ)' : ' (ສົມບູນ)';
 
     var [startYear, startMonth] = startM.split('-').map(Number);
     var firstGeneratedSheetId = null;
@@ -553,8 +569,8 @@ async function executeBatchMonthGenerate() {
         var m = targetDate.getMonth() + 1;
         var mStr = m < 10 ? '0' + m : '' + m;
         var monthKey = y + '-' + mStr;
-        var sheetId = 'sheet-' + monthKey + '-' + (selectedGrpId === 'GRP_CONTRACT' ? 'contract' : 'main');
-        var title = 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການ' + (selectedGrpId === 'GRP_CONTRACT' ? 'ສັນຍາ' : 'ສົມບູນ') + 'ປະຈຳເດືອນ ' + mStr + '/' + y;
+        var sheetId = 'sheet-' + monthKey + '-' + (isContract ? 'contract' : 'main');
+        var title = 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການ' + (isContract ? 'ສັນຍາ' : 'ສົມບູນ') + 'ປະຈຳເດືອນ ' + mStr + '/' + y;
 
         var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
 
@@ -564,7 +580,7 @@ async function executeBatchMonthGenerate() {
             window.scheduleSheets[existingIdx].data = generatedData;
             window.scheduleSheets[existingIdx].title = title;
             window.scheduleSheets[existingIdx].notes = currentNotes;
-            window.scheduleSheets[existingIdx].isG7GroupSheet = false;
+            window.scheduleSheets[existingIdx].isG7GroupSheet = isContract;
             currentSheetObj = window.scheduleSheets[existingIdx];
         } else {
             currentSheetObj = {
@@ -573,7 +589,7 @@ async function executeBatchMonthGenerate() {
                 title: title,
                 notes: currentNotes,
                 status: 'DRAFT',
-                isG7GroupSheet: false,
+                isG7GroupSheet: isContract,
                 data: generatedData
             };
             window.scheduleSheets.push(currentSheetObj);
@@ -601,7 +617,6 @@ async function executeBatchMonthGenerate() {
 async function renderScheduleTable(options) {
     var opts = options || {};
     
-    // 1. ຮັບປະກັນວ່າ Sheet ຖືກເລືອກສະເໝີ
     var sheet = getActiveSheet();
     if (!sheet) return;
 
@@ -972,7 +987,8 @@ async function handleCreateNewSheet() {
     var [y, m] = month.split('-').map(Number);
     var newId = 'sheet-' + Date.now();
     
-    var targetMembers = title.includes('ສັນຍາ') ? getContractStaffList() : getPermanentStaffList();
+    var isContract = title.includes('ສັນຍາ');
+    var targetMembers = isContract ? getContractStaffList() : getPermanentStaffList();
     var generated = generateMonthDataZigzag(y, m, targetMembers);
 
     var activeSheet = getActiveSheet();
@@ -984,6 +1000,7 @@ async function handleCreateNewSheet() {
         title: title,
         notes: inheritedNotes,
         status: 'DRAFT',
+        isG7GroupSheet: isContract,
         data: generated
     };
 
@@ -1043,7 +1060,8 @@ function promptResetSchedule() {
     if (!confirm('ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?')) return;
     var sheet = getActiveSheet();
     var [year, month] = (sheet?.monthKey || '2026-10').split('-').map(Number);
-    sheet.data = generateMonthDataZigzag(year, month, null);
+    var isContract = (sheet.title && sheet.title.includes('ສັນຍາ'));
+    sheet.data = generateMonthDataZigzag(year, month, isContract ? getContractStaffList() : getPermanentStaffList());
     renderScheduleTable();
     showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງຮຽບຮ້ອຍແລ້ວ', 'success');
     syncScheduleToSupabase(sheet);
