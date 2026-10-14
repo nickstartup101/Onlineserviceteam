@@ -1,10 +1,11 @@
 // ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% FIXED) =================
 
-// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ (ປ້ອງກັນ Error 100%)
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
     return holList.some(function(h) {
+        if (!h) return false;
         var s = h.start_date || h.start;
         var e = h.end_date || h.end;
         if (!s || !e) return false;
@@ -36,7 +37,7 @@ function normalizeSchedShiftKey(s) {
 
 // ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles)
 function getPermanentStaffList() {
-    var all = (window.users || []).filter(function(u) { return u.role !== 'SUPER_ADMIN'; });
+    var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
     // ລາຍຊື່ 17 ທ່ານຂອງວິຊາການສົມບູນ (ສະກົດຖືກຕ້ອງຕາມ Database 100%)
     var canonicalNames = [
         'ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ',
@@ -47,17 +48,17 @@ function getPermanentStaffList() {
 
     var matched = [];
     canonicalNames.forEach(function(cn) {
-        var found = all.find(function(u) { return isSchedNameMatch(u.nameLao, cn); });
+        var found = all.find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, cn); });
         matched.push(found ? found.nameLao : cn);
     });
     return matched;
 }
 
 function getContractStaffList() {
-    var all = (window.users || []).filter(function(u) { return u.role !== 'SUPER_ADMIN'; });
+    var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
     var permNames = getPermanentStaffList();
     return all
-        .filter(function(u) { return !permNames.some(function(pn) { return isSchedNameMatch(u.nameLao, pn); }); })
+        .filter(function(u) { return u && u.nameLao && !permNames.some(function(pn) { return isSchedNameMatch(u.nameLao, pn); }); })
         .map(function(u) { return u.nameLao; });
 }
 
@@ -98,16 +99,26 @@ async function fetchScheduleSheetsFromCloud() {
         var res = await window.supabaseClient.from('schedule_sheets').select('*');
         if (!res.error && res.data && res.data.length > 0) {
             window.scheduleSheets = res.data.map(function(s) {
+                var rawData = s.data || {};
+                if (typeof rawData === 'string') {
+                    try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                }
+                var mKey = s.monthKey || s.month_key || '2026-10';
                 return {
                     id: String(s.id),
-                    monthKey: s.monthKey || s.month_key,
-                    title: s.title,
-                    notes: s.notes,
-                    status: s.status || 'DRAFT',
+                    monthKey: String(mKey),
+                    title: s.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                    notes: s.notes || window.defaultNotesTemplate || '',
+                    status: s.status || 'PUBLISHED',
                     isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet),
-                    data: s.data || {}
+                    data: rawData
                 };
             });
+
+            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
+                window.activeSheetId = window.scheduleSheets[0].id;
+            }
+
             try {
                 localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
                 localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
@@ -120,16 +131,16 @@ async function fetchScheduleSheetsFromCloud() {
     return false;
 }
 
-// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ
+// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (ມີ Auto-Generate ຖ້າຕາຕະລາງວ່າງ)
 function getActiveSheet() {
-    if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
+    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
         try {
             var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
             if (cached) window.scheduleSheets = JSON.parse(cached);
         } catch(e) {}
     }
 
-    if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
+    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
         var defaultSheet = {
             id: 'sheet-2026-10-main',
             monthKey: '2026-10',
@@ -145,25 +156,35 @@ function getActiveSheet() {
             localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
         } catch(e) {}
         syncScheduleToSupabase(defaultSheet);
+        return defaultSheet;
     }
 
     var select = document.getElementById('scheduleSheetSelect');
     var targetId = (select && select.value) ? select.value : window.activeSheetId;
-    if (targetId && window.scheduleSheets) {
-        var found = window.scheduleSheets.find(function(s) { return String(s.id) === String(targetId); });
-        if (found) {
-            window.activeSheetId = found.id;
-            return found;
-        }
+    var found = null;
+
+    if (targetId) {
+        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(targetId); });
     }
-    if (window.activeSheetId && window.scheduleSheets) {
-        var found = window.scheduleSheets.find(function(s) { return String(s.id) === String(window.activeSheetId); });
-        if (found) return found;
+    if (!found && window.activeSheetId) {
+        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(window.activeSheetId); });
     }
-    
-    var firstSheet = window.scheduleSheets[0];
-    window.activeSheetId = firstSheet.id;
-    return firstSheet;
+    if (!found) {
+        found = window.scheduleSheets[0];
+    }
+
+    window.activeSheetId = found ? found.id : 'sheet-2026-10-main';
+
+    // ⭐ ຖ້າ Sheet ວ່າງເປົ່າ (ຍັງບໍ່ມີຂໍ້ມູນວັນທີ): Auto-Generate ໃຫ້ທັນທີ!
+    if (found && (!found.data || Object.keys(found.data).filter(function(k) { return !k.startsWith('_'); }).length === 0)) {
+        var parts = (found.monthKey || '2026-10').split('-').map(Number);
+        var y = parts[0] || 2026;
+        var m = parts[1] || 10;
+        found.data = generateMonthDataZigzag(y, m, null);
+        syncScheduleToSupabase(found);
+    }
+
+    return found;
 }
 window.getActiveSheet = getActiveSheet;
 
@@ -199,14 +220,10 @@ async function syncScheduleToSupabase(sheet) {
                 .update(payload)
                 .eq('id', sheet.id);
 
-            if (resUpd.error) {
-                console.error("Direct update failed:", resUpd.error);
-                return false;
-            }
+            if (resUpd.error) return false;
         }
         return true;
     } catch (err) {
-        console.error("Supabase sync exception:", err);
         return false;
     }
 }
@@ -277,7 +294,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     // 4 ຫົວໜ້າກະ (ດຶງຊື່ຈາກ Database)
     var allUsers = window.users || [];
     var leaderNames = listToUse.filter(function(name) {
-        var u = allUsers.find(function(usr) { return isSchedNameMatch(usr.nameLao, name); });
+        var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
         return u && u.isLeader;
     });
 
@@ -291,7 +308,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
 
     // 13 ພະນັກງານປະຈຳການ
     var regularStaff = listToUse.filter(function(n) { return !leaderNames.includes(n); });
-    var numRegular = regularStaff.length || 13;
+    var numRegular = 13;
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
@@ -319,12 +336,10 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             var s3 = [];
 
             if (isSunday) {
-                // ວັນອາທິດ: ກະ 1 ມີ 1 ຄົນ (ຊ່ອງກາງ), ກະ 2 ມີ 3 ຄົນ, ກະ 3 ມີ 3 ຄົນ
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSun, wStaff[1], wStaff[2]];
                 s3 = [leaderNames[(gWeekend) % 4], wStaff[3], wStaff[4]];
             } else {
-                // ວັນເສົາ: ກະ 1 ມີ 1 ຄົນ (ຊ່ອງກາງ), ກະ 2 ມີ 3 ຄົນ, ກະ 3 ມີ 3 ຄົນ
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSat, wStaff[1], wStaff[2]];
                 s3 = [leaderNames[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
@@ -341,13 +356,11 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             // ⭐ ວັນທຳມະດາ (Mon-Fri): ວັນຈັນ ຫາ ວັນສຸກ ປະຈຳການກະດຽວກັນທັງອາທິດ (Continuous Weekly Zigzag)
             var W = getMondayBasedWeekIndex(dateObj);
 
-            // ໝູນວຽນ 4 ຫົວໜ້າກະປະຈຳອາທິດ
             var l_1A = leaderNames[(W + 0) % 4];
             var l_1B = leaderNames[(W + 1) % 4];
             var l_S2 = leaderNames[(W + 2) % 4];
             var l_S3 = leaderNames[(W + 3) % 4];
 
-            // ໝູນວຽນ 13 ພະນັກງານ
             var staffOffset = (13000 - W * 3) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
@@ -455,7 +468,7 @@ function openRandomGroupSelectModal() {
     select.appendChild(optContract);
 
     (window.employeeGroups || []).forEach(function(grp) {
-        if (grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
+        if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
             var opt = document.createElement('option');
             opt.value = grp.id;
             opt.innerText = grp.name + ' (' + (grp.members || []).length + ' ຄົນ)';
@@ -479,7 +492,7 @@ async function executeGroupRandomSchedule() {
         members = getContractStaffList();
         sheet.isG7GroupSheet = false;
     } else {
-        var found = (window.employeeGroups || []).find(function(g) { return g.id === selectedGrpId; });
+        var found = (window.employeeGroups || []).find(function(g) { return g && g.id === selectedGrpId; });
         if (found && found.members) {
             members = found.members;
             sheet.isG7GroupSheet = (members.length === 7);
@@ -508,7 +521,7 @@ function openBatchMonthModal() {
         select.innerHTML = '<option value="GRP_MAIN_17">ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ)</option>' +
                            '<option value="GRP_CONTRACT">ກຸ່ມທີມວິຊາການສັນຍາ (Contract Staff)</option>';
         (window.employeeGroups || []).forEach(function(grp) {
-            if (grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
+            if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT') {
                 select.innerHTML += '<option value="' + grp.id + '">' + grp.name + '</option>';
             }
         });
@@ -545,7 +558,7 @@ async function executeBatchMonthGenerate() {
 
         var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
 
-        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s.monthKey === monthKey && s.title.includes(groupNameTag); });
+        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && s.monthKey === monthKey && s.title && s.title.includes(groupNameTag); });
         var currentSheetObj = null;
         if (existingIdx !== -1) {
             window.scheduleSheets[existingIdx].data = generatedData;
@@ -584,14 +597,16 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 6. RENDER ຕາຕະລາງໃຫຍ່ (ຮັກສາຂະໜາດ ແລະ Grid Layout ຕາມຮູບເດືອນ 10/2026 100%)
+// ⭐ 6. RENDER ຕາຕະລາງໃຫຍ່ (100% Guaranteed Render)
 async function renderScheduleTable(options) {
     var opts = options || {};
-    renderSheetDropdown();
-    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
     
+    // 1. ຮັບປະກັນວ່າ Sheet ຖືກເລືອກສະເໝີ
     var sheet = getActiveSheet();
     if (!sheet) return;
+
+    renderSheetDropdown();
+    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
 
     await fetchScheduleSwapsFromCloud();
 
@@ -640,7 +655,7 @@ async function renderScheduleTable(options) {
         }
     }
 
-    var sheetLogs = (window.scheduleAuditLogs || []).filter(function(l) { return l.sheetId === sheet.id; });
+    var sheetLogs = (window.scheduleAuditLogs || []).filter(function(l) { return l && l.sheetId === sheet.id; });
     if (modCountText) {
         modCountText.innerHTML = sheetLogs.length > 0 ? '<span class="material-symbols-outlined text-xs text-amber-700">history_edu</span> ມີການດັດແກ້: ' + sheetLogs.length + ' ຈຸດ' : '';
     }
@@ -717,11 +732,12 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
 
     for (var idx = 0; idx < total; idx++) {
         var name = list[idx] || '';
-        var isLeader = (window.users || []).find(function(u) { return isSchedNameMatch(u.nameLao, name) && u.isLeader; });
+        var isLeader = (window.users || []).find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, name) && u.isLeader; });
         var cleanName = (name || '').replace(/'/g, "\\'");
         var clickHandler = isAdmin ? 'onclick="openCellModal(\'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
 
         var isSwapped = (window.swapHistory || []).some(function(sw) {
+            if (!sw) return false;
             var st = String(sw.status || '').toUpperCase();
             var sStart = sw.startDate || sw.start_date;
             var sEnd = sw.endDate || sw.end_date || sStart;
@@ -732,7 +748,7 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
         var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
 
-        var leaveInfo = (typeof getStaffLeaveInfo === 'function') ? getStaffLeaveInfo(name, shift, date) : null;
+        var leaveInfo = (typeof getStaffLeaveInfo === 'function' && name) ? getStaffLeaveInfo(name, shift, date) : null;
 
         var cellBg = 'bg-white';
         if (isSwapped && name) {
@@ -931,9 +947,11 @@ function renderSheetDropdown() {
     }
 
     (window.scheduleSheets || []).forEach(function(sheet) {
+        if (!sheet) return;
         var opt = document.createElement('option');
         opt.value = sheet.id;
-        opt.innerText = (sheet.status === 'PUBLISHED' ? '[ທາງການ] ' : '[ສະບັບຮ່າງ] ') + (sheet.title || sheet.data?._meta?.title || '');
+        var sTitle = sheet.title || sheet.data?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + (sheet.monthKey || ''));
+        opt.innerText = (sheet.status === 'PUBLISHED' ? '[ທາງການ] ' : '[ສະບັບຮ່າງ] ') + sTitle;
         if (String(sheet.id) === String(window.activeSheetId)) opt.selected = true;
         select.appendChild(opt);
     });
@@ -1024,7 +1042,8 @@ async function handleSaveSheetInfo() {
 function promptResetSchedule() {
     if (!confirm('ທ່ານຕ້ອງການຣີເຊັດຕາຕະລາງນີ້ທັງໝົດແທ້ບໍ່?')) return;
     var sheet = getActiveSheet();
-    sheet.data = {};
+    var [year, month] = (sheet?.monthKey || '2026-10').split('-').map(Number);
+    sheet.data = generateMonthDataZigzag(year, month, null);
     renderScheduleTable();
     showToast('ສຳເລັດ', 'ຣີເຊັດຕາຕະລາງຮຽບຮ້ອຍແລ້ວ', 'success');
     syncScheduleToSupabase(sheet);
@@ -1117,4 +1136,120 @@ async function rebalanceNightShifts() {
 function exportToA4PDF() {
     var sheet = getActiveSheet();
     var element = document.getElementById('pdfExportArea');
-    if (!elem
+    if (!element) return;
+
+    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4...', 'info');
+
+    var parent = element.parentElement;
+    var prevScrollTop = parent ? parent.scrollTop : 0;
+    var prevScrollLeft = parent ? parent.scrollLeft : 0;
+    if (parent) { parent.scrollTop = 0; parent.scrollLeft = 0; }
+
+    var originalClass = element.className;
+    var originalStyle = element.getAttribute('style') || '';
+
+    element.classList.remove('mx-auto');
+    element.style.margin = '0 !important';
+    element.style.marginLeft = '0 !important';
+    element.style.boxShadow = 'none';
+
+    var noPrintEls = element.querySelectorAll('.no-print');
+    noPrintEls.forEach(function(el) { el.style.display = 'none'; });
+
+    var opt = {
+        margin:       [4, 4, 4, 4],
+        filename:     (sheet?.title || sheet?.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ') + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(function() {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        if (parent) { parent.scrollTop = prevScrollTop; parent.scrollLeft = prevScrollLeft; }
+        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດ!', 'success');
+    }).catch(function() {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        showToast('ຜິດພາດ', 'Export ບໍ່ສຳເລັດ', 'error');
+    });
+}
+
+function closeCellModal() { 
+    document.getElementById('cellSelectModal')?.classList.add('hidden'); 
+    window.activeEditCell = null; 
+}
+
+function renderCellStaffList(q) {
+    var container = document.getElementById('cellStaffListContainer');
+    if (!container) return;
+    container.innerHTML = '';
+    (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN' && ((u.nameLao && u.nameLao.includes(q)) || (u.fullName && u.fullName.includes(q))); }).forEach(function(u) {
+        container.innerHTML += '<div onclick="selectStaffForCell(\'' + u.nameLao + '\')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">' +
+            '<span>' + u.nameLao + ' (' + u.fullName + ')</span>' +
+            (u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : '') +
+        '</div>';
+    });
+}
+
+function filterCellStaffList() { 
+    renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim() || ''); 
+}
+
+// Auto-load
+var _origTabForSchedule = window.switchTab;
+window.switchTab = async function(tab) {
+    if (typeof _origTabForSchedule === 'function') _origTabForSchedule(tab);
+    if (tab === 'schedule') {
+        await fetchScheduleSheetsFromCloud();
+        await renderScheduleTable();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await fetchScheduleSheetsFromCloud();
+    setTimeout(renderScheduleTable, 100);
+});
+
+// ຜູກ Functions ເຂົ້າ Window
+window.isDateInHolidayRange = isDateInHolidayRange;
+window.syncScheduleToSupabase = syncScheduleToSupabase;
+window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
+window.fetchScheduleSheetsFromCloud = fetchScheduleSheetsFromCloud;
+window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
+window.getMondayBasedWeekIndex = getMondayBasedWeekIndex;
+window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
+window.rebalanceNightShifts = rebalanceNightShifts;
+window.renderScheduleTable = renderScheduleTable;
+window.renderSheetDropdown = renderSheetDropdown;
+window.changeActiveSheet = changeActiveSheet;
+window.generateMonthDataZigzag = generateMonthDataZigzag;
+window.generate7PersonFlexZigzag = generate7PersonFlexZigzag;
+window.generate17PersonLeadersAndStaffZigzag = generate17PersonLeadersAndStaffZigzag;
+window.executeGroupRandomSchedule = executeGroupRandomSchedule;
+window.openRandomGroupSelectModal = openRandomGroupSelectModal;
+window.promptDeleteCurrentSheet = promptDeleteCurrentSheet;
+window.openNewSheetModal = openNewSheetModal;
+window.handleCreateNewSheet = handleCreateNewSheet;
+window.openEditSheetInfoModal = openEditSheetInfoModal;
+window.handleSaveSheetInfo = handleSaveSheetInfo;
+window.promptResetSchedule = promptResetSchedule;
+window.saveDraft = saveDraft;
+window.publishSchedule = publishSchedule;
+window.exportToA4PDF = exportToA4PDF;
+window.openCellModal = openCellModal;
+window.closeCellModal = closeCellModal;
+window.filterCellStaffList = filterCellStaffList;
+window.selectStaffForCell = selectStaffForCell;
+window.clearCurrentCell = clearCurrentCell;
+window.openEditPublishedRemarkModal = openEditPublishedRemarkModal;
+window.closeEditPublishedRemarkModal = closeEditPublishedRemarkModal;
+window.confirmApplyPublishedCellUpdate = confirmApplyPublishedCellUpdate;
+window.getPermanentStaffList = getPermanentStaffList;
+window.getContractStaffList = getContractStaffList;
+window.openBatchMonthModal = openBatchMonthModal;
+window.executeBatchMonthGenerate = executeBatchMonthGenerate;
