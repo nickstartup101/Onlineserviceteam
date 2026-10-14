@@ -1,6 +1,6 @@
-// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (SWAP CANCEL & REJECT FULL FIX) =================
+// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (100% REALTIME SYNC) =================
 
-// 0. Helper ດຶງ User ປັດຈຸບັນແບບປອດໄພ 100%
+// 0. Helper ດຶງ User ປັດຈຸບັນແບບປອດໄພ
 function getCurrentUserSafe() {
     if (window.currentUser && window.currentUser.nameLao) return window.currentUser;
     try {
@@ -13,32 +13,102 @@ function getCurrentUserSafe() {
     return window.currentUser || null;
 }
 
-// 0.1 Helper ດຶງ Sheet ປັດຈຸບັນ
-function getActiveSheetSafe() {
+// 0.1 Helper ດຶງ Sheet ປັດຈຸບັນ (ບັງຄັບເອົາສະເພາະ PUBLISHED Sheet)
+function getActiveSheetSafe(targetMonthKey) {
+    var sheets = window.scheduleSheets || [];
+    if (sheets.length === 0) {
+        try {
+            var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
+            if (cached) sheets = JSON.parse(cached);
+        } catch(e) {}
+    }
+
+    if (sheets.length > 0) {
+        if (targetMonthKey) {
+            var pub = sheets.find(function(s) { 
+                var sm = (s.monthKey || s.month_key || '').slice(0, 7);
+                return sm === targetMonthKey && s.status === 'PUBLISHED';
+            });
+            if (pub) return pub;
+            
+            var anyMatch = sheets.find(function(s) { 
+                var sm = (s.monthKey || s.month_key || '').slice(0, 7);
+                return sm === targetMonthKey;
+            });
+            if (anyMatch) return anyMatch;
+        }
+
+        var activePub = sheets.find(function(s) { return s.id === window.activeSheetId && s.status === 'PUBLISHED'; });
+        if (activePub) return activePub;
+
+        var firstPub = sheets.find(function(s) { return s.status === 'PUBLISHED'; });
+        if (firstPub) return firstPub;
+
+        return sheets[0];
+    }
+
     if (typeof getActiveSheet === 'function') {
         var s = getActiveSheet();
         if (s) return s;
     }
-    if (window.scheduleSheets && window.scheduleSheets.length > 0) {
-        var found = window.scheduleSheets.find(function(item) { return item.id === window.activeSheetId; });
-        return found || window.scheduleSheets[0];
-    }
-    try {
-        var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
-        if (cached) {
-            var list = JSON.parse(cached);
-            if (list && list.length > 0) return list[0];
-        }
-    } catch(e) {}
     return null;
 }
 
-// ⭐ 0.2 HELPER ທຽບຊື່ບຸກຄົນແບບອັດສະລິຍະ (ຕັດຄຳນຳໜ້າ ທ້າວ/ນາງ ອອກອັດຕະໂນມັດ)
+// 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace
+async function fetchProfileCloudData() {
+    if (!window.supabaseClient) return;
+    try {
+        var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
+        if (!resSheets.error && resSheets.data) {
+            window.scheduleSheets = resSheets.data.map(function(d) {
+                return {
+                    id: d.id,
+                    title: d.title,
+                    monthKey: d.monthKey || d.month_key,
+                    notes: d.notes,
+                    status: d.status || 'DRAFT',
+                    data: d.data
+                };
+            });
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        }
+
+        // ດຶງ Swaps ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
+        var resSwaps = await window.supabaseClient
+            .from('shift_swaps')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (!resSwaps.error && resSwaps.data) {
+            window.swapHistory = resSwaps.data.map(function(d) {
+                var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
+                return {
+                    id: d.id,
+                    swapType: isCover ? 'COVER' : 'SWAP',
+                    fromName: d.from_name || d.fromName,
+                    toName: d.to_name || d.toName,
+                    startDate: d.start_date || d.startDate,
+                    endDate: d.end_date || d.endDate,
+                    fromShift: d.from_shift || d.fromShift,
+                    toShift: d.to_shift || d.toShift,
+                    reason: d.reason || '',
+                    status: String(d.status || '').toUpperCase(),
+                    created_at: d.created_at || d.createdAt || null
+                };
+            });
+            localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+        }
+    } catch(err) {
+        console.warn("Profile cloud sync error:", err);
+    }
+}
+
+// 0.2 HELPER ທຽບຊື່ບຸກຄົນແບບອັດສະລິຍະ (ຕັດຄຳນຳໜ້າ ທ້າວ/ນາງ ອອກ)
 function isSamePerson(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
         return s.toString().trim().toLowerCase()
-            .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '') // ຕັດຄຳນຳໜ້າ ທ້າວ, ນາງ
+            .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '')
             .replace(/\s+/g, '');
     };
     var ca = clean(a);
@@ -52,12 +122,11 @@ function isNameMatch(a, b) {
     return isSamePerson(a, b);
 }
 
-// 1. RENDER WORKSPACE ຂອງພະນັກງານ
+// ⭐ 1. RENDER WORKSPACE ຂອງພະນັກງານ (ຄຳນວນອາທິດປັດຈຸບັນ + ໄຮໄລ້ວັນນີ້ 100%)
 function renderUserCurrentWeekWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
 
-    var sheet = getActiveSheetSafe();
     var titleEl = document.getElementById('userCurrentShiftTitle');
     var pillsContainer = document.getElementById('userWeekDaysPills');
 
@@ -72,49 +141,100 @@ function renderUserCurrentWeekWorkspace() {
     if (deptInput) deptInput.value = user.dept || user.department || 'ຂະແໜງບໍລິການອອນລາຍ';
     if (phoneInput) phoneInput.value = user.phone || '';
     if (nameDisplay) nameDisplay.innerText = user.nameLao + ' (' + (user.fullName || user.nameLao) + ')';
-    if (codeDisplay) codeDisplay.innerText = user.user || 'BCEL2120';
+    if (codeDisplay) codeDisplay.innerText = user.user || 'BCEL';
     if (photoPreview && user.photo) photoPreview.src = user.photo;
 
     if (titleEl && pillsContainer) {
         var myName = user.nameLao;
         pillsContainer.innerHTML = '';
 
-        var today = new Date();
-        var mKey = (sheet && sheet.monthKey) ? sheet.monthKey : (today.getFullYear() + '-' + (today.getMonth() + 1));
-        var parts = mKey.split('-').map(Number);
-        var y = parts[0];
-        var m = parts[1];
-        var myShifts = [];
+        // ຄຳນວນຫາ 7 ວັນຂອງອາທິດປັດຈຸບັນ (Monday - Sunday) ຂອງມື້ນີ້ຕົວຈິງ
+        var now = new Date();
+        var todayY = now.getFullYear();
+        var todayM = String(now.getMonth() + 1).padStart(2, '0');
+        var todayD = String(now.getDate()).padStart(2, '0');
+        var todayDateStr = todayY + '-' + todayM + '-' + todayD;
 
-        for (var i = 1; i <= 7; i++) {
-            var dNum = i < 10 ? '0' + i : '' + i;
-            var mNum = m < 10 ? '0' + m : '' + m;
-            var dStr = y + '-' + mNum + '-' + dNum;
-            var dInfo = (sheet && sheet.data && sheet.data[dStr]) ? sheet.data[dStr] : {};
-            var shift = 'ພັກ (OFF)';
-            var pillClass = 'bg-slate-100 text-slate-500';
+        var dayOfWeek = now.getDay();
+        var diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
+        var monday = new Date(now);
+        monday.setDate(now.getDate() + diffToMon);
+        monday.setHours(0, 0, 0, 0);
 
-            if (dInfo.shift1 && dInfo.shift1.some(function(n) { return isSamePerson(n, myName); })) { 
-                shift = 'ກະ 1'; 
-                pillClass = 'bg-red-50 text-brand-red font-bold border-red-200'; 
-                myShifts.push('ກະ 1 (08:00 - 16:00)'); 
-            } else if (dInfo.shift2 && dInfo.shift2.some(function(n) { return isSamePerson(n, myName); })) { 
-                shift = 'ກະ 2'; 
-                pillClass = 'bg-purple-50 text-purple-800 font-bold border-purple-200'; 
-                myShifts.push('ກະ 2 (12:00 - 20:00)'); 
-            } else if (dInfo.shift3 && dInfo.shift3.some(function(n) { return isSamePerson(n, myName); })) { 
-                shift = 'ກະ 3'; 
-                pillClass = 'bg-slate-800 text-white font-bold'; 
-                myShifts.push('ກະ 3 (20:00 - 08:00)'); 
+        var dayNamesLao = ['ອາທິດ', 'ຈັນ', 'ອັງຄານ', 'ພຸດ', 'ພະຫັດ', 'ສຸກ', 'ເສົາ'];
+        var todayShiftLabel = null;
+        var weekdayShiftsList = [];
+
+        for (var d = 0; d < 7; d++) {
+            var curr = new Date(monday);
+            curr.setDate(monday.getDate() + d);
+
+            var cY = curr.getFullYear();
+            var cM = String(curr.getMonth() + 1).padStart(2, '0');
+            var cD = String(curr.getDate()).padStart(2, '0');
+            var dStr = cY + '-' + cM + '-' + cD;
+            var monthKey = cY + '-' + cM;
+
+            var sheet = getActiveSheetSafe(monthKey);
+            
+            if (sheet && typeof autoApplyCompletedSwapsForDate === 'function') {
+                autoApplyCompletedSwapsForDate(dStr);
             }
 
-            pillsContainer.innerHTML += '<div class="px-2.5 py-1 border rounded-lg text-center text-[10px] ' + pillClass + '">' +
-                '<div class="font-bold">' + i + '/' + mNum + '</div>' +
-                '<div>' + shift + '</div>' +
+            var dInfo = (sheet && sheet.data && sheet.data[dStr]) ? sheet.data[dStr] : {};
+            var isWeekend = (curr.getDay() === 0 || curr.getDay() === 6);
+            var isHol = (typeof isDateInHolidayRange === 'function') ? isDateInHolidayRange(dStr) : false;
+            var isOffDay = (isWeekend || isHol);
+
+            var leaveInfo = (typeof getStaffLeaveInfo === 'function') ? getStaffLeaveInfo(myName, 'all', dStr) : null;
+
+            var shift = 'ພັກ (OFF)';
+            var pillClass = 'bg-slate-50 text-slate-400 border-slate-200';
+            var shiftDetail = 'ພັກຜ່ອນ (OFF)';
+
+            if (leaveInfo) {
+                shift = 'ລາພັກ';
+                pillClass = 'bg-rose-50 text-rose-600 font-bold border-rose-200 line-through';
+                shiftDetail = 'ລາພັກ (' + (leaveInfo.reason || 'ລາພັກ') + ')';
+            } else if (dInfo.shift1 && dInfo.shift1.some(function(n) { return isSamePerson(n, myName); })) {
+                shift = 'ກະ 1';
+                pillClass = 'bg-red-50 text-brand-red font-bold border-red-200';
+                shiftDetail = isOffDay ? 'ກະ 1 (08:00 - 13:30)' : 'ກະ 1 (08:00 - 16:00)';
+                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
+            } else if (dInfo.shift2 && dInfo.shift2.some(function(n) { return isSamePerson(n, myName); })) {
+                shift = 'ກະ 2';
+                pillClass = 'bg-purple-50 text-purple-800 font-bold border-purple-200';
+                shiftDetail = isOffDay ? 'ກະ 2 (13:30 - 19:00)' : 'ກະ 2 (12:00 - 20:00)';
+                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
+            } else if (dInfo.shift3 && dInfo.shift3.some(function(n) { return isSamePerson(n, myName); })) {
+                shift = 'ກະ 3';
+                pillClass = 'bg-slate-800 text-white font-bold border-slate-900';
+                shiftDetail = isOffDay ? 'ກະ 3 (19:00 - 08:00)' : 'ກະ 3 (20:00 - 08:00)';
+                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
+            }
+
+            var isToday = (dStr === todayDateStr);
+            if (isToday) {
+                todayShiftLabel = shiftDetail;
+                pillClass += ' ring-2 ring-brand-red shadow-sm';
+            }
+
+            var todayTag = isToday ? '<span class="block text-[8px] bg-brand-red text-white rounded px-1 mt-0.5 font-bold">ມື້ນີ້</span>' : '';
+            var dayLabel = dayNamesLao[curr.getDay()];
+
+            pillsContainer.innerHTML += '<div class="px-2 py-1.5 border rounded-xl text-center text-[10px] ' + pillClass + ' transition font-lao min-w-[50px]">' +
+                '<div class="text-[9px] opacity-75">' + dayLabel + '</div>' +
+                '<div class="font-bold text-xs">' + curr.getDate() + '/' + (curr.getMonth() + 1) + '</div>' +
+                '<div class="mt-0.5">' + shift + '</div>' +
+                todayTag +
             '</div>';
         }
 
-        titleEl.innerText = myShifts.length > 0 ? ('ອາທິດນີ້: ' + myShifts[0]) : 'ອາທິດນີ້: ພັກຜ່ອນ (OFF)';
+        var primaryWeekShift = weekdayShiftsList[0] || (todayShiftLabel || 'ພັກຜ່ອນ (OFF)');
+        var todayText = todayShiftLabel ? todayShiftLabel : 'ພັກຜ່ອນ (OFF)';
+
+        titleEl.innerHTML = '<span>ມື້ນີ້: </span><span class="text-brand-red font-black underline">' + todayText + '</span>' +
+            (primaryWeekShift && primaryWeekShift !== todayText ? ' <span class="text-xs text-slate-500 font-normal">(ອາທິດນີ້: ' + primaryWeekShift + ')</span>' : '');
     }
 
     var peerSelect = document.getElementById('swapTargetPeer');
@@ -280,7 +400,7 @@ function handlePhotoUploadAndCompress(event) {
             var canvas = document.createElement('canvas');
             var max = 150;
             var w = img.width, h = img.height;
-            if (w > h) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
+            if (w > max) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
             else { if (h > max) { w = Math.round((w * max) / h); h = max; } }
             canvas.width = w; canvas.height = h;
             var ctx = canvas.getContext('2d');
@@ -432,7 +552,8 @@ async function handleBookAnnualLeave() {
         shift: shift,
         days: diffDays,
         reason: reason,
-        status: bookingStatus
+        status: bookingStatus,
+        created_at: new Date().toISOString()
     };
 
     if (!window.annualBookings) window.annualBookings = [];
@@ -462,13 +583,15 @@ async function handleBookAnnualLeave() {
                 shift: shift,
                 days: diffDays,
                 reason: reason,
-                status: bookingStatus
+                status: bookingStatus,
+                created_at: newBooking.created_at
             }]);
         } catch (e) {}
     }
 
     renderAnnualLeaveBookings();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
 
     if (bookingStatus === 'PENDING_ADMIN') {
         showToast('ສົ່ງຄຳຂໍແລ້ວ', 'ຄຳຮ້ອງກຳລັງລໍຖ້າ Admin ພິຈາລະນາ', 'warning');
@@ -497,6 +620,7 @@ function promptCancelAnnualLeave(bookingId) {
     if (typeof saveAll === 'function') saveAll();
     renderAnnualLeaveBookings();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
 
     if (window.supabaseClient) {
         try {
@@ -591,10 +715,11 @@ async function adminApproveLeave(id) {
 
     renderAnnualLeaveBookings();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
     showToast('ອະນຸມັດສຳເລັດ', 'Admin ໄດ້ອະນຸມັດໃຫ້ "' + b.nameLao + '" ລາພັກແລ້ວ', 'success');
 }
 
-// 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ
+// ⭐ 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ໃສ່ timestamp ເພື່ອໃຫ້ລຽງໃໝ່ສຸດຢູ່ເທິງ)
 async function handleCreateSwap() {
     var user = getCurrentUserSafe();
     if (!user) {
@@ -628,11 +753,12 @@ async function handleCreateSwap() {
         toShift: toShift,
         reason: reason || defaultReason,
         status: 'PENDING',
+        created_at: new Date().toISOString(), // ✅ ໃສ່ເວລາສ້າງລ່າສຸດ
         createdAt: new Date().toLocaleString('lo-LA')
     };
 
     if (!window.swapHistory) window.swapHistory = [];
-    window.swapHistory.unshift(newSwap);
+    window.swapHistory.unshift(newSwap); // ເອົາຂຶ້ນເທິງສຸດທັນທີ
 
     localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
     if (typeof saveAll === 'function') await saveAll();
@@ -647,7 +773,8 @@ async function handleCreateSwap() {
                 from_shift: newSwap.fromShift,
                 to_shift: newSwap.toShift,
                 reason: '[' + newSwap.swapType + '] ' + newSwap.reason,
-                status: 'PENDING'
+                status: 'PENDING',
+                created_at: newSwap.created_at
             };
 
             var res = await window.supabaseClient.from('shift_swaps').insert([payload]).select();
@@ -662,7 +789,8 @@ async function handleCreateSwap() {
     if (reasonInput) reasonInput.value = '';
 
     renderSwapHistory();
-    if (typeof window.updateNotificationBadge === 'function') window.updateNotificationBadge();
+    // ອັບເດດກະດິ່ງແຈ້ງເຕືອນທັນທີ
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
     
     var msg = (swapType === 'COVER') 
         ? ('ສົ່ງຄຳຮ້ອງອາສາ "ຍາມແທນຄວບກະ" ໃຫ້ "' + toName + '" ແລ້ວ!') 
@@ -670,7 +798,7 @@ async function handleCreateSwap() {
     showToast('ສຳເລັດ', msg, 'success');
 }
 
-// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (ແກ້ໄຂໃຫ້ເຫັນປຸ່ມຍົກເລີກ ແລະ ປະຕິເສດ 100%)
+// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (SORT: ໃໝ່ສຸດຢູ່ເທິງ ➔ ເກົ່າສຸດຢູ່ລຸ່ມ 100%)
 async function renderSwapHistory() {
     var container = document.getElementById('incomingSwapsList');
     if (!container) return;
@@ -681,7 +809,13 @@ async function renderSwapHistory() {
     } catch(e) {}
 
     container.innerHTML = '';
-    var history = window.swapHistory || [];
+
+    // ✅ ສັ່ງ SORT: ເອົາລາຍການໃໝ່ສຸດ (ID ຫຼື ເວລາສູງສຸດ) ມາຢູ່ເທິງສຸດສະເໝີ!
+    var history = (window.swapHistory || []).slice().sort(function(a, b) {
+        var timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
+        var timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
+        return timeB - timeA; // ໃໝ່ ➔ ເກົ່າ
+    });
 
     if (history.length === 0) {
         container.innerHTML = '<p class="text-slate-400 text-xs italic py-3 text-center font-lao">ຍັງບໍ່ມີປະຫວັດການຂໍປ່ຽນກະ</p>';
@@ -697,7 +831,6 @@ async function renderSwapHistory() {
     history.forEach(function(req) {
         var reqId = String(req.id);
 
-        // ⭐ ກວດສອບຄວາມເປັນເຈົ້າຂອງດ້ວຍ isSamePerson (ຕັດ ທ້າວ/ນາງ ອອກ)
         var isForMe = (isSamePerson(req.toName, myNameLao) || isSamePerson(req.toName, myFullName) || isSamePerson(req.toName, myUserCode));
         var isCreatedByMe = (isSamePerson(req.fromName, myNameLao) || isSamePerson(req.fromName, myFullName) || isSamePerson(req.fromName, myUserCode));
 
@@ -721,12 +854,10 @@ async function renderSwapHistory() {
             ? ('<span class="text-brand-red font-bold">' + req.fromName + '</span> ອາສາຂຶ້ນຍາມແທນ <span class="text-blue-700 font-bold">' + req.toName + '</span> ໃນກະ <span class="font-bold text-purple-700">[' + req.toShift + ']</span>')
             : ('<span class="text-brand-red font-bold">' + req.fromName + '</span> ຂໍແລກກະກັບ <span class="text-blue-700 font-bold">' + req.toName + '</span>');
 
-        // ⭐ ປຸ່ມຈັດການແຍກຕາມສິດທິ:
         var actionButtonsHtml = '';
 
         if (isPending) {
             if (isForMe || isAdmin) {
-                // ປາຍທາງ ຫຼື Admin: ສາມາດກົດ ຍອມຮັບ ຫຼື ປະຕິເສດ
                 actionButtonsHtml += '<button type="button" onclick="acceptSwap(\'' + reqId + '\')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1 cursor-pointer">' +
                                         '<span class="material-symbols-outlined text-xs">check_circle</span> ຍອມຮັບ' +
                                      '</button>' +
@@ -735,7 +866,6 @@ async function renderSwapHistory() {
                                      '</button>';
             }
             if (isCreatedByMe || isAdmin) {
-                // ຜູ້ສົ່ງ ຫຼື Admin: ສາມາດກົດ "ຍົກເລີກຄຳຮ້ອງ" ໄດ້ທັນທີ!
                 actionButtonsHtml += '<button type="button" onclick="promptCancelSwap(\'' + reqId + '\')" class="px-3 py-1.5 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">' +
                                         '<span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກຄຳຂໍ' +
                                      '</button>';
@@ -744,7 +874,6 @@ async function renderSwapHistory() {
                 actionButtonsHtml = statusBadge;
             }
         } else {
-            // ຖ້າສຳເລັດ ຫຼື ປະຕິເສດແລ້ວ: ສະແດງສະຖານະ ແລະ ປຸ່ມລຶບປະຫວັດອອກຖ້າຕ້ອງການ
             actionButtonsHtml = statusBadge;
             if (isCreatedByMe || isForMe || isAdmin) {
                 actionButtonsHtml += '<button type="button" onclick="promptCancelSwap(\'' + reqId + '\')" class="p-1 text-slate-300 hover:text-rose-600 rounded transition cursor-pointer" title="ລຶບລາຍການນີ້"><span class="material-symbols-outlined text-sm">delete</span></button>';
@@ -764,18 +893,16 @@ async function renderSwapHistory() {
     });
 }
 
-// ⭐ 8. ຟັງຊັນ ຍົກເລີກຄຳຮ້ອງ (ສຳລັບຜູ້ສົ່ງຄຳຮ້ອງ) - ແກ້ໄຂໃຫ້ກົດໄດ້ 100%
+// 8. ຟັງຊັນ ຍົກເລີກຄຳຮ້ອງ
 async function promptCancelSwap(swapId) {
     var idStr = String(swapId);
     if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການຍົກເລີກຄຳຮ້ອງຂໍປ່ຽນກະນີ້?')) return;
 
-    // 1. ລຶບອອກຈາກ Local Array
     window.swapHistory = (window.swapHistory || []).filter(function(s) { 
         return String(s.id) !== idStr; 
     });
     localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
 
-    // 2. ລຶບອອກຈາກຖານຂໍ້ມູນ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('shift_swaps').delete().eq('id', swapId);
@@ -785,11 +912,13 @@ async function promptCancelSwap(swapId) {
     }
 
     renderSwapHistory();
+    renderUserCurrentWeekWorkspace();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
     showToast('ສຳເລັດ', 'ຍົກເລີກຄຳຮ້ອງປ່ຽນກະຮຽບຮ້ອຍແລ້ວ!', 'success');
 }
 
-// ⭐ 9. ຟັງຊັນ ປະຕິເສດຄຳຮ້ອງ (ສຳລັບຝ່າຍປາຍທາງ) - ແກ້ໄຂໃຫ້ກົດໄດ້ 100%
+// 9. ຟັງຊັນ ປະຕິເສດຄຳຮ້ອງ
 async function declineSwap(swapId) {
     var idStr = String(swapId);
     if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະນີ້?')) return;
@@ -804,7 +933,6 @@ async function declineSwap(swapId) {
 
     localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
 
-    // ອັບເດດສະຖານະເປັນ DECLINED ເທິງ Supabase
     if (window.supabaseClient) {
         try {
             await window.supabaseClient.from('shift_swaps').update({ status: 'DECLINED' }).eq('id', swapId);
@@ -814,11 +942,13 @@ async function declineSwap(swapId) {
     }
 
     renderSwapHistory();
+    renderUserCurrentWeekWorkspace();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
     showToast('ປະຕິເສດແລ້ວ', 'ປະຕິເສດຄຳຮ້ອງຂໍປ່ຽນກະຮຽບຮ້ອຍແລ້ວ', 'info');
 }
 
-// ⭐ 10. ຟັງຊັນ ຍອມຮັບຄຳຮ້ອງ (ACCEPT)
+// 10. ຟັງຊັນ ຍອມຮັບຄຳຮ້ອງ (ACCEPT)
 async function acceptSwap(id) {
     var idStr = String(id);
     var req = (window.swapHistory || []).find(function(r) { return String(r.id) === idStr; });
@@ -886,6 +1016,7 @@ async function acceptSwap(id) {
     renderUserCurrentWeekWorkspace();
     if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
 
     showToast('ປ່ຽນກະສຳເລັດ', 'ສັບປ່ຽນກະລະຫວ່າງ ' + personA + ' ແລະ ' + personB + ' ຮຽບຮ້ອຍແລ້ວ!', 'success');
 
@@ -903,9 +1034,12 @@ async function acceptSwap(id) {
 }
 
 // 11. AUTO-INITIALIZE WORKSPACE ON TAB SWITCH
-function initProfileWorkspace() {
+async function initProfileWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
+
+    // ດຶງຂໍ້ມູນຫຼ້າສຸດຈາກ Cloud ສະເໝີ
+    await fetchProfileCloudData();
 
     var adminSec = document.getElementById('adminReportsSection');
     var userSec = document.getElementById('userStaffWorkspaceSection');
@@ -923,30 +1057,26 @@ function initProfileWorkspace() {
 }
 
 var _origSwitchTab = window.switchTab;
-window.switchTab = function(tab) {
+window.switchTab = async function(tab) {
     if (typeof _origSwitchTab === 'function') _origSwitchTab(tab);
     if (tab === 'profile') {
-        setTimeout(initProfileWorkspace, 50);
-        setTimeout(initProfileWorkspace, 300);
+        await initProfileWorkspace();
     }
 };
 
 document.addEventListener('click', function(e) {
     var btn = e.target.closest('#top-btn-profile, #side-profile, #mob-side-profile, a[href*="profile"]');
     if (btn) {
-        setTimeout(initProfileWorkspace, 50);
-        setTimeout(initProfileWorkspace, 300);
+        initProfileWorkspace();
     }
 });
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(initProfileWorkspace, 100);
-        setTimeout(initProfileWorkspace, 500);
+        initProfileWorkspace();
     });
 } else {
-    setTimeout(initProfileWorkspace, 100);
-    setTimeout(initProfileWorkspace, 500);
+    initProfileWorkspace();
 }
 
 // ຜູກທຸກ Function ເຂົ້າ Window
@@ -964,3 +1094,4 @@ window.renderSwapHistory = renderSwapHistory;
 window.acceptSwap = acceptSwap;
 window.declineSwap = declineSwap;
 window.initProfileWorkspace = initProfileWorkspace;
+window.fetchProfileCloudData = fetchProfileCloudData;
