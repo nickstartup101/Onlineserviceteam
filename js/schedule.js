@@ -574,7 +574,168 @@ async function executeGroupRandomSchedule() {
 
     await syncScheduleToSupabase(sheet);
 }
+// ⭐ 4.2 ຟັງຊັນ ZIGZAG ຕໍ່ເນື່ອງໂດຍເອົາ "ອາທິດທີ 1" ເປັນແມ່ແບບຫຼັກ (SMART BASELINE ZIGZAG)
+async function executeZigzagFromWeek1() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
 
+    var parts = (sheet.monthKey || '2026-10').split('-').map(Number);
+    var year = parts[0] || 2026;
+    var month = parts[1] || 10;
+    var daysCount = new Date(year, month, 0).getDate();
+
+    // 1. ຊອກຫາ "ວັນຈັນທຳອິດ" ຂອງເດືອນທີ່ມີການຈັດຄົນໄວ້ແລ້ວ
+    var firstMondayStr = null;
+    var firstMondayDateObj = null;
+
+    for (var i = 1; i <= Math.min(daysCount, 7); i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var dObj = new Date(Date.UTC(year, month - 1, i));
+
+        if (dObj.getUTCDay() === 1) { // ພົບວັນຈັນ
+            firstMondayStr = dStr;
+            firstMondayDateObj = dObj;
+            break;
+        }
+    }
+
+    if (!firstMondayStr) {
+        firstMondayStr = year + '-' + (month < 10 ? '0' + month : '' + month) + '-01';
+        firstMondayDateObj = new Date(Date.UTC(year, month - 1, 1));
+    }
+
+    var baseDayData = (sheet.data && sheet.data[firstMondayStr]) ? sheet.data[firstMondayStr] : null;
+    var s1 = baseDayData ? (baseDayData.shift1 || []).filter(Boolean) : [];
+    var s2 = baseDayData ? (baseDayData.shift2 || []).filter(Boolean) : [];
+    var s3 = baseDayData ? (baseDayData.shift3 || []).filter(Boolean) : [];
+
+    var totalStaffSet = s1.length + s2.length + s3.length;
+    if (totalStaffSet < 10) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາຈັດຊື່ພະນັກງານໃສ່ວັນຈັນທີ ' + firstMondayStr + ' (ອາທິດທີ 1) ໃຫ້ຄົບກ່ອນ!', 'warning');
+        return;
+    }
+
+    if (!confirm('ລະບົບຈະເອົາການຈັດກະຂອງວັນທີ ' + firstMondayStr + ' ເປັນແມ່ແບບຫຼັກ ແລ້ວແລ່ນສູດ Zigzag ໝູນວຽນຕໍ່ໃຫ້ຄົບທຸກອາທິດຕະຫຼອດເດືອນ. ຢືນຢັນບໍ່?')) return;
+
+    // 2. ສະກັດແຍກຫົວໜ້າ ແລະ ພະນັກງານອອກຈາກອາທິດທີ 1
+    var allUsers = window.users || [];
+    var isLeader = function(name) {
+        var u = allUsers.find(function(usr) { return isSchedNameMatch(usr.nameLao, name); });
+        return u ? Boolean(u.isLeader) : false;
+    };
+
+    var baseLeadersS1 = s1.filter(isLeader);
+    var baseLeadersS2 = s2.filter(isLeader);
+    var baseLeadersS3 = s3.filter(isLeader);
+
+    // ວົງແຫວນຫົວໜ້າ 4 ທ່ານ: [L1_A, L1_B, L_S2, L_S3]
+    var leaderRing = [...baseLeadersS1, ...baseLeadersS2, ...baseLeadersS3];
+    var defLeaders = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
+    defLeaders.forEach(function(dl) {
+        if (!leaderRing.some(function(lr) { return isSchedNameMatch(lr, dl); })) {
+            leaderRing.push(dl);
+        }
+    });
+    leaderRing = leaderRing.slice(0, 4);
+
+    // ວົງແຫວນພະນັກງານ 13 ທ່ານ: [S3 (3 ຄົນ), S2 (5 ຄົນ), S1 (5 ຄົນ)]
+    var baseStaffS3 = s3.filter(function(n) { return !isLeader(n); });
+    var baseStaffS2 = s2.filter(function(n) { return !isLeader(n); });
+    var baseStaffS1 = s1.filter(function(n) { return !isLeader(n); });
+
+    var staffRing = [...baseStaffS3, ...baseStaffS2, ...baseStaffS1];
+    var defStaff = getPermanentStaffList().filter(function(n) { return !leaderRing.some(function(lr) { return isSchedNameMatch(lr, n); }); });
+    defStaff.forEach(function(ds) {
+        if (!staffRing.some(function(sr) { return isSchedNameMatch(sr, ds); })) {
+            staffRing.push(ds);
+        }
+    });
+    staffRing = staffRing.slice(0, 13);
+
+    // 3. ເລີ່ມແລ່ນສູດ Zigzag ຕໍ່ເນື່ອງຕັ້ງແຕ່ມື້ທີ 1 ຫາ ມື້ສຸດທ້າຍຂອງເດືອນ
+    var baseWeekIdx = getMondayBasedWeekIndex(firstMondayDateObj);
+    if (!sheet.data) sheet.data = {};
+
+    for (var d = 1; d <= daysCount; d++) {
+        var dayNum = d < 10 ? '0' + d : '' + d;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var dateObj = new Date(Date.UTC(year, month - 1, d));
+        var dayOfWeek = dateObj.getUTCDay();
+        var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
+
+        if (isWeekend) {
+            var gWeekend = getGlobalWeekendDayIndex(dateObj);
+            var isSunday = (dayOfWeek === 0);
+
+            var wLeaderSat = leaderRing[(gWeekend) % 4];
+            var wLeaderSun = leaderRing[(gWeekend + 1) % 4];
+
+            var wStaff = [];
+            for (var k = 0; k < 5; k++) {
+                wStaff.push(staffRing[(gWeekend * 5 + k) % 13]);
+            }
+
+            var s1Wk = ['', wStaff[0], ''];
+            var s2Wk = isSunday ? [wLeaderSun, wStaff[1], wStaff[2]] : [wLeaderSat, wStaff[1], wStaff[2]];
+            var s3Wk = isSunday ? [leaderRing[(gWeekend) % 4], wStaff[3], wStaff[4]] : [leaderRing[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
+
+            var dayObj = {
+                isWeekend: true,
+                isG7Team: false,
+                shift1: s1Wk,
+                shift2: s2Wk,
+                shift3: s3Wk
+            };
+            applyFixedShiftsToDayData(dayObj);
+            sheet.data[dStr] = dayObj;
+        } else {
+            // ຄຳນວນໄລຍະຫ່າງອາທິດທຽບກັບ ອາທິດທີ 1 (Base Week)
+            var currentWeekIdx = getMondayBasedWeekIndex(dateObj);
+            var weekDiff = currentWeekIdx - baseWeekIdx;
+
+            // ໝູນວຽນຫົວໜ້າ
+            var l_1A = leaderRing[(0 + weekDiff + 400) % 4];
+            var l_1B = leaderRing[(1 + weekDiff + 400) % 4];
+            var l_S2 = leaderRing[(2 + weekDiff + 400) % 4];
+            var l_S3 = leaderRing[(3 + weekDiff + 400) % 4];
+
+            // ໝູນວຽນພະນັກງານ 13 ທ່ານ (ຄັ້ງລະ 3 ຕຳແໜ່ງ)
+            var staffOffset = (13000 - weekDiff * 3) % 13;
+            var rotated = [];
+            for (var r = 0; r < 13; r++) {
+                rotated.push(staffRing[(r + staffOffset) % 13]);
+            }
+
+            var new_S3 = rotated.slice(0, 3);
+            var new_S2 = rotated.slice(3, 8);
+            var new_S1 = rotated.slice(8, 13);
+
+            var dayObj = {
+                isWeekend: false,
+                isG7Team: false,
+                shift1: [l_1A, l_1B, ...new_S1].filter(Boolean),
+                shift2: [l_S2, ...new_S2].filter(Boolean),
+                shift3: [l_S3, ...new_S3].filter(Boolean)
+            };
+            applyFixedShiftsToDayData(dayObj);
+            sheet.data[dStr] = dayObj;
+        }
+    }
+
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ສືບຕໍ່ສູດ Zigzag ຈາກອາທິດທີ 1 ສຳເລັດ 100%!', 'success');
+
+    await syncScheduleToSupabase(sheet);
+}
 // 5. BATCH MONTH MODAL
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
@@ -1517,3 +1678,4 @@ window.openHolidayModal = openHolidayModal;
 window.handleSaveHolidayRange = handleSaveHolidayRange;
 window.createBlankMonthData = createBlankMonthData;
 window.applyFixedShiftsToDayData = applyFixedShiftsToDayData;
+window.executeZigzagFromWeek1 = executeZigzagFromWeek1;
