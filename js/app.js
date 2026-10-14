@@ -1,5 +1,6 @@
 // ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER 100%) =================
 
+// 0. GLOBAL HOLIDAY CHECKER
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
@@ -37,30 +38,45 @@ try {
     if (badUsers && !badUsers.trim().startsWith('[') && !badUsers.trim().startsWith('{')) localStorage.removeItem('ot_users');
 } catch (e) {}
 
+// ⭐ 1. ແກ້ໄຂລາຍຊື່ໃຫ້ສະກົດກົງກັບ Supabase Database 100% (ແກ້: ໜູຮັກ, ປະສົງສິນ, ສີຊົມພູ, ໄກສະຫວາດ)
 var defaultSystemUsers = [
     { user: 'admin', pass: 'admin123', nameLao: 'Admin', fullName: 'Super Admin', role: 'SUPER_ADMIN', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 8877' },
     { user: 'BCEL0765', pass: 'bcel2026', nameLao: 'ແສງດາວ', fullName: 'SENGDAO DOUANGPRASEUTH', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5501 2345' },
     { user: 'BCEL0272', pass: 'bcel2026', nameLao: 'ພອນສະຫວັນ', fullName: 'PHONSAVANH PHOMMAVONG', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5502 3456' },
     { user: 'BCEL1055', pass: 'bcel2026', nameLao: 'ບຸນປະເສີດ', fullName: 'BOUNPRASEUTH VILAYPHONE', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5503 4567' },
     { user: 'BCEL0872', pass: 'bcel2026', nameLao: 'ພັນນິກອນ', fullName: 'PHANNIKHONE PHOMMASENG', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5504 5678' },
-    { user: 'BCEL0277', pass: 'bcel2026', nameLao: 'ສົມທະຍາ', fullName: 'SOMTHAYA BOUTDAXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5505 6789' },
-    { user: 'BCEL0707', pass: 'bcel2026', nameLao: 'ມິກກີ້', fullName: 'MIKKY SAYALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5506 7890' },
-    { user: 'BCEL1431', pass: 'bcel2026', nameLao: 'ທູຮັກ', fullName: 'THOUHAK SENGCHALEUN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5507 8901' },
-    { user: 'BCEL1532', pass: 'bcel2026', nameLao: 'ແພັກກີ້', fullName: 'PACKY PHOMMALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5508 9012' },
+    { user: 'BCEL0277', pass: 'bcel2026', nameLao: 'ສົນທະຍາ', fullName: 'SOMTHAYA BOUTDAXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5505 6789' },
+    { user: 'BCEL0707', pass: 'bcel2026', nameLao: 'ນິກກີ້', fullName: 'MIKKY SAYALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5506 7890' },
+    { user: 'BCEL1431', pass: 'bcel2026', nameLao: 'ໜູຮັກ', fullName: 'NOUHAK SENGCHALEUN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5507 8901' },
+    { user: 'BCEL1532', pass: 'bcel2026', nameLao: 'ແພັກເກີ້', fullName: 'PACKY PHOMMALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5508 9012' },
     { user: 'BCEL2007', pass: 'bcel2026', nameLao: 'ເອກສະຫວ່າງ', fullName: 'EKXAVANG PHANTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5509 0123' },
-    { user: 'BCEL2120', pass: 'bcel2026', nameLao: 'ໂທມິກ', fullName: 'TONICK BOUDDASIEN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 1122' },
+    { user: 'BCEL2120', pass: 'bcel2026', nameLao: 'ໂທນິກ', fullName: 'TONICK BOUDDASIEN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 1122' },
     { user: 'BCEL1101', pass: 'bcel2026', nameLao: 'ບຸນຮັກ', fullName: 'BOUNHAK XAYAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5510 1122' },
-    { user: 'BCEL1102', pass: 'bcel2026', nameLao: 'ປະສັງສິນ', fullName: 'PASANGSIN SOULIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5511 2233' },
+    { user: 'BCEL1102', pass: 'bcel2026', nameLao: 'ປະສົງສິນ', fullName: 'PASANGSIN SOULIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5511 2233' },
     { user: 'BCEL1103', pass: 'bcel2026', nameLao: 'ສາຍທອງ', fullName: 'SAYTHONG MANIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5512 3344' },
     { user: 'BCEL1104', pass: 'bcel2026', nameLao: 'ສົມຊາຍ', fullName: 'SOMCHAY VONGXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5513 4455' },
-    { user: 'BCEL1105', pass: 'bcel2026', nameLao: 'ສີຊຸມພູ', fullName: 'SICHUMPHOU LATTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5514 5566' },
+    { user: 'BCEL1105', pass: 'bcel2026', nameLao: 'ສີຊົມພູ', fullName: 'SICHUMPHOU LATTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5514 5566' },
     { user: 'BCEL1106', pass: 'bcel2026', nameLao: 'ສຸລິຍະສັກ', fullName: 'SOULIYASACK PHANTHAMALY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5515 6677' },
-    { user: 'BCEL1107', pass: 'bcel2026', nameLao: 'ໄທສະຫວາດ', fullName: 'THAISAVATH PHOMMAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5516 7788' }
+    { user: 'BCEL1107', pass: 'bcel2026', nameLao: 'ໄກສະຫວາດ', fullName: 'KAYSAVATH PHOMMAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5516 7788' }
 ];
 
+// ⭐ 2. ແຍກ 2 ກຸ່ມໃຫ້ກົງກັບ Database ແລະ Schedule Engine
 window.defaultEmployeeGroups = [
-    { id: 'grp-g7-flex', name: 'ກຸ່ມທີມບໍລິການ 7 ຄົນ (G7 Flex)', members: ['ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ'] },
-    { id: 'grp-main-17', name: 'ກຸ່ມທີມບໍລິການຫຼັກ (17 ຄົນ)', members: ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ', 'ສົມທະຍາ', 'ມິກກີ້', 'ທູຮັກ', 'ແພັກກີ້', 'ເອກສະຫວ່າງ', 'ໂທມິກ', 'ບຸນຮັກ', 'ປະສັງສິນ', 'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊຸມພູ', 'ສຸລິຍະສັກ', 'ໄທສະຫວາດ'] }
+    { 
+        id: 'GRP_MAIN_17', 
+        name: 'ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)', 
+        members: [
+            'ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ',
+            'ສົນທະຍາ', 'ນີກກີ້', 'ໜູຮັກ', 'ແພັກເກີ້',
+            'ເອກສະຫວ່າງ', 'ໂທນິກ', 'ບຸນຮັກ', 'ປະສົງສິນ',
+            'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊົມພູ', 'ສຸລິຍະສັກ', 'ໄກສະຫວາດ'
+        ] 
+    },
+    { 
+        id: 'GRP_CONTRACT', 
+        name: 'ກຸ່ມທີມວິຊາການສັນຍາ (Contract Staff)', 
+        members: ['ໄຊຍະພອນ', 'ທອງສະຫວັນ', 'ໄຊຍະສິດ', 'ແກ້ວວິໄລ', 'ຈິດສະດາ','ລິດຕະສອນ','ນະລົງສັກ'] 
+    }
 ];
 
 window.defaultNotesTemplate = `1. ກະ 1 (08:00 - 16:00), ກະ 2 (12:00 - 20:00), ກະ 3 (20:00 - 08:00).
@@ -218,7 +234,7 @@ function getActiveSheet() {
         window.scheduleSheets = [{
             id: 'sheet-1',
             monthKey: '2026-10',
-            title: 'ຕາຕະລາງປະຈຳການບໍລິການອອນໄລປະຈຳເດືອນ 10/2026',
+            title: 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການສົມບູນປະຈຳເດືອນ 10/2026',
             notes: window.defaultNotesTemplate,
             status: 'PUBLISHED',
             data: defData
@@ -240,7 +256,10 @@ window.getActiveSheet = getActiveSheet;
 
 function saveAll() {
     try {
-        if (window.scheduleSheets) localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        if (window.scheduleSheets) {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        }
         if (window.activeSheetId) localStorage.setItem('ot_active_sheet_id', window.activeSheetId);
         if (window.users) localStorage.setItem('ot_users', JSON.stringify(window.users));
         if (window.employeeGroups) localStorage.setItem('ot_employee_groups', JSON.stringify(window.employeeGroups));
@@ -386,7 +405,7 @@ async function loadEverythingFromSupabase(retryCount) {
         }
         if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
 
-        // B. Profiles
+        // B. Profiles (ດຶງພະນັກງານຕົວຈິງຈາກ Database Supabase)
         var profRes = await window.supabaseClient.from('profiles').select('*');
         var cloudProfiles = profRes.data;
 
@@ -480,7 +499,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var storedUsers = safeJSONParse(localStorage.getItem('ot_users'), null);
     window.users = (storedUsers && storedUsers.length > 0) ? storedUsers : defaultSystemUsers;
 
-    window.scheduleSheets = safeJSONParse(localStorage.getItem('ot_schedules_sheets'), null) || [];
+    window.scheduleSheets = safeJSONParse(localStorage.getItem('ot_schedule_sheets'), null) || 
+                            safeJSONParse(localStorage.getItem('ot_schedules_sheets'), null) || [];
     window.activeSheetId = localStorage.getItem('ot_active_sheet_id') || null;
 
     getActiveSheet();
