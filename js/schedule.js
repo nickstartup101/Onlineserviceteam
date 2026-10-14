@@ -613,7 +613,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 6. RENDER ຕາຕະລາງໃຫຍ່ (100% Guaranteed Render)
+// ⭐ 6. RENDER ຕາຕະລາງໃຫຍ່
 async function renderScheduleTable(options) {
     var opts = options || {};
     
@@ -719,7 +719,6 @@ async function renderScheduleTable(options) {
         }
         prevHeaderType = currentHeaderType;
 
-        // ຂະໜາດ Grid: ວັນທຳມະດາ (S1: 2x4, S2: 2x3, S3: 2x2) | ວັນພັກ (1x3 ທຸກກະ)
         var s1Rows = isWeekendOrHol ? 1 : 2;
         var s1Cols = isWeekendOrHol ? 3 : 4;
 
@@ -729,7 +728,6 @@ async function renderScheduleTable(options) {
         var s3Rows = isWeekendOrHol ? 1 : 2;
         var s3Cols = isWeekendOrHol ? 3 : 2;
 
-        // ⭐ ແກ້ໄຂແຖວວັນທີ: ຂະຫຍາຍຄວາມກວ້າງເປັນ 90px & 50px ພ້ອມໃສ່ text-center
         tbody.innerHTML += '<tr class="' + (isWeekendOrHol ? 'bg-slate-50' : 'bg-white') + '">' +
             '<td class="font-bold text-center text-xs whitespace-nowrap px-1" style="width: 90px; min-width: 90px;">' + i + '/' + mNum + '/' + year + '</td>' +
             '<td class="font-bold text-center text-xs ' + (isWeekendOrHol ? 'text-brand-red' : '') + '" style="width: 50px; min-width: 50px;">' + dayOfWeek + '</td>' +
@@ -737,6 +735,9 @@ async function renderScheduleTable(options) {
             '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], s2Rows, s2Cols, isAdmin, sheet.id) + '</td>' +
             '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], s3Rows, s3Cols, isAdmin, sheet.id) + '</td>' +
         '</tr>';
+    } // ⭐ ປີກກາປິດ loop for
+} // ⭐ ປີກກາປິດ renderScheduleTable
+
 // ⭐ 7. RENDER PIXEL EXCEL GRID (ລວງສູງ 48px ມາດຕະຖານ)
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 1); rows = Math.max(rows, 1);
