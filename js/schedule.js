@@ -702,24 +702,24 @@ async function renderScheduleTable(options) {
         if (shouldShowHeader) {
             if (isWeekendOrHol) {
                 tbody.innerHTML += '<tr class="bg-red-50/80 font-bold border-t-2 border-b border-black text-brand-red">' +
-                    '<td colspan="2" class="p-1 text-center font-bold text-xs">ວັນພັກ</td>' +
-                    '<td style="width: 36%;" class="p-1 text-center font-bold text-xs">08:00 - 13:30</td>' +
-                    '<td style="width: 34%;" class="p-1 text-center font-bold text-xs">13:30 - 19:00</td>' +
-                    '<td style="width: 24%;" class="p-1 text-center font-bold text-xs">19:00 - 08:00</td>' +
+                    '<td colspan="2" style="width: 140px; min-width: 140px;" class="p-1 text-center font-bold text-xs">ວັນພັກ</td>' +
+                    '<td style="width: 33%;" class="p-1 text-center font-bold text-xs">08:00 - 13:30</td>' +
+                    '<td style="width: 31%;" class="p-1 text-center font-bold text-xs">13:30 - 19:00</td>' +
+                    '<td style="width: 22%;" class="p-1 text-center font-bold text-xs">19:00 - 08:00</td>' +
                 '</tr>';
             } else {
                 tbody.innerHTML += '<tr class="bg-slate-100 font-bold border-t-2 border-b border-black text-slate-800">' +
-                    '<th style="width: 75px;" class="p-1 font-bold">ວັນທີ</th>' +
-                    '<th style="width: 48px;" class="p-1 font-bold">ວັນ</th>' +
-                    '<th style="width: 36%;" class="p-1 font-bold">08:00 - 16:00</th>' +
-                    '<th style="width: 34%;" class="p-1 font-bold">12:00 - 20:00</th>' +
-                    '<th style="width: 24%;" class="p-1 font-bold">20:00 - 08:00</th>' +
+                    '<th style="width: 90px; min-width: 90px;" class="p-1 text-center font-bold text-xs">ວັນທີ</th>' +
+                    '<th style="width: 50px; min-width: 50px;" class="p-1 text-center font-bold text-xs">ວັນ</th>' +
+                    '<th style="width: 33%;" class="p-1 font-bold text-xs">08:00 - 16:00</th>' +
+                    '<th style="width: 31%;" class="p-1 font-bold text-xs">12:00 - 20:00</th>' +
+                    '<th style="width: 22%;" class="p-1 font-bold text-xs">20:00 - 08:00</th>' +
                 '</tr>';
             }
         }
         prevHeaderType = currentHeaderType;
 
-        // ⭐ ຂະໜາດ Grid: ວັນທຳມະດາ (S1: 2x4, S2: 2x3, S3: 2x2) | ວັນພັກ (1x3 ທຸກກະ ຄືກັບເດືອນ 10/2026)
+        // ຂະໜາດ Grid: ວັນທຳມະດາ (S1: 2x4, S2: 2x3, S3: 2x2) | ວັນພັກ (1x3 ທຸກກະ)
         var s1Rows = isWeekendOrHol ? 1 : 2;
         var s1Cols = isWeekendOrHol ? 3 : 4;
 
@@ -729,16 +729,14 @@ async function renderScheduleTable(options) {
         var s3Rows = isWeekendOrHol ? 1 : 2;
         var s3Cols = isWeekendOrHol ? 3 : 2;
 
+        // ⭐ ແກ້ໄຂແຖວວັນທີ: ຂະຫຍາຍຄວາມກວ້າງເປັນ 90px & 50px ພ້ອມໃສ່ text-center
         tbody.innerHTML += '<tr class="' + (isWeekendOrHol ? 'bg-slate-50' : 'bg-white') + '">' +
-            '<td class="font-bold whitespace-nowrap">' + i + '/' + mNum + '/' + year + '</td>' +
-            '<td class="font-bold ' + (isWeekendOrHol ? 'text-brand-red' : '') + '">' + dayOfWeek + '</td>' +
+            '<td class="font-bold text-center text-xs whitespace-nowrap px-1" style="width: 90px; min-width: 90px;">' + i + '/' + mNum + '/' + year + '</td>' +
+            '<td class="font-bold text-center text-xs ' + (isWeekendOrHol ? 'text-brand-red' : '') + '" style="width: 50px; min-width: 50px;">' + dayOfWeek + '</td>' +
             '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], s1Rows, s1Cols, isAdmin, sheet.id) + '</td>' +
             '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], s2Rows, s2Cols, isAdmin, sheet.id) + '</td>' +
             '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], s3Rows, s3Cols, isAdmin, sheet.id) + '</td>' +
         '</tr>';
-    }
-}
-
 // ⭐ 7. RENDER PIXEL EXCEL GRID (ລວງສູງ 48px ມາດຕະຖານ)
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 1); rows = Math.max(rows, 1);
