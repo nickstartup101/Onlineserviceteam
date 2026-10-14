@@ -1,4 +1,4 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% FIXED) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & FULL INTERACTIVE CONTROLLER (100% COMPLETE) =================
 
 // 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
@@ -36,7 +36,19 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles)
+// 0.22 HELPER ສຸ່ມສັບປ່ຽນລຳດັບ (FISHER-YATES SHUFFLE)
+function shuffleArray(array) {
+    var arr = array.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+    return arr;
+}
+
+// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE
 function getPermanentStaffList() {
     var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
     var canonicalNames = [
@@ -69,7 +81,7 @@ function getContractStaffList() {
     return matched;
 }
 
-// ⭐ 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ (ສຳລັບປຸ່ມ RESET ລ້າງຊື່ທຸກຄົນອອກ 100%)
+// ⭐ 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ (ສຳລັບ RESET ລ້າງຊື່ທຸກຄົນອອກ 100%)
 function createBlankMonthData(year, month) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -98,10 +110,9 @@ function applyFixedShiftsToDayData(dayData) {
     
     window.fixedShiftsConfig.forEach(function(cfg) {
         var name = cfg.nameLao;
-        var targetShift = cfg.fixedShift; // 'shift1', 'shift2', 'shift3'
+        var targetShift = cfg.fixedShift;
         if (!name || !targetShift) return;
 
-        // ກວດສອບວ່າຄົນນີ້ມີຊື່ເຮັດວຽກໃນມື້ນີ້ບໍ່
         var currentShift = null;
         var currentIdx = -1;
         ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
@@ -114,7 +125,6 @@ function applyFixedShiftsToDayData(dayData) {
             }
         });
 
-        // ຖ້າມີຊື່ເຮັດວຽກ ແຕ່ຢູ່ຜິດກະ ➔ ຍ້າຍມາກະທີ່ລັອກໄວ້ທັນທີ!
         if (currentShift && currentShift !== targetShift) {
             dayData[currentShift].splice(currentIdx, 1);
             if (!dayData[targetShift]) dayData[targetShift] = [];
@@ -208,7 +218,7 @@ function getActiveSheet() {
             title: 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການສົມບູນປະຈຳເດືອນ 10/2026',
             notes: window.defaultNotesTemplate || '',
             status: 'PUBLISHED',
-            data: generateMonthDataZigzag(2026, 10, null)
+            data: generateMonthDataZigzag(2026, 10, null, false)
         };
         window.scheduleSheets = [defaultSheet];
         window.activeSheetId = defaultSheet.id;
@@ -241,7 +251,7 @@ function getActiveSheet() {
         var y = parts[0] || 2026;
         var m = parts[1] || 10;
         var isContract = (found.title && found.title.includes('ສັນຍາ'));
-        found.data = generateMonthDataZigzag(y, m, isContract ? getContractStaffList() : getPermanentStaffList());
+        found.data = generateMonthDataZigzag(y, m, isContract ? getContractStaffList() : getPermanentStaffList(), false);
         syncScheduleToSupabase(found);
     }
 
@@ -345,8 +355,8 @@ function getGlobalWeekendDayIndex(dateObj) {
     return weekendCount;
 }
 
-// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ຮອງຮັບ Fix Shift 100%)
-function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
+// ⭐ 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ຮອງຮັບ SHUFFLE SEED & FIX SHIFT)
+function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuffle) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
 
@@ -369,6 +379,15 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var regularStaff = listToUse.filter(function(n) { return !leaderNames.includes(n); });
     var numRegular = 13;
 
+    var randomStaffShiftOffset = 0;
+    var randomLeaderShiftOffset = 0;
+    if (isReshuffle) {
+        leaderNames = shuffleArray(leaderNames);
+        regularStaff = shuffleArray(regularStaff);
+        randomStaffShiftOffset = Math.floor(Math.random() * numRegular);
+        randomLeaderShiftOffset = Math.floor(Math.random() * 4);
+    }
+
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
@@ -381,12 +400,12 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             var gWeekend = getGlobalWeekendDayIndex(dateObj);
             var isSunday = (dayOfWeek === 0);
 
-            var wLeaderSat = leaderNames[(gWeekend) % 4];
-            var wLeaderSun = leaderNames[(gWeekend + 1) % 4];
+            var wLeaderSat = leaderNames[(gWeekend + randomLeaderShiftOffset) % 4];
+            var wLeaderSun = leaderNames[(gWeekend + randomLeaderShiftOffset + 1) % 4];
 
             var wStaff = [];
             for (var k = 0; k < 5; k++) {
-                wStaff.push(regularStaff[(gWeekend * 5 + k) % numRegular]);
+                wStaff.push(regularStaff[(gWeekend * 5 + k + randomStaffShiftOffset) % numRegular]);
             }
 
             var s1 = [];
@@ -396,11 +415,11 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             if (isSunday) {
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSun, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[(gWeekend) % 4], wStaff[3], wStaff[4]];
+                s3 = [leaderNames[(gWeekend + randomLeaderShiftOffset) % 4], wStaff[3], wStaff[4]];
             } else {
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSat, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
+                s3 = [leaderNames[(gWeekend + randomLeaderShiftOffset + 2) % 4], wStaff[3], wStaff[4]];
             }
 
             var dayObj = {
@@ -410,17 +429,17 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
                 shift2: s2,
                 shift3: s3
             };
-            applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+            applyFixedShiftsToDayData(dayObj);
             data[dStr] = dayObj;
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
 
-            var l_1A = leaderNames[(W + 0) % 4];
-            var l_1B = leaderNames[(W + 1) % 4];
-            var l_S2 = leaderNames[(W + 2) % 4];
-            var l_S3 = leaderNames[(W + 3) % 4];
+            var l_1A = leaderNames[(W + randomLeaderShiftOffset + 0) % 4];
+            var l_1B = leaderNames[(W + randomLeaderShiftOffset + 1) % 4];
+            var l_S2 = leaderNames[(W + randomLeaderShiftOffset + 2) % 4];
+            var l_S3 = leaderNames[(W + randomLeaderShiftOffset + 3) % 4];
 
-            var staffOffset = (13000 - W * 3) % numRegular;
+            var staffOffset = (13000 - W * 3 + randomStaffShiftOffset) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
                 rotated.push(regularStaff[(r + staffOffset) % numRegular]);
@@ -437,7 +456,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
                 shift2: [l_S2, ...staff_S2].filter(Boolean),
                 shift3: [l_S3, ...staff_S3].filter(Boolean)
             };
-            applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+            applyFixedShiftsToDayData(dayObj);
             data[dStr] = dayObj;
         }
     }
@@ -445,20 +464,26 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ຮອງຮັບ Fix Shift 100%)
-function generate7PersonFlexZigzag(year, month, staffList) {
+// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ທີມວິຊາການສັນຍາ 7 ຄົນ)
+function generate7PersonFlexZigzag(year, month, staffList, isReshuffle) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
     var N = 7;
     var epochDate = new Date(Date.UTC(2026, 0, 1));
     var list = (staffList && staffList.length === 7) ? staffList : getContractStaffList();
 
+    var randomOffset = 0;
+    if (isReshuffle) {
+        list = shuffleArray(list);
+        randomOffset = Math.floor(Math.random() * N);
+    }
+
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = year + '-' + mNum + '-' + dayNum;
         var currentDate = new Date(Date.UTC(year, month - 1, i));
-        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24));
+        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24)) + randomOffset;
         var dayOfWeek = currentDate.getUTCDay();
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
@@ -491,13 +516,13 @@ function generate7PersonFlexZigzag(year, month, staffList) {
             shift2: s2.filter(Boolean),
             shift3: s3.filter(Boolean)
         };
-        applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+        applyFixedShiftsToDayData(dayObj);
         data[dStr] = dayObj;
     }
     return data;
 }
 
-function generateMonthDataZigzag(year, month, targetGroupMembers) {
+function generateMonthDataZigzag(year, month, targetGroupMembers, isReshuffle) {
     var staffList = [];
     if (targetGroupMembers && targetGroupMembers.length > 0) {
         staffList = [...targetGroupMembers];
@@ -506,9 +531,9 @@ function generateMonthDataZigzag(year, month, targetGroupMembers) {
     }
 
     if (staffList.length === 7) {
-        return generate7PersonFlexZigzag(year, month, staffList);
+        return generate7PersonFlexZigzag(year, month, staffList, Boolean(isReshuffle));
     } else {
-        return generate17PersonLeadersAndStaffZigzag(year, month, staffList);
+        return generate17PersonLeadersAndStaffZigzag(year, month, staffList, Boolean(isReshuffle));
     }
 }
 
@@ -540,6 +565,7 @@ function openRandomGroupSelectModal() {
     document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
 
+// ⭐ 4.1 EXECUTE RANDOM (ກົດຊໍ້າຈະສຸ່ມສັບປ່ຽນຮອບໃໝ່ເລື້ອຍໆ)
 async function executeGroupRandomSchedule() {
     var sheet = getActiveSheet();
     var [year, month] = (sheet?.monthKey || '2026-10').split('-').map(Number);
@@ -560,7 +586,8 @@ async function executeGroupRandomSchedule() {
         }
     }
 
-    sheet.data = generateMonthDataZigzag(year, month, members);
+    window._shuffleRoundCounter = (window._shuffleRoundCounter || 0) + 1;
+    sheet.data = generateMonthDataZigzag(year, month, members, true);
     
     try {
         localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
@@ -570,10 +597,11 @@ async function executeGroupRandomSchedule() {
     await renderScheduleTable({ skipSwapSync: true });
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
-    showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງ Zigzag ຮຽບຮ້ອຍ!', 'success');
-
+    
+    showToast('ສຸ່ມໃໝ່ສຳເລັດ!', 'ສຸ່ມປ່ຽນຮອບ Zigzag ໃໝ່ຮຽບຮ້ອຍ (ຮອບທີ ' + window._shuffleRoundCounter + ')!', 'success');
     await syncScheduleToSupabase(sheet);
 }
+
 // ⭐ 4.2 ຟັງຊັນ ZIGZAG ຕໍ່ເນື່ອງໂດຍເອົາ "ອາທິດທີ 1" ເປັນແມ່ແບບຫຼັກ (SMART BASELINE ZIGZAG)
 async function executeZigzagFromWeek1() {
     var sheet = getActiveSheet();
@@ -630,7 +658,6 @@ async function executeZigzagFromWeek1() {
     var baseLeadersS2 = s2.filter(isLeader);
     var baseLeadersS3 = s3.filter(isLeader);
 
-    // ວົງແຫວນຫົວໜ້າ 4 ທ່ານ: [L1_A, L1_B, L_S2, L_S3]
     var leaderRing = [...baseLeadersS1, ...baseLeadersS2, ...baseLeadersS3];
     var defLeaders = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
     defLeaders.forEach(function(dl) {
@@ -640,7 +667,6 @@ async function executeZigzagFromWeek1() {
     });
     leaderRing = leaderRing.slice(0, 4);
 
-    // ວົງແຫວນພະນັກງານ 13 ທ່ານ: [S3 (3 ຄົນ), S2 (5 ຄົນ), S1 (5 ຄົນ)]
     var baseStaffS3 = s3.filter(function(n) { return !isLeader(n); });
     var baseStaffS2 = s2.filter(function(n) { return !isLeader(n); });
     var baseStaffS1 = s1.filter(function(n) { return !isLeader(n); });
@@ -654,7 +680,7 @@ async function executeZigzagFromWeek1() {
     });
     staffRing = staffRing.slice(0, 13);
 
-    // 3. ເລີ່ມແລ່ນສູດ Zigzag ຕໍ່ເນື່ອງຕັ້ງແຕ່ມື້ທີ 1 ຫາ ມື້ສຸດທ້າຍຂອງເດືອນ
+    // 3. ແລ່ນສູດ Zigzag ຕໍ່ເນື່ອງທຸກໆວັນຕະຫຼອດເດືອນ
     var baseWeekIdx = getMondayBasedWeekIndex(firstMondayDateObj);
     if (!sheet.data) sheet.data = {};
 
@@ -692,17 +718,14 @@ async function executeZigzagFromWeek1() {
             applyFixedShiftsToDayData(dayObj);
             sheet.data[dStr] = dayObj;
         } else {
-            // ຄຳນວນໄລຍະຫ່າງອາທິດທຽບກັບ ອາທິດທີ 1 (Base Week)
             var currentWeekIdx = getMondayBasedWeekIndex(dateObj);
             var weekDiff = currentWeekIdx - baseWeekIdx;
 
-            // ໝູນວຽນຫົວໜ້າ
             var l_1A = leaderRing[(0 + weekDiff + 400) % 4];
             var l_1B = leaderRing[(1 + weekDiff + 400) % 4];
             var l_S2 = leaderRing[(2 + weekDiff + 400) % 4];
             var l_S3 = leaderRing[(3 + weekDiff + 400) % 4];
 
-            // ໝູນວຽນພະນັກງານ 13 ທ່ານ (ຄັ້ງລະ 3 ຕຳແໜ່ງ)
             var staffOffset = (13000 - weekDiff * 3) % 13;
             var rotated = [];
             for (var r = 0; r < 13; r++) {
@@ -736,6 +759,7 @@ async function executeZigzagFromWeek1() {
 
     await syncScheduleToSupabase(sheet);
 }
+
 // 5. BATCH MONTH MODAL
 function openBatchMonthModal() {
     var select = document.getElementById('batchTargetGroupSelect');
@@ -779,7 +803,7 @@ async function executeBatchMonthGenerate() {
         var sheetId = 'sheet-' + monthKey + '-' + (isContract ? 'contract' : 'main');
         var title = 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການ' + (isContract ? 'ສັນຍາ' : 'ສົມບູນ') + 'ປະຈຳເດືອນ ' + mStr + '/' + y;
 
-        var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
+        var generatedData = generateMonthDataZigzag(y, m, selectedMembers, false);
 
         var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && s.monthKey === monthKey && s.title && s.title.includes(groupNameTag); });
         var currentSheetObj = null;
@@ -820,7 +844,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 6. FIXED SHIFT MODAL FUNCTIONS (ກູ້ຄືນປຸ່ມ Fix Shift 100%)
+// 6. FIXED SHIFT MODAL FUNCTIONS
 function openFixedShiftModal() {
     var userSelect = document.getElementById('fixedShiftUserSelect');
     if (userSelect) {
@@ -843,7 +867,7 @@ function renderActiveFixedShiftsList() {
     }
     window.fixedShiftsConfig.forEach(function(f, idx) {
         var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
-        container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
+        container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs font-lao">' +
             '<div>' +
                 '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
                 '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
@@ -860,7 +884,6 @@ async function handleAddFixedShift() {
     window.fixedShiftsConfig = window.fixedShiftsConfig.filter(function(f) { return f.nameLao !== name; });
     window.fixedShiftsConfig.push({ nameLao: name, fixedShift: shift });
     
-    // ນຳໃຊ້ Fix Shift ເຂົ້າຕາຕະລາງປັດຈຸບັນທັນທີ
     var sheet = getActiveSheet();
     if (sheet && sheet.data) {
         Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); }).forEach(function(dStr) {
@@ -882,7 +905,7 @@ async function removeFixedShift(idx) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-// ⭐ 7. FAIRNESS SUMMARY MODAL FUNCTIONS
+// 7. FAIRNESS SUMMARY MODAL FUNCTIONS
 function openFairnessSummaryModal() {
     var sheet = getActiveSheet();
     var subEl = document.getElementById('fairnessModalSub');
@@ -969,7 +992,7 @@ function renderFairnessSummaryData() {
     });
 }
 
-// ⭐ 8. HOLIDAY MODAL FUNCTIONS
+// 8. HOLIDAY MODAL FUNCTIONS
 function openHolidayModal() { 
     document.getElementById('holidayModal')?.classList.remove('hidden'); 
 }
@@ -996,7 +1019,7 @@ async function handleSaveHolidayRange() {
     } catch (err) {}
 }
 
-// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່
+// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່ (90px Date & 50px Day Widths)
 async function renderScheduleTable(options) {
     var opts = options || {};
     
@@ -1121,7 +1144,140 @@ async function renderScheduleTable(options) {
     }
 }
 
-// 10. RENDER PIXEL EXCEL GRID
+// ⭐ 10. RENDER PIXEL EXCEL GRID (INTERACTIVE CELL-TO-CELL DRAG & DROP SWAP)
+function handleCellDragStart(event, date, shift, index, name) {
+    if (!name || name === '(ວ່າງ)') {
+        event.preventDefault();
+        return;
+    }
+    var dragData = {
+        type: 'cell',
+        date: date,
+        shift: shift,
+        index: parseInt(index, 10),
+        name: name
+    };
+    window.draggedCellData = dragData;
+    window.draggedStaffName = name;
+
+    if (event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', name);
+        event.dataTransfer.setData('application/json', JSON.stringify(dragData));
+        event.dataTransfer.effectAllowed = 'move';
+    }
+    event.currentTarget.classList.add('opacity-40', 'scale-95');
+}
+
+function handleCellDragEnd(event) {
+    event.currentTarget.classList.remove('opacity-40', 'scale-95');
+    setTimeout(function() {
+        window.draggedCellData = null;
+        window.draggedStaffName = null;
+    }, 100);
+}
+
+function handleCellDragOver(event) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.classList.add('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+}
+
+function handleCellDragLeave(event) {
+    event.currentTarget.classList.remove('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+}
+
+async function handleCellDrop(event, targetDate, targetShift, targetIndex) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    var sourceCell = window.draggedCellData;
+    var droppedName = window.draggedStaffName || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : null);
+
+    if (!droppedName) return;
+
+    targetIndex = parseInt(targetIndex, 10);
+
+    if (!sheet.data) sheet.data = {};
+    if (!sheet.data[targetDate]) sheet.data[targetDate] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[targetDate][targetShift]) sheet.data[targetDate][targetShift] = [];
+
+    var targetList = sheet.data[targetDate][targetShift];
+    while (targetList.length <= targetIndex) targetList.push('');
+    var targetName = targetList[targetIndex] || '';
+
+    // 🔹 CASE 1: SWAP ລະຫວ່າງ 2 ຊ່ອງໃນຕາຕະລາງ (CELL-TO-CELL SWAP)
+    if (sourceCell && sourceCell.type === 'cell') {
+        if (sourceCell.date === targetDate && sourceCell.shift === targetShift && sourceCell.index === targetIndex) {
+            return;
+        }
+
+        var srcDate = sourceCell.date;
+        var srcShift = sourceCell.shift;
+        var srcIdx = sourceCell.index;
+
+        if (!sheet.data[srcDate]) sheet.data[srcDate] = { shift1: [], shift2: [], shift3: [] };
+        if (!sheet.data[srcDate][srcShift]) sheet.data[srcDate][srcShift] = [];
+        var srcList = sheet.data[srcDate][srcShift];
+        while (srcList.length <= srcIdx) srcList.push('');
+
+        // 🔄 ສະຫຼັບຕຳແໜ່ງກັນທັນທີ (Instant Swap)
+        srcList[srcIdx] = targetName;
+        targetList[targetIndex] = sourceCell.name;
+
+        if (sheet.status === 'PUBLISHED') {
+            if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
+            window.scheduleAuditLogs.unshift({
+                id: Date.now(),
+                sheetId: sheet.id,
+                sheetTitle: sheet.title,
+                date: targetDate,
+                shift: targetShift,
+                oldName: targetName || '(ວ່າງ)',
+                newName: sourceCell.name,
+                reason: targetName ? ('ສັບປ່ຽນຕຳແໜ່ງກັບ ' + targetName) : 'ຍ້າຍກະປະຈຳການ',
+                adminName: window.currentUser?.fullName || 'Admin',
+                timestamp: new Date().toLocaleString('lo-LA')
+            });
+        }
+
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        } catch(e) {}
+
+        await renderScheduleTable({ skipSwapSync: true });
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+
+        var msg = targetName 
+            ? ('ສັບປ່ຽນຕຳແໜ່ງ: "' + sourceCell.name + '" ⇄ "' + targetName + '" ສຳເລັດ!')
+            : ('ຍ້າຍ "' + sourceCell.name + '" ມາກະໃໝ່ສຳເລັດ!');
+        showToast('ສັບປ່ຽນສຳເລັດ', msg, 'success');
+
+        await syncScheduleToSupabase(sheet);
+        return;
+    }
+
+    // 🔹 CASE 2: ລາກຈາກ SIDEBAR ມາໃສ່
+    if (droppedName) {
+        if (sheet.status === 'PUBLISHED' && targetName !== droppedName) {
+            openEditPublishedRemarkModal({
+                date: targetDate,
+                shift: targetShift,
+                index: targetIndex,
+                currentName: targetName,
+                newName: droppedName
+            });
+            return;
+        }
+        await applyCellUpdate(sheet, targetDate, targetShift, targetIndex, droppedName);
+    }
+}
+
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 1); rows = Math.max(rows, 1);
     var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
@@ -1132,6 +1288,12 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var isLeader = (window.users || []).find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, name) && u.isLeader; });
         var cleanName = (name || '').replace(/'/g, "\\'");
         var clickHandler = isAdmin ? 'onclick="openCellModal(\'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
+
+        var dragAttrs = (isAdmin && name) ? 
+            ' draggable="true" ondragstart="handleCellDragStart(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')" ondragend="handleCellDragEnd(event)"' : '';
+        
+        var dropAttrs = isAdmin ? 
+            ' ondragover="handleCellDragOver(event)" ondragleave="handleCellDragLeave(event)" ondrop="handleCellDrop(event, \'' + date + '\', \'' + shift + '\', ' + idx + ')"' : '';
 
         var isSwapped = (window.swapHistory || []).some(function(sw) {
             if (!sw) return false;
@@ -1163,19 +1325,19 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
 
         var badgesHtml = '';
         if (isLeader && name) {
-            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block" title="ຫົວໜ້າກະ"></span>';
+            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block pointer-events-none" title="ຫົວໜ້າກະ"></span>';
         }
         if (isSwapped && name) {
-            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs" title="ປ່ຽນກະມາ">' +
+            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs pointer-events-none" title="ປ່ຽນກະມາ">' +
                             '<span class="material-symbols-outlined text-[10px] leading-none">sync_alt</span>' +
                           '</span>';
         }
         if (leaveInfo && name) {
-            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline">ພັກ</span>';
+            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline pointer-events-none">ພັກ</span>';
         }
 
-        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-pointer' : '') + '" ' + clickHandler + '>' +
-            '<span class="inline-flex items-center justify-center ' + textClass + '">' +
+        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-all select-none ' + (isAdmin ? 'editable cursor-grab active:cursor-grabbing' : '') + '" ' + clickHandler + dragAttrs + dropAttrs + ' title="' + (name ? 'ກົດແກ້ໄຂ ຫຼື ລາກຊື່ນີ້ໄປສະຫຼັບກະອື່ນ' : 'ຊ່ອງວ່າງ (ລາກຊື່ອື່ນມາໃສ່ໄດ້)') + '">' +
+            '<span class="inline-flex items-center justify-center pointer-events-none ' + textClass + '">' +
                 '<span>' + name + '</span>' +
                 badgesHtml +
             '</span>' +
@@ -1371,7 +1533,7 @@ async function handleCreateNewSheet() {
     
     var isContract = title.includes('ສັນຍາ');
     var targetMembers = isContract ? getContractStaffList() : getPermanentStaffList();
-    var generated = generateMonthDataZigzag(y, m, targetMembers);
+    var generated = generateMonthDataZigzag(y, m, targetMembers, false);
 
     var activeSheet = getActiveSheet();
     var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate;
@@ -1438,7 +1600,7 @@ async function handleSaveSheetInfo() {
     await syncScheduleToSupabase(sheet);
 }
 
-// ⭐ 13. ຟັງຊັນ RESET ຕາຕະລາງ (ລ້າງຊື່ພະນັກງານທຸກຄົນອອກ 100% ໃຫ້ເປັນຕາຕະລາງວ່າງ)
+// 13. ຟັງຊັນ RESET ຕາຕະລາງ (ລ້າງຊື່ທຸກຄົນອອກ 100%)
 async function promptResetSchedule() {
     if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
     var sheet = getActiveSheet();
@@ -1448,7 +1610,6 @@ async function promptResetSchedule() {
     var year = parts[0] || 2026;
     var month = parts[1] || 10;
 
-    // ✅ ລ້າງຊື່ທຸກຄົນອອກທັງໝົດ ໂດຍຍັງຮັກສາວັນທີ ແລະ ໂຄງສ້າງຕາຕະລາງໄວ້
     sheet.data = createBlankMonthData(year, month);
 
     try {
@@ -1678,6 +1839,7 @@ window.openHolidayModal = openHolidayModal;
 window.handleSaveHolidayRange = handleSaveHolidayRange;
 window.createBlankMonthData = createBlankMonthData;
 window.applyFixedShiftsToDayData = applyFixedShiftsToDayData;
+window.shuffleArray = shuffleArray;
 window.executeZigzagFromWeek1 = executeZigzagFromWeek1;
 window.handleCellDragStart = handleCellDragStart;
 window.handleCellDragEnd = handleCellDragEnd;
