@@ -54,10 +54,11 @@ function getActiveSheetSafe(targetMonthKey) {
     return null;
 }
 
-// 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace
+// ⭐ 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace (ດຶງ Leaves & Swaps ແບບໃໝ່ສຸດຂຶ້ນກ່ອນ)
 async function fetchProfileCloudData() {
     if (!window.supabaseClient) return;
     try {
+        // A. ດຶງ Schedule Sheets
         var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
         if (!resSheets.error && resSheets.data) {
             window.scheduleSheets = resSheets.data.map(function(d) {
@@ -73,7 +74,7 @@ async function fetchProfileCloudData() {
             localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
         }
 
-        // ດຶງ Swaps ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
+        // B. ດຶງ Swaps ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
         var resSwaps = await window.supabaseClient
             .from('shift_swaps')
             .select('*')
@@ -97,6 +98,30 @@ async function fetchProfileCloudData() {
                 };
             });
             localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+        }
+
+        // C. ດຶງ Annual Bookings ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
+        var resLeaves = await window.supabaseClient
+            .from('annual_bookings')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (!resLeaves.error && resLeaves.data) {
+            window.annualBookings = resLeaves.data.map(function(d) {
+                return {
+                    id: d.id,
+                    user: d.user_code || d.user,
+                    nameLao: d.name_lao || d.nameLao,
+                    startDate: d.start_date || d.startDate,
+                    endDate: d.end_date || d.endDate,
+                    days: d.days,
+                    shift: d.shift || 'ທຸກກະ',
+                    reason: d.reason || '',
+                    status: String(d.status || '').toUpperCase(),
+                    created_at: d.created_at || null
+                };
+            });
+            localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
         }
     } catch(err) {
         console.warn("Profile cloud sync error:", err);
@@ -122,7 +147,7 @@ function isNameMatch(a, b) {
     return isSamePerson(a, b);
 }
 
-// ⭐ 1. RENDER WORKSPACE ຂອງພະນັກງານ (ຄຳນວນອາທິດປັດຈຸບັນ + ໄຮໄລ້ວັນນີ້ 100%)
+// 1. RENDER WORKSPACE ຂອງພະນັກງານ (ອາທິດປັດຈຸບັນ + ໄຮໄລ້ວັນນີ້ 100%)
 function renderUserCurrentWeekWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -148,7 +173,6 @@ function renderUserCurrentWeekWorkspace() {
         var myName = user.nameLao;
         pillsContainer.innerHTML = '';
 
-        // ຄຳນວນຫາ 7 ວັນຂອງອາທິດປັດຈຸບັນ (Monday - Sunday) ຂອງມື້ນີ້ຕົວຈິງ
         var now = new Date();
         var todayY = now.getFullYear();
         var todayM = String(now.getMonth() + 1).padStart(2, '0');
@@ -324,7 +348,7 @@ function renderAdminAllStaffReport() {
             var used = st.usedAnnual || 0;
             var remaining = quota - used;
 
-            matrixTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao">' +
+            matrixTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
                 '<td class="p-3 font-bold text-slate-700">' + st.user + '</td>' +
                 '<td class="p-3 font-semibold text-slate-800">' + st.fullName + '</td>' +
                 '<td class="p-3 font-bold ' + (st.isLeader ? 'text-brand-red' : 'text-slate-800') + '">' +
@@ -348,7 +372,7 @@ function renderAdminAllStaffReport() {
             auditTbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີປະຫວັດການແກ້ໄຂຕາຕະລາງຫຼັງ Publish</td></tr>';
         } else {
             auditLogs.forEach(function(log) {
-                auditTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao">' +
+                auditTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
                     '<td class="p-3 font-bold text-slate-700 truncate max-w-[150px]">' + log.sheetTitle + '</td>' +
                     '<td class="p-3 font-semibold">' + log.date + ' (' + log.shift + ')</td>' +
                     '<td class="p-3 text-amber-950 font-bold bg-amber-50 rounded">' + log.oldName + ' ➔ ' + log.newName + '</td>' +
@@ -374,7 +398,7 @@ function renderAdminAllStaffReport() {
             if (st.weekendShifts >= 5) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📅 ເສົາ-ອາທິດສູງ (' + st.weekendShifts + ' ມື້)</span>');
             if (badges.length === 0) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">ປົກກະຕິ (Balanced)</span>');
 
-            anomalyTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao">' +
+            anomalyTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
                 '<td class="p-3 font-bold text-slate-800 flex items-center gap-1.5">' +
                     st.nameLao + ' <span class="text-[10px] font-normal text-slate-400">(' + st.fullName + ')</span>' +
                     (st.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.2 rounded font-bold">ຫົວໜ້າ</span>' : '') +
@@ -400,7 +424,7 @@ function handlePhotoUploadAndCompress(event) {
             var canvas = document.createElement('canvas');
             var max = 150;
             var w = img.width, h = img.height;
-            if (w > max) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
+            if (w > h) { if (w > max) { h = Math.round((h * max) / w); w = max; } }
             else { if (h > max) { w = Math.round((w * max) / h); h = max; } }
             canvas.width = w; canvas.height = h;
             var ctx = canvas.getContext('2d');
@@ -500,7 +524,7 @@ async function handleUpdateProfile() {
     showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນສ່ວນຕົວ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
 }
 
-// 5. ຈອງມື້ພັກປະຈຳປີ
+// ⭐ 5. ຈອງມື້ພັກປະຈຳປີ (ບັນທຶກ created_at ເພື່ອໃຫ້ມີ Timestamp ທຸກຄັ້ງ)
 async function handleBookAnnualLeave() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -553,7 +577,7 @@ async function handleBookAnnualLeave() {
         days: diffDays,
         reason: reason,
         status: bookingStatus,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString() // ⭐ ບັນທຶກ Timestamp ຕົວຈິງ
     };
 
     if (!window.annualBookings) window.annualBookings = [];
@@ -634,6 +658,7 @@ function promptCancelAnnualLeave(bookingId) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການຈອງມື້ພັກຮຽບຮ້ອຍແລ້ວ!', 'success');
 }
 
+// ⭐ 5.1 RENDER ປະຕິທິນຈອງມື້ພັກ (ຈັດລຽງໃໝ່ສຸດຢູ່ເທິງ + ມີ TIMESTAMP ກຳກັບ 100%)
 async function renderAnnualLeaveBookings() {
     var tbody = document.getElementById('annualLeaveBookingsTableBody');
     if (!tbody) return;
@@ -644,7 +669,13 @@ async function renderAnnualLeaveBookings() {
     } catch(e) {}
 
     tbody.innerHTML = '';
-    var bookings = window.annualBookings || [];
+
+    // ✅ 1. ສັ່ງ SORT: ເອົາລາຍການທີ່ຫາກໍຈອງໃໝ່ສຸດ ຂຶ້ນມາເທິງສຸດສະເໝີ!
+    var bookings = (window.annualBookings || []).slice().sort(function(a, b) {
+        var timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
+        var timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
+        return timeB - timeA; // ໃໝ່ ➔ ເກົ່າ
+    });
 
     if (bookings.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີລາຍການຈອງມື້ພັກປະຈຳປີ</td></tr>';
@@ -652,9 +683,22 @@ async function renderAnnualLeaveBookings() {
     }
 
     var user = getCurrentUserSafe();
+
     bookings.forEach(function(b) {
         var isMyBooking = (b.user === (user && user.user) || isSamePerson(b.nameLao, user && user.nameLao)) || (user && user.role === 'SUPER_ADMIN');
         var isAdmin = (user && user.role === 'SUPER_ADMIN');
+
+        // ⭐ ແປງ Timestamp ໃຫ້ອ່ານງ່າຍ ແລະ ສະອາດຕາ (ເຊັ່ນ: 15/10/2026 10:30)
+        var timeFormatted = '-';
+        if (b.created_at) {
+            var dObj = new Date(b.created_at);
+            timeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
+                            ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+        } else if (b.id && String(b.id).length >= 12) {
+            var dObj = new Date(Number(b.id));
+            timeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
+                            ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+        }
 
         var statusBadge = '';
         if (b.status === 'CONFIRMED') {
@@ -665,12 +709,15 @@ async function renderAnnualLeaveBookings() {
             statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-brand-red border border-red-200">ປະຕິເສດ</span>';
         }
 
-        tbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao">' +
+        tbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao transition border-b border-slate-100 text-xs">' +
             '<td class="p-3 font-bold text-brand-red">' + b.nameLao + '</td>' +
-            '<td class="p-3 text-slate-700">' + b.startDate + ' ຫາ ' + b.endDate + '</td>' +
-            '<td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">' + (b.shift || 'ກະ 1') + '</span></td>' +
-            '<td class="p-3 font-bold">' + b.days + ' ມື້</td>' +
-            '<td class="p-3 text-slate-500">' + b.reason + '</td>' +
+            '<td class="p-3 text-slate-700">' +
+                '<div class="font-semibold">' + b.startDate + ' ຫາ ' + b.endDate + '</div>' +
+                '<span class="text-[10px] text-slate-400 font-mono block mt-0.5">🕒 ຈອງເມື່ອ: ' + timeFormatted + '</span>' +
+            '</td>' +
+            '<td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">' + (b.shift || 'ທຸກກະ') + '</span></td>' +
+            '<td class="p-3 font-bold text-slate-800">' + b.days + ' ມື້</td>' +
+            '<td class="p-3 text-slate-500">' + (b.reason || '-') + '</td>' +
             '<td class="p-3 text-right">' +
                 '<div class="flex items-center justify-end gap-2">' +
                     statusBadge +
@@ -719,7 +766,7 @@ async function adminApproveLeave(id) {
     showToast('ອະນຸມັດສຳເລັດ', 'Admin ໄດ້ອະນຸມັດໃຫ້ "' + b.nameLao + '" ລາພັກແລ້ວ', 'success');
 }
 
-// ⭐ 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ໃສ່ timestamp ເພື່ອໃຫ້ລຽງໃໝ່ສຸດຢູ່ເທິງ)
+// ⭐ 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ບັນທຶກ created_at ເພື່ອໃຫ້ລຽງໃໝ່ສຸດຢູ່ເທິງ)
 async function handleCreateSwap() {
     var user = getCurrentUserSafe();
     if (!user) {
@@ -753,12 +800,12 @@ async function handleCreateSwap() {
         toShift: toShift,
         reason: reason || defaultReason,
         status: 'PENDING',
-        created_at: new Date().toISOString(), // ✅ ໃສ່ເວລາສ້າງລ່າສຸດ
+        created_at: new Date().toISOString(), // ⭐ ບັນທຶກ Timestamp ຕົວຈິງ
         createdAt: new Date().toLocaleString('lo-LA')
     };
 
     if (!window.swapHistory) window.swapHistory = [];
-    window.swapHistory.unshift(newSwap); // ເອົາຂຶ້ນເທິງສຸດທັນທີ
+    window.swapHistory.unshift(newSwap);
 
     localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
     if (typeof saveAll === 'function') await saveAll();
@@ -789,7 +836,6 @@ async function handleCreateSwap() {
     if (reasonInput) reasonInput.value = '';
 
     renderSwapHistory();
-    // ອັບເດດກະດິ່ງແຈ້ງເຕືອນທັນທີ
     if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
     
     var msg = (swapType === 'COVER') 
