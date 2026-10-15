@@ -54,11 +54,10 @@ function getActiveSheetSafe(targetMonthKey) {
     return null;
 }
 
-// ⭐ 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace (ດຶງ Leaves & Swaps ແບບໃໝ່ສຸດຂຶ້ນກ່ອນ)
+// 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace
 async function fetchProfileCloudData() {
     if (!window.supabaseClient) return;
     try {
-        // A. ດຶງ Schedule Sheets
         var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
         if (!resSheets.error && resSheets.data) {
             window.scheduleSheets = resSheets.data.map(function(d) {
@@ -74,7 +73,6 @@ async function fetchProfileCloudData() {
             localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
         }
 
-        // B. ດຶງ Swaps ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
         var resSwaps = await window.supabaseClient
             .from('shift_swaps')
             .select('*')
@@ -100,7 +98,6 @@ async function fetchProfileCloudData() {
             localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
         }
 
-        // C. ດຶງ Annual Bookings ໂດຍເອົາ ID ໃຫຍ່ສຸດ (ໃໝ່ສຸດ) ຂຶ້ນກ່ອນ
         var resLeaves = await window.supabaseClient
             .from('annual_bookings')
             .select('*')
@@ -128,7 +125,7 @@ async function fetchProfileCloudData() {
     }
 }
 
-// 0.2 HELPER ທຽບຊື່ບຸກຄົນແບບອັດສະລິຍະ (ຕັດຄຳນຳໜ້າ ທ້າວ/ນາງ ອອກ)
+// 0.2 HELPER ທຽບຊື່ບຸກຄົນແບບ STRICT
 function isSamePerson(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
@@ -147,7 +144,7 @@ function isNameMatch(a, b) {
     return isSamePerson(a, b);
 }
 
-// 1. RENDER WORKSPACE ຂອງພະນັກງານ (ອາທິດປັດຈຸບັນ + ໄຮໄລ້ວັນນີ້ 100%)
+// 1. RENDER WORKSPACE ຂອງພະນັກງານ
 function renderUserCurrentWeekWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -524,7 +521,7 @@ async function handleUpdateProfile() {
     showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນສ່ວນຕົວ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
 }
 
-// ⭐ 5. ຈອງມື້ພັກປະຈຳປີ (ບັນທຶກ created_at ເພື່ອໃຫ້ມີ Timestamp ທຸກຄັ້ງ)
+// 5. ຈອງມື້ພັກປະຈຳປີ (ບັນທຶກ created_at)
 async function handleBookAnnualLeave() {
     var user = getCurrentUserSafe();
     if (!user) return;
@@ -577,7 +574,7 @@ async function handleBookAnnualLeave() {
         days: diffDays,
         reason: reason,
         status: bookingStatus,
-        created_at: new Date().toISOString() // ⭐ ບັນທຶກ Timestamp ຕົວຈິງ
+        created_at: new Date().toISOString()
     };
 
     if (!window.annualBookings) window.annualBookings = [];
@@ -658,7 +655,7 @@ function promptCancelAnnualLeave(bookingId) {
     showToast('ສຳເລັດ', 'ຍົກເລີກການຈອງມື້ພັກຮຽບຮ້ອຍແລ້ວ!', 'success');
 }
 
-// ⭐ 5.1 RENDER ປະຕິທິນຈອງມື້ພັກ (ຈັດລຽງໃໝ່ສຸດຢູ່ເທິງ + ມີ TIMESTAMP ກຳກັບ 100%)
+// ⭐ 5.1 RENDER ປະຕິທິນຈອງມື້ພັກ (ສີຈາງ 50% ເມື່ອກາຍວັນທີ + REMARK ໃຊ້ມື້ພັກແລ້ວ + TIMESTAMP ສີຂຽວອ່ອນ)
 async function renderAnnualLeaveBookings() {
     var tbody = document.getElementById('annualLeaveBookingsTableBody');
     if (!tbody) return;
@@ -670,11 +667,11 @@ async function renderAnnualLeaveBookings() {
 
     tbody.innerHTML = '';
 
-    // ✅ 1. ສັ່ງ SORT: ເອົາລາຍການທີ່ຫາກໍຈອງໃໝ່ສຸດ ຂຶ້ນມາເທິງສຸດສະເໝີ!
+    // 1. ສັ່ງ SORT: ໃໝ່ສຸດຢູ່ເທິງສະເໝີ
     var bookings = (window.annualBookings || []).slice().sort(function(a, b) {
         var timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
         var timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
-        return timeB - timeA; // ໃໝ່ ➔ ເກົ່າ
+        return timeB - timeA;
     });
 
     if (bookings.length === 0) {
@@ -683,12 +680,19 @@ async function renderAnnualLeaveBookings() {
     }
 
     var user = getCurrentUserSafe();
+    
+    // ດຶງວັນທີມື້ນີ້ຕົວຈິງ YYYY-MM-DD ເພື່ອກວດສອບມື້ກາຍປະຕິທິນ
+    var now = new Date();
+    var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
 
     bookings.forEach(function(b) {
         var isMyBooking = (b.user === (user && user.user) || isSamePerson(b.nameLao, user && user.nameLao)) || (user && user.role === 'SUPER_ADMIN');
         var isAdmin = (user && user.role === 'SUPER_ADMIN');
 
-        // ⭐ ແປງ Timestamp ໃຫ້ອ່ານງ່າຍ ແລະ ສະອາດຕາ (ເຊັ່ນ: 15/10/2026 10:30)
+        // ⭐ ກວດສອບວ່າມື້ພັກກາຍປະຕິທິນມື້ທີ່ຈອງແລ້ວບໍ່ (b.endDate < todayStr)
+        var isPast = Boolean(b.endDate && b.endDate < todayStr);
+
+        // ແປງ Timestamp
         var timeFormatted = '-';
         if (b.created_at) {
             var dObj = new Date(b.created_at);
@@ -702,27 +706,43 @@ async function renderAnnualLeaveBookings() {
 
         var statusBadge = '';
         if (b.status === 'CONFIRMED') {
-            statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ອະນຸມັດແລ້ວ</span>';
+            if (isPast) {
+                // ກາຍວັນທີແລ້ວ: ສະແດງສະຖານະ ໃຊ້ມື້ພັກແລ້ວ
+                statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">ໃຊ້ມື້ພັກແລ້ວ</span>';
+            } else {
+                statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ອະນຸມັດແລ້ວ</span>';
+            }
         } else if (b.status === 'PENDING_ADMIN') {
             statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">⚠️ ລໍຖ້າ Admin (ພັກຊ້ອນ)</span>';
         } else {
             statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-brand-red border border-red-200">ປະຕິເສດ</span>';
         }
 
-        tbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao transition border-b border-slate-100 text-xs">' +
+        // ⭐ ຖ້າກາຍມື້ພັກແລ້ວ: ປັບສີໃຫ້ຈາງລົງ 50% (opacity-50)
+        var rowStyleClass = isPast 
+            ? 'opacity-50 bg-slate-50/60 hover:opacity-80 transition' 
+            : 'hover:bg-slate-50 transition';
+
+        // ⭐ Remark ເພີ່ມເຕີມຖ້າໃຊ້ມື້ພັກແລ້ວ
+        var reasonHtml = b.reason || '-';
+        if (isPast && b.status === 'CONFIRMED') {
+            reasonHtml += ' <span class="text-[10px] text-slate-400 font-normal block mt-0.5 italic">✓ ໃຊ້ມື້ພັກແລ້ວ</span>';
+        }
+
+        tbody.innerHTML += '<tr class="' + rowStyleClass + ' font-lao border-b border-slate-100 text-xs">' +
             '<td class="p-3 font-bold text-brand-red">' + b.nameLao + '</td>' +
             '<td class="p-3 text-slate-700">' +
                 '<div class="font-semibold">' + b.startDate + ' ຫາ ' + b.endDate + '</div>' +
-                '<span class="text-[10px] text-slate-400 font-mono block mt-0.5">🕒 ຈອງເມື່ອ: ' + timeFormatted + '</span>' +
+                '<span class="text-[10px] text-emerald-600 font-mono block mt-0.5 font-medium">🕒 ຈອງເມື່ອ: ' + timeFormatted + '</span>' +
             '</td>' +
             '<td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">' + (b.shift || 'ທຸກກະ') + '</span></td>' +
             '<td class="p-3 font-bold text-slate-800">' + b.days + ' ມື້</td>' +
-            '<td class="p-3 text-slate-500">' + (b.reason || '-') + '</td>' +
+            '<td class="p-3 text-slate-500">' + reasonHtml + '</td>' +
             '<td class="p-3 text-right">' +
                 '<div class="flex items-center justify-end gap-2">' +
                     statusBadge +
                     (isAdmin && b.status === 'PENDING_ADMIN' ? '<button type="button" onclick="adminApproveLeave(' + b.id + ')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer">ອະນຸມັດ</button>' : '') +
-                    (isMyBooking ? '<button type="button" onclick="promptCancelAnnualLeave(' + b.id + ')" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5 cursor-pointer"><span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ</button>' : '') +
+                    (isMyBooking && !isPast ? '<button type="button" onclick="promptCancelAnnualLeave(' + b.id + ')" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5 cursor-pointer"><span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ</button>' : '') +
                 '</div>' +
             '</td>' +
         '</tr>';
@@ -766,7 +786,7 @@ async function adminApproveLeave(id) {
     showToast('ອະນຸມັດສຳເລັດ', 'Admin ໄດ້ອະນຸມັດໃຫ້ "' + b.nameLao + '" ລາພັກແລ້ວ', 'success');
 }
 
-// ⭐ 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ບັນທຶກ created_at ເພື່ອໃຫ້ລຽງໃໝ່ສຸດຢູ່ເທິງ)
+// 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ (ບັນທຶກ created_at)
 async function handleCreateSwap() {
     var user = getCurrentUserSafe();
     if (!user) {
@@ -800,7 +820,7 @@ async function handleCreateSwap() {
         toShift: toShift,
         reason: reason || defaultReason,
         status: 'PENDING',
-        created_at: new Date().toISOString(), // ⭐ ບັນທຶກ Timestamp ຕົວຈິງ
+        created_at: new Date().toISOString(), // ⭐ Timestamp ສ້າງ
         createdAt: new Date().toLocaleString('lo-LA')
     };
 
@@ -844,7 +864,7 @@ async function handleCreateSwap() {
     showToast('ສຳເລັດ', msg, 'success');
 }
 
-// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (SORT: ໃໝ່ສຸດຢູ່ເທິງ ➔ ເກົ່າສຸດຢູ່ລຸ່ມ 100%)
+// ⭐ 7. RENDER ລາຍການປ່ຽນກະ (ເພີ່ມ TRANSACTION TIMESTAMP ສີຂຽວອ່ອນ ສະອາດຕາ)
 async function renderSwapHistory() {
     var container = document.getElementById('incomingSwapsList');
     if (!container) return;
@@ -856,11 +876,10 @@ async function renderSwapHistory() {
 
     container.innerHTML = '';
 
-    // ✅ ສັ່ງ SORT: ເອົາລາຍການໃໝ່ສຸດ (ID ຫຼື ເວລາສູງສຸດ) ມາຢູ່ເທິງສຸດສະເໝີ!
     var history = (window.swapHistory || []).slice().sort(function(a, b) {
         var timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
         var timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
-        return timeB - timeA; // ໃໝ່ ➔ ເກົ່າ
+        return timeB - timeA;
     });
 
     if (history.length === 0) {
@@ -886,6 +905,28 @@ async function renderSwapHistory() {
         var typeBadge = isCover 
             ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300">⭐ ຍາມແທນ / ຄວບກະເສົາ-ອາທິດ</span>' 
             : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🔄 ແລກປ່ຽນກະ 1:1</span>';
+
+        // ⭐ ແປງ Transaction Timestamp ສຳລັບການປ່ຽນກະ
+        var swapTimeFormatted = '-';
+        var rawTime = req.created_at || req.createdAt;
+        if (rawTime) {
+            var dObj = new Date(rawTime);
+            if (!isNaN(dObj.getTime())) {
+                swapTimeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
+                                    ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                swapTimeFormatted = String(rawTime);
+            }
+        } else if (req.id && String(req.id).length >= 12) {
+            var dObj = new Date(Number(req.id));
+            if (!isNaN(dObj.getTime())) {
+                swapTimeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
+                                    ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+
+        // ⭐ ປ້າຍ Timestamp ສີຂຽວອ່ອນສະບາຍຕາ (Soft Green Badge)
+        var timestampBadge = '<span class="text-emerald-700 font-mono text-[10px] flex items-center gap-1 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60 shadow-2xs">🕒 ' + swapTimeFormatted + '</span>';
 
         var statusBadge = '';
         if (req.status === 'COMPLETED') {
@@ -928,7 +969,10 @@ async function renderSwapHistory() {
 
         container.innerHTML += '<div class="p-3.5 bg-slate-50 border rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 font-lao mb-2">' +
             '<div class="space-y-1">' +
-                '<div class="flex items-center gap-2">' + typeBadge + '<span class="text-slate-400 text-[10px]">' + (req.createdAt || '') + '</span></div>' +
+                '<div class="flex items-center gap-2 flex-wrap">' + 
+                    typeBadge + 
+                    timestampBadge + 
+                '</div>' +
                 '<p class="font-medium text-slate-800 text-xs">' + detailText + '</p>' +
                 '<p class="text-slate-500 text-[11px]">ຊ່ວງວັນທີ: <strong>' + req.startDate + ' ຫາ ' + req.endDate + '</strong> ' + (req.reason ? ('| ໝາຍເຫດ: <em>"' + req.reason + '"</em>') : '') + '</p>' +
             '</div>' +
@@ -1084,7 +1128,6 @@ async function initProfileWorkspace() {
     var user = getCurrentUserSafe();
     if (!user) return;
 
-    // ດຶງຂໍ້ມູນຫຼ້າສຸດຈາກ Cloud ສະເໝີ
     await fetchProfileCloudData();
 
     var adminSec = document.getElementById('adminReportsSection');
