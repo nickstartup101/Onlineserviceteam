@@ -1,2295 +1,1598 @@
-// =========================================================================
-// PWA INSTALLATION SYSTEM FOR ANDROID / DESKTOP (AUTO-HIDE WHEN INSTALLED)
-// =========================================================================
-let deferredInstallPrompt = null;
+// ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% SUPABASE ONLY - NO AUTO MOCK) =================
 
-function hideAllInstallButtons() {
-    const ids = [
-        'pwa-install-banner',
-        'btn-pwa-install-mobile',
-        'btn-pwa-install-sidebar',
-        'btn-pwa-install-desktop'
+// 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
+function isDateInHolidayRange(dStr) {
+    if (!dStr) return false;
+    var holList = window.specialHolidayRanges || [];
+    return holList.some(function(h) {
+        if (!h) return false;
+        var s = h.start_date || h.start;
+        var e = h.end_date || h.end;
+        if (!s || !e) return false;
+        return dStr >= s && dStr <= e;
+    });
+}
+
+// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH (ຕັດ ທ້າວ/ນາງ ແລະ ຕັດ ຫົວໜ້າກະ ອອກ)
+function isSchedNameMatch(a, b) {
+    if (!a || !b) return false;
+    var clean = function(s) {
+        return s.toString().trim().toLowerCase()
+            .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '')
+            .replace(/\s*ຫົວໜ້າກະ|\s*ຫົວໜ້າ/g, '')
+            .replace(/\s+/g, '');
+    };
+    return clean(a) === clean(b);
+}
+
+// 0.2 ແປງຊື່ກະໃຫ້ເປັນ Standard Key
+function normalizeSchedShiftKey(s) {
+    if (!s) return null;
+    var str = s.toString().toLowerCase().trim();
+    if (str.includes('ທຸກກະ') || str.includes('all')) return null;
+    if (str.includes('ກະ 1') || str.includes('ກະ1') || str.includes('shift1') || str.includes('shift 1') || str === '1') return 'shift1';
+    if (str.includes('ກະ 2') || str.includes('ກະ2') || str.includes('shift2') || str.includes('shift 2') || str === '2') return 'shift2';
+    if (str.includes('ກະ 3') || str.includes('ກະ3') || str.includes('shift3') || str.includes('shift 3') || str === '3') return 'shift3';
+    return null;
+}
+
+// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles)
+function getPermanentStaffList() {
+    var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
+    var canonicalNames = [
+        'ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ',
+        'ສົນທະຍາ', 'ນິກກີ້', 'ໜູຮັກ', 'ແພັກເກີ້',
+        'ເອກສະຫວ່າງ', 'ໂທນິກ', 'ບຸນຮັກ', 'ປະສົງສິນ',
+        'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊົມພູ', 'ສຸລິຍະສັກ', 'ໄກສະຫວາດ'
     ];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.classList.add('hidden');
-            el.style.display = 'none';
+
+    var matched = [];
+    canonicalNames.forEach(function(cn) {
+        var found = all.find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, cn); });
+        matched.push(found ? found.nameLao : cn);
+    });
+    return matched;
+}
+
+function getContractStaffList() {
+    var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
+    var canonicalContract = [
+        'ໄຊຍະສິດ', 'ລິດຕະສອນ', 'ທອງສະຫວັນ', 'ໄຊຍະພອນ',
+        'ແກ້ວວິໄລ', 'ຈິດສະດາ', 'ນະລົງສັກ'
+    ];
+
+    var matched = [];
+    canonicalContract.forEach(function(cn) {
+        var found = all.find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, cn); });
+        matched.push(found ? found.nameLao : cn);
+    });
+    return matched;
+}
+
+// ⭐ 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ (ສຳລັບປຸ່ມ RESET ລ້າງຊື່ທຸກຄົນອອກ 100%)
+function createBlankMonthData(year, month) {
+    var daysCount = new Date(year, month, 0).getDate();
+    var data = {};
+    for (var i = 1; i <= daysCount; i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var dateObj = new Date(Date.UTC(year, month - 1, i));
+        var dayOfWeek = dateObj.getUTCDay();
+        var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
+
+        data[dStr] = {
+            isWeekend: isWeekend,
+            isG7Team: false,
+            shift1: [],
+            shift2: [],
+            shift3: []
+        };
+    }
+    return data;
+}
+
+// ⭐ 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ (FIX SHIFT ENGINE)
+function applyFixedShiftsToDayData(dayData) {
+    if (!dayData || !window.fixedShiftsConfig || window.fixedShiftsConfig.length === 0) return;
+    
+    window.fixedShiftsConfig.forEach(function(cfg) {
+        var name = cfg.nameLao;
+        var targetShift = cfg.fixedShift; // 'shift1', 'shift2', 'shift3'
+        if (!name || !targetShift) return;
+
+        var currentShift = null;
+        var currentIdx = -1;
+        ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+            var arr = dayData[sKey] || [];
+            for (var i = 0; i < arr.length; i++) {
+                if (isSchedNameMatch(arr[i], name)) {
+                    currentShift = sKey;
+                    currentIdx = i;
+                }
+            }
+        });
+
+        if (currentShift && currentShift !== targetShift) {
+            dayData[currentShift].splice(currentIdx, 1);
+            if (!dayData[targetShift]) dayData[targetShift] = [];
+            dayData[targetShift].push(name);
         }
     });
 }
 
-function checkIfAlreadyInstalled() {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    const isMarkedInstalled = localStorage.getItem('app_is_installed') === 'true';
+// 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE
+async function fetchScheduleSwapsFromCloud() {
+    if (!window.supabaseClient) return;
+    try {
+        var res = await window.supabaseClient.from('shift_swaps').select('*').order('id', { ascending: false });
+        if (!res.error && res.data) {
+            window.swapHistory = res.data.map(function(d) {
+                var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
+                return {
+                    id: String(d.id),
+                    swapType: isCover ? 'COVER' : 'SWAP',
+                    fromName: d.from_name || d.fromName,
+                    toName: d.to_name || d.toName,
+                    startDate: d.start_date || d.startDate,
+                    endDate: d.end_date || d.endDate,
+                    fromShift: d.from_shift || d.fromShift,
+                    toShift: d.to_shift || d.toShift,
+                    reason: d.reason || '',
+                    status: String(d.status || '').toUpperCase()
+                };
+            });
+            try {
+                localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+            } catch(e) {}
+        }
+    } catch(err) {
+        console.warn("Could not fetch swaps in schedule.js:", err);
+    }
+}
 
-    if (isStandalone || isMarkedInstalled) {
-        hideAllInstallButtons();
-        return true;
+// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD 100% (ບໍ່ມີການສ້າງຂໍ້ມູນຈຳລອງ)
+async function fetchScheduleSheetsFromCloud() {
+    if (!window.supabaseClient) return false;
+    try {
+        var res = await window.supabaseClient
+            .from('schedule_sheets')
+            .select('*')
+            .order('monthKey', { ascending: true });
+
+        if (!res.error && Array.isArray(res.data)) {
+            if (res.data.length > 0) {
+                window.scheduleSheets = res.data.map(function(s) {
+                    var rawData = s.data || {};
+                    if (typeof rawData === 'string') {
+                        try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                    }
+                    var mKey = s.monthKey || s.month_key || '2026-10';
+                    return {
+                        id: String(s.id),
+                        monthKey: String(mKey),
+                        title: s.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                        notes: s.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
+                        status: s.status || 'PUBLISHED',
+                        isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet || (s.title && s.title.includes('ສັນຍາ'))),
+                        data: rawData
+                    };
+                });
+
+                if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
+                    window.activeSheetId = window.scheduleSheets[0].id;
+                }
+
+                try {
+                    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+                    localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+                } catch(e) {}
+                return true;
+            } else {
+                // ✅ ຖ້າໃນ Supabase ບໍ່ມີຕາຕະລາງເລີຍ ໃຫ້ເคลียร์ເປັນ Array ວ່າງ ບໍ່ສ້າງຕາຕະລາງຈຳລອງເດັດຂາດ!
+                window.scheduleSheets = [];
+                window.activeSheetId = null;
+                try {
+                    localStorage.removeItem('ot_schedule_sheets');
+                    localStorage.removeItem('ot_schedules_sheets');
+                } catch(e) {}
+                return false;
+            }
+        }
+    } catch(err) {
+        console.warn("Could not fetch schedule sheets from cloud:", err);
     }
     return false;
 }
 
-window.addEventListener('beforeinstallprompt', (e) => {
-    if (checkIfAlreadyInstalled()) return;
-
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    
-    const banner = document.getElementById('pwa-install-banner');
-    if (banner) { banner.classList.remove('hidden'); banner.style.display = ''; }
-
-    const mobileBtn = document.getElementById('btn-pwa-install-mobile');
-    if (mobileBtn) { mobileBtn.classList.remove('hidden'); mobileBtn.style.display = ''; }
-
-    const sidebarBtn = document.getElementById('btn-pwa-install-sidebar');
-    if (sidebarBtn) { sidebarBtn.classList.remove('hidden'); sidebarBtn.style.display = ''; }
-
-    const desktopBtn = document.getElementById('btn-pwa-install-desktop');
-    if (desktopBtn) { desktopBtn.classList.remove('hidden'); desktopBtn.style.display = ''; }
-});
-
-window.addEventListener('appinstalled', () => {
-    deferredInstallPrompt = null;
-    localStorage.setItem('app_is_installed', 'true');
-    hideAllInstallButtons();
-    showToast('✓ ຕິດຕັ້ງແອັບ LA DOLCE ລົງໜ້າຈໍໂຮມສຳເລັດແລ້ວ!');
-});
-
-async function triggerPwaInstall() {
-    if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        const choiceResult = await deferredInstallPrompt.userChoice;
-        if (choiceResult.outcome === 'accepted') {
-            localStorage.setItem('app_is_installed', 'true');
-            hideAllInstallButtons();
-            showToast('✓ ກຳລັງຕິດຕັ້ງແອັບລົງໜ້າຈໍໂຮມ...');
-        } else {
-            showToast('ຍົກເລີກການຕິດຕັ້ງແອັບ');
-        }
-        deferredInstallPrompt = null;
-    } else {
-        showToast('💡 ວິທີຕິດຕັ້ງເທິງ Android: ກົດປຸ່ມ 3 ຈ້ຳ (⋮) ມຸມຂວາເທິງຂອງ Chrome ແລ້ວເລືອກ "Install app" ຫຼື "Add to Home screen"');
+// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (ຕັດລະບົບ Auto-Mock ອອກ 100%)
+function getActiveSheet() {
+    // ບໍ່ສ້າງ defaultSheet ຫຼື ເອີ້ນ generateMonthDataZigzag ອັດຕະໂນມັດອີກຕໍ່ໄປ!
+    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
+        return null;
     }
-}
 
-function dismissPwaBanner() {
-    const banner = document.getElementById('pwa-install-banner');
-    if (banner) {
-        banner.classList.add('hidden');
-        banner.style.display = 'none';
+    var select = document.getElementById('scheduleSheetSelect');
+    var targetId = (select && select.value) ? select.value : window.activeSheetId;
+    var found = null;
+
+    if (targetId) {
+        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(targetId); });
     }
+    if (!found && window.activeSheetId) {
+        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(window.activeSheetId); });
+    }
+    if (!found) {
+        found = window.scheduleSheets[0];
+    }
+
+    if (found) {
+        window.activeSheetId = found.id;
+        if (!found.data) found.data = {};
+    }
+
+    return found || null;
 }
+window.getActiveSheet = getActiveSheet;
 
-// =========================================================================
-// SINGLE TAB LOCK SYSTEM
-// =========================================================================
-const TAB_LOCK_CHANNEL = 'ladolce_tab_lock_channel';
-const currentTabId = 'tab_' + Math.random().toString(36).substr(2, 9);
-let tabChannel = null;
+// 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE
+async function syncScheduleToSupabase(sheet) {
+    if (!window.supabaseClient || !sheet || !sheet.id) return false;
 
-if (window.BroadcastChannel) {
+    if (!sheet.data) sheet.data = {};
+    sheet.data._meta = {
+        title: sheet.title || '',
+        notes: sheet.notes || ''
+    };
+
+    var mKey = sheet.monthKey || sheet.month_key || '2026-10';
+
+    var payload = {
+        id: String(sheet.id),
+        title: sheet.title || '',
+        status: sheet.status || 'DRAFT',
+        monthKey: mKey,
+        notes: sheet.notes || '',
+        data: sheet.data
+    };
+
     try {
-        tabChannel = new BroadcastChannel(TAB_LOCK_CHANNEL);
-        tabChannel.postMessage({ type: 'NEW_TAB_OPENED', tabId: currentTabId });
+        var resUpsert = await window.supabaseClient
+            .from('schedule_sheets')
+            .upsert(payload, { onConflict: 'id' });
 
-        tabChannel.onmessage = (event) => {
-            if (event.data && event.data.type === 'NEW_TAB_OPENED') {
-                tabChannel.postMessage({ type: 'TAB_ALREADY_ACTIVE', tabId: currentTabId });
-            } else if (event.data && event.data.type === 'TAB_ALREADY_ACTIVE') {
-                if (event.data.tabId !== currentTabId) {
-                    showDuplicateTabOverlay();
-                }
-            } else if (event.data && event.data.type === 'CLAIM_ACTIVE') {
-                if (event.data.tabId !== currentTabId) {
-                    showDuplicateTabOverlay();
-                }
-            }
-        };
-    } catch (e) {
-        console.warn('BroadcastChannel error:', e);
+        if (resUpsert.error) {
+            var resUpd = await window.supabaseClient
+                .from('schedule_sheets')
+                .update(payload)
+                .eq('id', sheet.id);
+
+            if (resUpd.error) return false;
+        }
+        return true;
+    } catch (err) {
+        return false;
     }
 }
 
-function showDuplicateTabOverlay() {
-    const overlay = document.getElementById('duplicate-tab-overlay');
-    if (overlay) overlay.classList.remove('hidden');
-}
+// 0.6 UNIVERSAL SWAP SYNC ENGINE
+function syncAllApprovedSwapsIntoSheet(sheet) {
+    if (!sheet || !sheet.data) return false;
 
-function claimActiveTab() {
-    if (tabChannel) {
-        tabChannel.postMessage({ type: 'CLAIM_ACTIVE', tabId: currentTabId });
-    }
-    const overlay = document.getElementById('duplicate-tab-overlay');
-    if (overlay) overlay.classList.add('hidden');
-}
-
-// =========================================================================
-// IMAGE COMPRESSOR (ບີບອັດຮູບອັດຕະໂນມັດ ບໍ່ໃຫ້ຖານຂໍ້ມູນຕິດ Error)
-// =========================================================================
-function handleImageCompress(fileInput, targetInputId, previewImgId) {
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 180;
-            const MAX_HEIGHT = 180;
-            let width = img.width;
-            let height = img.height;
-
-            if (width > height) {
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
-            } else {
-                if (height > MAX_HEIGHT) {
-                    width *= MAX_HEIGHT / height;
-                    height = MAX_HEIGHT;
-                }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-            const targetInput = document.getElementById(targetInputId);
-            const previewImg = document.getElementById(previewImgId);
-
-            if (targetInput) targetInput.value = compressedBase64;
-            if (previewImg) previewImg.src = compressedBase64;
-            showToast('✓ ອັບໂຫຼດ ແລະ ບີບອັດຮູບພາບຮຽບຮ້ອຍແລ້ວ');
-        };
-    };
-}
-
-// =========================================================================
-// 1. SHIFT CONFIGURATION & UNIVERSAL ATTENDANCE PARSER
-// =========================================================================
-const SHIFT_RULES = {
-    'ກະ 1': { name: 'ກະ 1', startHour: 7, startMin: 0, endHour: 16, endMin: 0, stdHours: 8, startMins: 420, endMins: 960 },
-    'ກະ 2': { name: 'ກະ 2', startHour: 11, startMin: 30, endHour: 20, endMin: 0, stdHours: 8, startMins: 690, endMins: 1200 }
-};
-
-function detectActualShift(clockInDate, defaultShiftName = 'ກະ 1') {
-    const timeInfo = getLaosTimeInfo(clockInDate);
-    if (timeInfo.totalMinutes < 555) {
-        return SHIFT_RULES['ກະ 1'];
-    } else {
-        return SHIFT_RULES['ກະ 2'];
-    }
-}
-
-function calculateLateMinutes(clockInDate, shiftName = 'ກະ 1') {
-    const shift = detectActualShift(clockInDate, shiftName);
-    const timeInfo = getLaosTimeInfo(clockInDate);
-    const diff = timeInfo.totalMinutes - shift.startMins;
-    return diff > 0 ? diff : 0;
-}
-
-function calculateDailyOtHours(clockInDate, clockOutDate, shiftName = 'ກະ 1') {
-    if (!clockInDate || !clockOutDate || clockOutDate <= clockInDate) return 0;
-    const shift = detectActualShift(clockInDate, shiftName);
-    const outInfo = getLaosTimeInfo(clockOutDate);
-    if (outInfo.totalMinutes > shift.endMins) {
-        const postOtMins = outInfo.totalMinutes - shift.endMins;
-        return parseFloat((postOtMins / 60).toFixed(1));
-    }
-    return 0;
-}
-
-function getDaysInMonth(year, month) {
-    return new Date(year, month, 0).getDate();
-}
-
-function parseSafeDate(rawTs) {
-    if (!rawTs) return new Date();
-    if (rawTs instanceof Date) return rawTs;
-    
-    let str = String(rawTs).trim();
-    if (str.includes(' ') && !str.includes('T')) {
-        str = str.replace(' ', 'T');
-    }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? new Date() : d;
-}
-
-function getLaosDateString(dateObj = new Date()) {
-    const safeD = parseSafeDate(dateObj);
-    const d = new Date(safeD.toLocaleString('en-US', { timeZone: 'Asia/Vientiane' }));
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function getLaosTimeInfo(timestamp) {
-    const dt = parseSafeDate(timestamp);
-    const laosStr = dt.toLocaleTimeString('en-US', { timeZone: 'Asia/Vientiane', hour12: false });
-    const parts = laosStr.split(':');
-    const hours = parseInt(parts[0]) || 0;
-    const minutes = parseInt(parts[1]) || 0;
-    const seconds = parseInt(parts[2]) || 0;
-    const totalMinutes = hours * 60 + minutes;
-    const totalSeconds = totalMinutes * 60 + seconds;
-    return { hours, minutes, seconds, totalMinutes, totalSeconds };
-}
-
-function formatSecondsToExactTime(secs) {
-    if (secs <= 0) return '0 ວິ';
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    if (m > 0) return `${m} ນາທີ ${s} ວິ`;
-    return `${s} ວິນາທີ`;
-}
-
-function normalizeAttendanceLog(log) {
-    const rawTimestamp = log.timestamp || log.created_at || log.clock_time || log.date_time || new Date().toISOString();
-    const rawType = String(log.type || log.action || 'Clock-In').toLowerCase();
-    
-    let standardizedType = 'Clock-In';
-    if (rawType.includes('out') || rawType.includes('ອອກ')) {
-        standardizedType = 'Clock-Out';
-    }
-
-    return {
-        id: log.id,
-        pin: String(log.pin || log.staff_pin || '').trim(),
-        type: standardizedType,
-        branch: log.branch || 'NP Branch',
-        timestamp: rawTimestamp
-    };
-}
-
-// =========================================================================
-// 2. STATE & SUPABASE INITIALIZATION
-// =========================================================================
-let supabaseUrl = localStorage.getItem('supabase_url') || '';
-let supabaseKey = localStorage.getItem('supabase_key') || '';
-let supabaseClient = null;
-
-let knownStaffDbColumns = null; // ເກັບລາຍຊື່ຖັນແທ້ໆ ທີ່ຢູ່ໃນ Supabase
-
-let isAdminLoggedIn = false;
-let attendanceLogs = [];
-let staffOffDays = JSON.parse(localStorage.getItem('staff_off_days') || '{}');
-let localBenefitApprovals = JSON.parse(localStorage.getItem('staff_benefit_approvals') || '{}');
-
-let stockData = [
-    { sku: 'P001', name: 'ຜົງໂກ້ໂກ້ (ຖົງ)', stock: 12, min_stock: 1, status: 'OK', category: 'ວັດຖຸດິບ', branch: 'ສາຂານ້ຳພຸ' },
-    { sku: 'P006', name: 'ກາເຟຂົ້ວກາງ 1ກລ (ຖົງ)', stock: 25, min_stock: 1, status: 'OK', category: 'ວັດຖຸດິບ', branch: 'ສາຂານ້ຳພຸ' },
-    { sku: 'P007', name: 'ກາເຟຂົ້ວເຂັ້ມ 1ກລ (ຖົງ)', stock: 18, min_stock: 1, status: 'OK', category: 'ວັດຖຸດິບ', branch: 'ສາຂານ້ຳພຸ' },
-    { sku: 'P028', name: 'ນົມໂອດ (ຕຸກ)', stock: 8, min_stock: 1, status: 'OK', category: 'ວັດຖຸດິບ', branch: 'ສາຂານ້ຳພຸ' },
-    { sku: 'P036', name: 'ໄຊຣັບຄາລາເມລ (ຕຸກ)', stock: 5, min_stock: 1, status: 'OK', category: 'ໄຊຮັບ', branch: 'ສາຂານ້ຳພຸ' },
-    { sku: 'P080', name: 'ຈອກ 16 ອອນ (ໜ່ວຍ)', stock: 300, min_stock: 1, status: 'OK', category: 'ເຄື່ອງໃຊ້ທົ່ວໄປ', branch: 'ສາຂານ້ຳພຸ' }
-];
-
-let stockMovements = [
-    { id: 1, sku: 'P007', name: 'ກາເຟຂົ້ວເຂັ້ມ 1ກລ (ຖົງ)', type: 'OUT', qty: 4, note: 'ໃຊ້ປະຈຳວັນ', timestamp: new Date(Date.now() - 86400000 * 1).toISOString() },
-    { id: 2, sku: 'P031', name: 'ນົມສົດ 2000g (ຕຸກ)', type: 'OUT', qty: 6, note: 'ໃຊ້ປະຈຳວັນ', timestamp: new Date(Date.now() - 86400000 * 2).toISOString() },
-    { id: 3, sku: 'P013', name: 'ມັດຊະ (ຖົງ)', type: 'OUT', qty: 2, note: 'ໃຊ້ປະຈຳວັນ', timestamp: new Date(Date.now() - 86400000 * 3).toISOString() }
-];
-
-let partnersData = [
-    { pin: '225588', staff_id: 'EMP0001', name: 'Keo', branch: 'NP branch', role: 'Barista', phone: '2057558813', emp_type: 'Full-time', shift: 'ກະ 1', salary: 3800000, benefit: 500000, benefit_approved: true, photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=60' },
-    { pin: '147258', staff_id: 'EMP0002', name: 'Vieng', branch: 'NP Branch', role: 'Barista', phone: '2078081195', emp_type: 'Full-time', shift: 'ກະ 1', salary: 4500000, benefit: 500000, benefit_approved: true, photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=60' },
-    { pin: '112233', staff_id: 'EMP0003', name: 'Cherry', branch: 'NP Branch', role: 'Barista', phone: '2097363821', emp_type: 'Part-time', shift: 'ກະ 1', salary: 2500000, benefit: 300000, benefit_approved: false, photo_url: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=60' },
-    { pin: '775533', staff_id: 'EMP0004', name: 'pakham', branch: 'NP Branch', role: 'Barista', phone: '2098382508', emp_type: 'Full-time', shift: 'ກະ 2', salary: 4000000, benefit: 500000, benefit_approved: true, photo_url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=60' },
-    { pin: '181193', staff_id: 'EMP0005', name: 'Nut', branch: 'NP Branch', role: 'Barista', phone: '2077489078', emp_type: 'Full-time', shift: 'ກະ 2', salary: 3600000, benefit: 420000, benefit_approved: true, photo_url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&auto=format&fit=crop&q=60' },
-    { pin: '920707', staff_id: 'EMP0006', name: 'AE', branch: 'NP Branch', role: 'Barista', phone: '2092070715', emp_type: 'Full-time', shift: 'ກະ 2', salary: 3500000, benefit: 400000, benefit_approved: false, photo_url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=60' }
-];
-
-let selectedPartnerForClock = null;
-
-function initSupabase() {
-    if (supabaseUrl && supabaseKey && supabaseUrl.startsWith('http')) {
+    if (!window.swapHistory || window.swapHistory.length === 0) {
         try {
-            const createClientFn = window.supabase ? window.supabase.createClient : (typeof supabase !== 'undefined' ? supabase.createClient : null);
-            if (createClientFn) {
-                supabaseClient = createClientFn(supabaseUrl, supabaseKey, {
-                    auth: { persistSession: false },
-                    global: { headers: { 'x-application-name': 'ladolce-hrm' } }
-                });
-                updateDbStatusUI(true);
-                fetchDataFromSupabase();
-            } else {
-                updateDbStatusUI(false);
-            }
-        } catch (e) {
-            console.error('Supabase Connection Error:', e);
-            updateDbStatusUI(false);
-        }
-    } else {
-        updateDbStatusUI(false);
-    }
-}
-
-function updateDbStatusUI(isConnected) {
-    const statusDotMobile = document.getElementById('db-status-mobile');
-    const statusIndicator = document.getElementById('db-status-indicator');
-    const dotDesktop = document.getElementById('db-dot-desktop');
-    const textDesktop = document.getElementById('db-text-desktop');
-
-    if (isConnected) {
-        if (statusDotMobile) statusDotMobile.className = 'text-[10px] bg-emerald-600 text-white font-bold px-2 py-1 rounded-full flex items-center gap-1';
-        if (statusDotMobile) statusDotMobile.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span> Supabase Live';
-        if (statusIndicator) statusIndicator.className = 'w-2 h-2 rounded-full bg-emerald-400';
-        if (dotDesktop) dotDesktop.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-        if (textDesktop) textDesktop.textContent = 'Supabase Connected';
-    } else {
-        if (statusDotMobile) statusDotMobile.className = 'text-[10px] bg-red-500 text-white font-bold px-2 py-1 rounded-full flex items-center gap-1';
-        if (statusDotMobile) statusDotMobile.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white"></span> Config API';
-        if (statusIndicator) statusIndicator.className = 'w-2 h-2 rounded-full bg-red-400';
-        if (dotDesktop) dotDesktop.className = 'w-2 h-2 rounded-full bg-red-500';
-        if (textDesktop) textDesktop.textContent = 'Setup Supabase API';
-    }
-}
-
-function saveSupabaseConfig(e) {
-    e.preventDefault();
-    supabaseUrl = document.getElementById('config-supabase-url').value.trim();
-    supabaseKey = document.getElementById('config-supabase-key').value.trim();
-
-    localStorage.setItem('supabase_url', supabaseUrl);
-    localStorage.setItem('supabase_key', supabaseKey);
-
-    initSupabase();
-    closeModal('supabase-config-modal');
-    showToast('✓ ຕັ້ງຄ່າ ແລະ ເຊື່ອມຕໍ່ Supabase ແລ້ວ!');
-}
-
-// =========================================================================
-// 3. NAVIGATION CONTROLLER
-// =========================================================================
-const views = ['dashboard', 'current-stock', 'inventory', 'employees', 'payroll', 'self-service', 'kiosk'];
-
-function navigateTo(viewId) {
-    if ((viewId === 'employees' || viewId === 'payroll') && !isAdminLoggedIn) {
-        openModal('admin-pin-modal');
-        showToast('🔒 ຕ້ອງປົດລັອກລະຫັດ Admin ເພື່ອເຂົ້າ HRM Admin');
-        return;
+            var cached = localStorage.getItem('ot_swap_history');
+            if (cached) window.swapHistory = JSON.parse(cached);
+        } catch(e) {}
     }
 
-    if (!views.includes(viewId)) viewId = 'dashboard';
+    var allDates = Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); });
+    var hasChange = false;
 
-    views.forEach(v => {
-        const el = document.getElementById(`view-${v}`);
-        if (el) {
-            el.classList.remove('active');
-            el.style.display = 'none';
-        }
-        
-        const navEl = document.getElementById(`nav-${v}`);
-        if (navEl) {
-            navEl.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-bold');
-            navEl.classList.add('text-primary-fixed-dim');
+    allDates.forEach(function(dStr) {
+        if (typeof window.autoApplyCompletedSwapsForDate === 'function') {
+            var changed = window.autoApplyCompletedSwapsForDate(dStr);
+            if (changed) hasChange = true;
         }
     });
 
-    const selectedView = document.getElementById(`view-${viewId}`);
-    if (selectedView) {
-        selectedView.classList.add('active');
-        selectedView.style.display = 'block';
+    if (hasChange) {
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+            if (typeof saveAll === 'function') saveAll();
+        } catch(e) {}
     }
 
-    const activeNav = document.getElementById(`nav-${viewId}`);
-    if (activeNav) {
-        activeNav.classList.add('bg-primary-container', 'text-on-primary-container', 'font-bold');
-        activeNav.classList.remove('text-primary-fixed-dim');
-    }
+    return hasChange;
+}
+window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
 
-    if (viewId === 'dashboard') {
-        updateOnDutyStaffUI();
-        renderEarlyComerStreakRanking();
-    }
-    if (viewId === 'inventory') renderStockAnalytics();
-    if (viewId === 'current-stock') renderStockTable();
-    if (viewId === 'employees') renderAdminAttendanceTable(currentAdminAttFilter);
-
-    closeMobileMenu();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+// 1. ສູດຄຳນວນອາທິດ
+function getMondayBasedWeekIndex(dateObj) {
+    var epoch = Date.UTC(2026, 0, 5);
+    var current = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+    var diffDays = Math.floor((current - epoch) / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 7);
 }
 
-// =========================================================================
-// 4. KIOSK & STOCK MOVEMENT HANDLERS
-// =========================================================================
-function openStockMovementKiosk() {
-    navigateTo('kiosk');
-    switchKioskTab('stock-movement');
+function getGlobalWeekendDayIndex(dateObj) {
+    var epoch = Date.UTC(2026, 0, 1);
+    var current = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+    var totalDays = Math.floor((current - epoch) / (1000 * 60 * 60 * 24));
+    var fullWeeks = Math.floor(totalDays / 7);
+    var weekendCount = fullWeeks * 2;
+    var rem = totalDays % 7;
+    for (var d = 0; d < rem; d++) {
+        var chk = new Date(epoch + (fullWeeks * 7 + d) * 86400000);
+        var day = chk.getUTCDay();
+        if (day === 6 || day === 0) weekendCount++;
+    }
+    return weekendCount;
 }
 
-function switchKioskTab(tabName) {
-    const timeClockTab = document.getElementById('kiosk-tab-time-clock');
-    const stockTab = document.getElementById('kiosk-tab-stock-movement');
-    const timeClockView = document.getElementById('kiosk-subview-time-clock');
-    const stockView = document.getElementById('kiosk-subview-stock-movement');
+// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ໃຊ້ສະເພາະຕອນ Admin ກົດປຸ່ມສຸ່ມ/ສ້າງຕາຕະລາງເທົ່ານັ້ນ)
+function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
+    var daysCount = new Date(year, month, 0).getDate();
+    var data = {};
 
-    if (!timeClockTab || !stockTab || !timeClockView || !stockView) return;
+    var listToUse = (staffList && staffList.length >= 17) ? staffList.slice(0, 17) : getPermanentStaffList();
 
-    if (tabName === 'time-clock') {
-        timeClockTab.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all flex items-center justify-center gap-1.5 shadow-sm';
-        stockTab.className = 'flex-1 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface transition-all flex items-center justify-center gap-1.5';
-        timeClockView.classList.remove('hidden');
-        stockView.classList.add('hidden');
-        renderTodayKioskAttendance();
+    var allUsers = window.users || [];
+    var leaderNames = listToUse.filter(function(name) {
+        var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
+        return u && u.isLeader;
+    });
+
+    if (leaderNames.length < 4) {
+        leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].filter(function(n) { return listToUse.includes(n); });
+    }
+    while (leaderNames.length < 4 && listToUse.length > leaderNames.length) {
+        var extra = listToUse.find(function(n) { return !leaderNames.includes(n); });
+        if (extra) leaderNames.push(extra);
+    }
+
+    var regularStaff = listToUse.filter(function(n) { return !leaderNames.includes(n); });
+    var numRegular = 13;
+
+    for (var i = 1; i <= daysCount; i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var dateObj = new Date(Date.UTC(year, month - 1, i));
+        var dayOfWeek = dateObj.getUTCDay();
+        var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
+
+        if (isWeekend) {
+            var gWeekend = getGlobalWeekendDayIndex(dateObj);
+            var isSunday = (dayOfWeek === 0);
+
+            var wLeaderSat = leaderNames[(gWeekend) % 4];
+            var wLeaderSun = leaderNames[(gWeekend + 1) % 4];
+
+            var wStaff = [];
+            for (var k = 0; k < 5; k++) {
+                wStaff.push(regularStaff[(gWeekend * 5 + k) % numRegular]);
+            }
+
+            var s1 = [], s2 = [], s3 = [];
+            if (isSunday) {
+                s1 = ['', wStaff[0], ''];
+                s2 = [wLeaderSun, wStaff[1], wStaff[2]];
+                s3 = [leaderNames[(gWeekend) % 4], wStaff[3], wStaff[4]];
+            } else {
+                s1 = ['', wStaff[0], ''];
+                s2 = [wLeaderSat, wStaff[1], wStaff[2]];
+                s3 = [leaderNames[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
+            }
+
+            var dayObj = {
+                isWeekend: true,
+                isG7Team: false,
+                shift1: s1,
+                shift2: s2,
+                shift3: s3
+            };
+            applyFixedShiftsToDayData(dayObj);
+            data[dStr] = dayObj;
+        } else {
+            var W = getMondayBasedWeekIndex(dateObj);
+
+            var l_1A = leaderNames[(W + 0) % 4];
+            var l_1B = leaderNames[(W + 1) % 4];
+            var l_S2 = leaderNames[(W + 2) % 4];
+            var l_S3 = leaderNames[(W + 3) % 4];
+
+            var staffOffset = (13000 - W * 3) % numRegular;
+            var rotated = [];
+            for (var r = 0; r < numRegular; r++) {
+                rotated.push(regularStaff[(r + staffOffset) % numRegular]);
+            }
+
+            var staff_S3 = rotated.slice(0, 3);
+            var staff_S2 = rotated.slice(3, 8);
+            var staff_S1 = rotated.slice(8, 13);
+
+            var dayObj = {
+                isWeekend: false,
+                isG7Team: false,
+                shift1: [l_1A, l_1B, ...staff_S1].filter(Boolean),
+                shift2: [l_S2, ...staff_S2].filter(Boolean),
+                shift3: [l_S3, ...staff_S3].filter(Boolean)
+            };
+            applyFixedShiftsToDayData(dayObj);
+            data[dStr] = dayObj;
+        }
+    }
+
+    return data;
+}
+
+// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ໃຊ້ສະເພາະຕອນ Admin ກົດປຸ່ມສຸ່ມ/ສ້າງຕາຕະລາງເທົ່ານັ້ນ)
+function generate7PersonFlexZigzag(year, month, staffList) {
+    var daysCount = new Date(year, month, 0).getDate();
+    var data = {};
+    var N = 7;
+    var epochDate = new Date(Date.UTC(2026, 0, 1));
+    var list = (staffList && staffList.length === 7) ? staffList : getContractStaffList();
+
+    for (var i = 1; i <= daysCount; i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var currentDate = new Date(Date.UTC(year, month - 1, i));
+        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24));
+        var dayOfWeek = currentDate.getUTCDay();
+        var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
+
+        var dailySlots = [];
+        for (var p = 0; p < N; p++) {
+            var assignedSlot = (p + totalDays) % N;
+            dailySlots[assignedSlot] = list[p];
+        }
+
+        var mode = totalDays % 3;
+        var s1 = [], s2 = [], s3 = [];
+        if (mode === 0) {
+            s1 = [dailySlots[0], dailySlots[1]];
+            s2 = [dailySlots[2], dailySlots[3]];
+            s3 = [dailySlots[4]];
+        } else if (mode === 1) {
+            s1 = [dailySlots[0]];
+            s2 = [dailySlots[1], dailySlots[2]];
+            s3 = [dailySlots[3], dailySlots[4]];
+        } else {
+            s1 = [dailySlots[0], dailySlots[1]];
+            s2 = [dailySlots[2]];
+            s3 = [dailySlots[3], dailySlots[4]];
+        }
+
+        var dayObj = {
+            isWeekend: isWeekend,
+            isG7Team: true,
+            shift1: s1.filter(Boolean),
+            shift2: s2.filter(Boolean),
+            shift3: s3.filter(Boolean)
+        };
+        applyFixedShiftsToDayData(dayObj);
+        data[dStr] = dayObj;
+    }
+    return data;
+}
+
+function generateMonthDataZigzag(year, month, targetGroupMembers) {
+    var staffList = [];
+    if (targetGroupMembers && targetGroupMembers.length > 0) {
+        staffList = [...targetGroupMembers];
     } else {
-        stockTab.className = 'flex-1 py-2 rounded-xl text-xs font-bold bg-primary text-white transition-all flex items-center justify-center gap-1.5 shadow-sm';
-        timeClockTab.className = 'flex-1 py-2 rounded-xl text-xs font-bold text-on-surface-variant hover:bg-surface transition-all flex items-center justify-center gap-1.5';
-        stockView.classList.remove('hidden');
-        timeClockView.classList.add('hidden');
-        
-        populateStockMovementDropdown();
-        renderKioskMovementLogs();
+        staffList = getPermanentStaffList();
+    }
+
+    if (staffList.length === 7) {
+        return generate7PersonFlexZigzag(year, month, staffList);
+    } else {
+        return generate17PersonLeadersAndStaffZigzag(year, month, staffList);
     }
 }
 
-function populateStockMovementDropdown() {
-    const select = document.getElementById('movement-item-select');
+// 4. MODAL ສຸ່ມກຸ່ມ
+function openRandomGroupSelectModal() {
+    var select = document.getElementById('randomSelectedGroupId');
     if (!select) return;
     select.innerHTML = '';
-
-    stockData.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item.sku;
-        opt.textContent = `[${item.sku}] ${item.name} (Stock: ${item.stock || 0})`;
-        select.appendChild(opt);
-    });
-}
-
-function addQuickQty(amount) {
-    const input = document.getElementById('movement-qty-input');
-    if (!input) return;
-    const current = parseInt(input.value) || 0;
-    input.value = current + amount;
-}
-
-async function handleKioskMovementSubmit(e) {
-    e.preventDefault();
-    const sku = document.getElementById('movement-item-select').value;
-    const movementType = document.querySelector('input[name="movement-type"]:checked').value;
-    const qty = parseInt(document.getElementById('movement-qty-input').value);
-    const note = document.getElementById('movement-note-input').value.trim() || 'ບັນທຶກ Kiosk';
-
-    const item = stockData.find(i => i.sku === sku);
-    if (!item) return;
-
-    const newStock = movementType === 'IN' ? ((item.stock || 0) + qty) : Math.max(0, (item.stock || 0) - qty);
-    item.stock = newStock;
-
-    const newMovement = {
-        sku: item.sku,
-        name: item.name,
-        type: movementType,
-        qty: qty,
-        note: note,
-        timestamp: new Date().toISOString()
-    };
-
-    if (supabaseClient) {
-        try {
-            await supabaseClient.from('daily_inventory_movement').insert([newMovement]);
-            await supabaseClient.from('main_inventory').update({ stock: newStock }).eq('sku', item.sku).eq('branch', item.branch || 'ສາຂານ້ຳພຸ');
-        } catch (e) {
-            console.warn('Movement upload error:', e);
-        }
-    }
-
-    stockMovements.unshift(newMovement);
-
-    renderStockTable();
-    renderStockAnalytics();
-    populateStockMovementDropdown();
-    renderKioskMovementLogs();
-
-    document.getElementById('movement-qty-input').value = 1;
-    document.getElementById('movement-note-input').value = '';
-    showToast(`✓ ບັນທຶກ (${movementType}) ${item.name} ຈຳນວນ ${qty} ແລ້ວ!`);
-}
-
-function renderKioskMovementLogs() {
-    const container = document.getElementById('kiosk-movement-logs-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (stockMovements.length === 0) {
-        container.innerHTML = '<p class="text-outline text-center py-2">ບໍ່ມີປະວັດການເຄື່ອນໄຫວ</p>';
-        return;
-    }
-
-    stockMovements.slice(0, 6).forEach(m => {
-        const item = document.createElement('div');
-        item.className = 'p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 flex items-center justify-between';
-        item.innerHTML = `
-            <div>
-                <p class="font-bold text-on-surface text-xs">${m.name || m.sku}</p>
-                <p class="text-[10px] text-on-surface-variant">${m.note || 'N/A'} • ${parseSafeDate(m.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-            </div>
-            <span class="px-2 py-0.5 rounded font-mono font-bold text-xs flex items-center gap-0.5 ${m.type === 'IN' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
-                <span class="material-symbols-outlined text-xs">${m.type === 'IN' ? 'arrow_downward' : 'arrow_upward'}</span>
-                ${m.type === 'IN' ? '+' : '-'}${m.qty}
-            </span>
-        `;
-        container.appendChild(item);
-    });
-}
-
-// =========================================================================
-// 5. ON-DUTY & DAY STREAK TRACKER (TOP 4 RANKING)
-// =========================================================================
-function updateOnDutyStaffUI() {
-    const container = document.getElementById('on-duty-staff-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const todayStr = getLaosDateString();
-    const todayLogs = attendanceLogs.filter(a => getLaosDateString(parseSafeDate(a.timestamp)) === todayStr);
-
-    const latestStatusMap = {};
-    todayLogs.forEach(a => {
-        if (!latestStatusMap[a.pin]) latestStatusMap[a.pin] = a.type;
-    });
-
-    const activeStaffPins = Object.keys(latestStatusMap).filter(pin => (latestStatusMap[pin] || '').toLowerCase().includes('in'));
-
-    const dashActiveEl = document.getElementById('dash-active-staff');
-    if (dashActiveEl) dashActiveEl.textContent = `${activeStaffPins.length} ຄົນ`;
-
-    if (activeStaffPins.length === 0) {
-        container.innerHTML = '<p class="text-xs text-outline italic py-2">ບໍ່ມີພະນັກງານປ້ຳໂມງເຂົ້າວຽກໃນຕອນນີ້</p>';
-        return;
-    }
-
-    activeStaffPins.forEach(pin => {
-        const staff = partnersData.find(p => p.pin === pin) || { name: 'PIN: ' + pin, role: 'Staff' };
-        const badge = document.createElement('div');
-        badge.className = 'flex items-center gap-2.5 bg-emerald-50 border border-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold text-emerald-950 shadow-sm';
-        badge.innerHTML = `
-            <img src="${staff.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-7 h-7 rounded-full object-cover border border-emerald-500">
-            <div>
-                <p class="leading-none">${staff.name}</p>
-                <p class="text-[10px] text-emerald-700 font-normal mt-0.5">${staff.role} • <span class="font-bold">On-Duty</span></p>
-            </div>
-        `;
-        container.appendChild(badge);
-    });
-}
-
-let currentEarlyRankingFilter = 'monthly';
-function setEarlyRankingFilter(filterType) {
-    currentEarlyRankingFilter = filterType;
-    document.querySelectorAll('.early-rank-tab').forEach(btn => {
-        btn.className = 'early-rank-tab px-2.5 py-0.5 rounded-lg text-[10px] font-bold text-on-surface-variant hover:bg-surface';
-    });
-    const activeBtn = document.getElementById(`btn-early-${filterType}`);
-    if (activeBtn) activeBtn.className = 'early-rank-tab px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-800 text-white shadow-sm';
-    renderEarlyComerStreakRanking();
-}
-
-function renderEarlyComerStreakRanking() {
-    const container = document.getElementById('early-ranking-container');
-    const streakProgressBar = document.getElementById('streak-progress-bar');
-    const streakTodayBadge = document.getElementById('streak-today-badge');
-    if (!container) return;
-    container.innerHTML = '';
-
-    const now = new Date();
-    const laosNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Vientiane' }));
-    const todayDayIndex = laosNow.getDay();
-    const dayNamesLao = ['ອາທິດ', 'ຈັນ', 'ອັງຄານ', 'ພຸດ', 'ພະຫັດ', 'ສຸກ', 'ເສົາ'];
-    const dayNamesEng = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-    if (streakTodayBadge) {
-        streakTodayBadge.innerHTML = `<span class="material-symbols-outlined text-xs inline align-middle">calendar_today</span> ມື້ນີ້: <b>${dayNamesEng[todayDayIndex]} (ວັນ${dayNamesLao[todayDayIndex]})</b>`;
-    }
-
-    for (let i = 0; i < 7; i++) {
-        const lbl = document.getElementById(`day-lbl-${i}`);
-        if (lbl) {
-            if (i === todayDayIndex) lbl.className = 'text-white font-black text-[11px] scale-125 transition-transform drop-shadow';
-            else lbl.className = 'text-amber-200/70 font-semibold text-[10px]';
-        }
-    }
-
-    const targetWidthPct = Math.round(((todayDayIndex + 1) / 7) * 100);
-    if (streakProgressBar) streakProgressBar.style.width = `${targetWidthPct}%`;
-
-    const todayStr = getLaosDateString();
-
-    const rankedStaffList = partnersData.map(p => {
-        const payroll = calculateRealtimePayroll(p);
-
-        const todayLog = attendanceLogs.find(a => a.pin === p.pin && getLaosDateString(parseSafeDate(a.timestamp)) === todayStr && (a.type || '').toLowerCase().includes('in'));
-        let secondsEarlyToday = 0;
-        let clockInTimeStr = '--:--';
-
-        if (todayLog) {
-            const inDate = parseSafeDate(todayLog.timestamp);
-            clockInTimeStr = inDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            const shift = detectActualShift(inDate, p.shift);
-            const inInfo = getLaosTimeInfo(inDate);
-            const shiftStartSecs = shift.startMins * 60;
-            if (inInfo.totalSeconds < shiftStartSecs) {
-                secondsEarlyToday = shiftStartSecs - inInfo.totalSeconds;
-            }
-        }
-
-        return {
-            pin: p.pin,
-            name: p.name,
-            role: p.role,
-            photo: p.photo_url,
-            currentStreak: payroll.currentStreak,
-            onTimeCount: payroll.onTimeDaysCount,
-            secondsEarlyToday: secondsEarlyToday,
-            clockInTimeStr: clockInTimeStr,
-            hasClockedInToday: !!todayLog
-        };
-    }).sort((a, b) => {
-        if (currentEarlyRankingFilter === 'daily') {
-            if (b.hasClockedInToday !== a.hasClockedInToday) return b.hasClockedInToday - a.hasClockedInToday;
-            return b.secondsEarlyToday - a.secondsEarlyToday;
-        } else {
-            if (b.currentStreak !== a.currentStreak) return b.currentStreak - a.currentStreak;
-            return b.onTimeCount - a.onTimeCount;
-        }
-    });
-
-    const top4List = rankedStaffList.slice(0, 4);
-
-    if (top4List.length === 0) {
-        container.innerHTML = '<p class="text-xs text-outline italic text-center py-3">ບໍ່ມີຂໍ້ມູນການຈັດອັນດັບ</p>';
-        return;
-    }
-
-    const top1 = top4List[0];
-    const top1Card = document.createElement('div');
-    top1Card.className = 'p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-2xl flex items-center justify-between shadow-sm mb-2';
-    top1Card.innerHTML = `
-        <div class="flex items-center gap-3">
-            <div class="relative">
-                <img src="${top1.photo || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-11 h-11 rounded-full object-cover border-2 border-amber-500 shadow-sm">
-                <span class="absolute -bottom-1 -right-1 bg-amber-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow">
-                    <span class="material-symbols-outlined text-[13px] icon-fill">stars</span>
-                </span>
-            </div>
-            <div>
-                <div class="flex items-center gap-1.5">
-                    <h4 class="font-bold text-xs text-on-surface">${top1.name}</h4>
-                    <span class="text-[9px] font-extrabold bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded-full uppercase flex items-center gap-0.5">
-                        <span class="material-symbols-outlined text-[10px]">military_tech</span> #1 Champion
-                    </span>
-                </div>
-                <p class="text-[10px] text-on-surface-variant font-semibold mt-0.5">
-                    ${currentEarlyRankingFilter === 'daily' 
-                        ? (top1.hasClockedInToday ? `ເຂົ້າ: <b>${top1.clockInTimeStr}</b> (ກ່ອນເວລາ: ${formatSecondsToExactTime(top1.secondsEarlyToday)})` : 'ຍັງບໍ່ທັນປ້ຳໂມງ') 
-                        : `ຕົງເວລາ: <b>${top1.onTimeCount} ມື້</b> ປະຈຳເດືອນ`}
-                </p>
-            </div>
-        </div>
-        <div class="text-right">
-            <span class="font-bold text-amber-700 text-xs flex items-center justify-end gap-0.5">
-                <span class="material-symbols-outlined text-sm icon-fill text-amber-600">local_fire_department</span> ${top1.currentStreak} Day Streak
-            </span>
-            <span class="text-[9px] text-outline font-semibold">Super Active</span>
-        </div>
-    `;
-    container.appendChild(top1Card);
-
-    const rankBadges = ['#2', '#3', '#4'];
-    top4List.slice(1).forEach((item, index) => {
-        const row = document.createElement('div');
-        row.className = 'p-2.5 bg-surface-container-low border border-outline-variant/30 rounded-xl flex items-center justify-between hover:bg-surface-container transition-all';
-        row.innerHTML = `
-            <div class="flex items-center gap-2.5">
-                <span class="font-mono font-bold text-xs text-on-surface-variant w-6 flex items-center gap-0.5">
-                    <span class="material-symbols-outlined text-xs text-amber-600">military_tech</span>${rankBadges[index]}
-                </span>
-                <img src="${item.photo || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-8 h-8 rounded-full object-cover border border-outline-variant">
-                <div>
-                    <h5 class="font-bold text-xs text-on-surface leading-tight">${item.name}</h5>
-                    <p class="text-[10px] text-outline">
-                        ${currentEarlyRankingFilter === 'daily' 
-                            ? (item.hasClockedInToday ? `ເຂົ້າ: ${item.clockInTimeStr} (${formatSecondsToExactTime(item.secondsEarlyToday)})` : 'ຍັງບໍ່ທັນປ້ຳໂມງ') 
-                            : `ຕົງເວລາ ${item.onTimeCount} ມື້`}
-                    </p>
-                </div>
-            </div>
-            <div class="text-right">
-                <span class="px-2 py-0.5 rounded font-mono font-bold text-[10px] flex items-center gap-0.5 ${item.currentStreak >= 3 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'}">
-                    <span class="material-symbols-outlined text-[11px]">${item.currentStreak >= 3 ? 'local_fire_department' : 'check'}</span>
-                    ${item.currentStreak} Streak
-                </span>
-            </div>
-        `;
-        container.appendChild(row);
-    });
-}
-
-// =========================================================================
-// 6. REAL-TIME PAYROLL & BENEFIT CALCULATION
-// =========================================================================
-function calculateRealtimePayroll(staff) {
-    const todayStr = getLaosDateString();
-    const currentMonthStr = todayStr.substring(0, 7);
-    const [yearStr, monthStr] = currentMonthStr.split('-');
-    const year = parseInt(yearStr);
-    const month = parseInt(monthStr);
-
-    const daysInMonth = getDaysInMonth(year, month);
-    const standardWorkDays = Math.max(1, daysInMonth - 4);
-
-    const staffMonthLogs = attendanceLogs.filter(a => {
-        const logMonth = getLaosDateString(parseSafeDate(a.timestamp)).substring(0, 7);
-        return a.pin === staff.pin && logMonth === currentMonthStr;
-    });
-
-    const daysMap = {};
-    staffMonthLogs.forEach(a => {
-        const dateKey = getLaosDateString(parseSafeDate(a.timestamp));
-        if (!daysMap[dateKey]) daysMap[dateKey] = { in: null, out: null };
-
-        const logTime = parseSafeDate(a.timestamp);
-        const type = (a.type || '').toLowerCase();
-
-        if (type.includes('in')) {
-            if (!daysMap[dateKey].in || logTime < daysMap[dateKey].in) daysMap[dateKey].in = logTime;
-        } else if (type.includes('out')) {
-            if (!daysMap[dateKey].out || logTime > daysMap[dateKey].out) daysMap[dateKey].out = logTime;
-        }
-    });
-
-    let daysWorked = 0;
-    let autoOtHours = 0;
-    let totalLateMinutes = 0;
-    let onTimeDaysCount = 0;
-    let dailyStreak = 0;
-    let maxStreak = 0;
-
-    const baseSalary = Number(staff.salary) || 3800000;
-    const isBenefitApproved = staff.benefit_approved === true || localBenefitApprovals[staff.pin] === true;
-    const effectiveBenefit = isBenefitApproved ? (Number(staff.benefit) || 0) : 0;
-    const dailyRate = baseSalary / standardWorkDays;
-
-    const sortedDates = Object.keys(daysMap).sort();
-
-    sortedDates.forEach(dateKey => {
-        const day = daysMap[dateKey];
-
-        if (day.in) {
-            daysWorked++;
-
-            const shiftRule = detectActualShift(day.in, staff.shift || 'ກະ 1');
-            const inInfo = getLaosTimeInfo(day.in);
-
-            if (inInfo.totalMinutes > shiftRule.startMins) {
-                const lateMins = inInfo.totalMinutes - shiftRule.startMins;
-                totalLateMinutes += lateMins;
-                dailyStreak = 0;
-            } else {
-                dailyStreak++;
-                onTimeDaysCount++;
-            }
-
-            if (dailyStreak > maxStreak) maxStreak = dailyStreak;
-
-            if (day.out && day.out > day.in) {
-                const outInfo = getLaosTimeInfo(day.out);
-                if (outInfo.totalMinutes > shiftRule.endMins) {
-                    const postOtMins = outInfo.totalMinutes - shiftRule.endMins;
-                    autoOtHours += (postOtMins / 60);
-                }
-            }
-        }
-    });
-
-    const actualDaysPay = Math.round(daysWorked * dailyRate);
-    const totalOtHours = parseFloat(((Number(staff.ot) || 0) + autoOtHours).toFixed(1));
-    const otPay = Math.round(totalOtHours * 17000);
-    const totalNetPay = actualDaysPay + otPay + effectiveBenefit;
-
-    return {
-        daysInMonth,
-        standardWorkDays,
-        daysWorked,
-        totalLateMinutes,
-        otHours: totalOtHours,
-        dailyRate: Math.round(dailyRate),
-        otPay,
-        actualDaysPay,
-        isBenefitApproved,
-        effectiveBenefit,
-        totalNetPay,
-        onTimeDaysCount,
-        currentStreak: dailyStreak,
-        maxStreak
-    };
-}
-
-function renderEmployeesAndPayroll() {
-    const partnerContainer = document.getElementById('partner-list-container');
-    const payrollBody = document.getElementById('payroll-table-body');
-    if (!partnerContainer || !payrollBody) return;
     
-    partnerContainer.innerHTML = '';
-    payrollBody.innerHTML = '';
+    var optMain = document.createElement('option');
+    optMain.value = 'GRP_MAIN_17';
+    optMain.innerText = 'ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)';
+    select.appendChild(optMain);
 
-    populateManualAttendanceStaffDropdown();
+    var optContract = document.createElement('option');
+    optContract.value = 'GRP_CONTRACT_7';
+    optContract.innerText = 'ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)';
+    select.appendChild(optContract);
 
-    partnersData.forEach(p => {
-        if (localBenefitApprovals[p.pin] !== undefined) {
-            p.benefit_approved = localBenefitApprovals[p.pin];
-        }
-
-        const payroll = calculateRealtimePayroll(p);
-
-        const card = document.createElement('div');
-        card.className = 'bg-surface rounded-2xl p-4 border border-outline-variant/40 shadow-sm flex flex-col justify-between relative group';
-        card.innerHTML = `
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-3">
-                        <img src="${p.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shadow-sm">
-                        <div>
-                            <h3 class="font-headline font-bold text-sm text-on-surface">${p.name}</h3>
-                            <p class="text-xs text-primary font-mono font-bold">${p.staff_id || 'EMP'}</p>
-                        </div>
-                    </div>
-                    <div class="flex flex-col items-end gap-1">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${p.active !== false ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-variant text-outline'}">${p.active !== false ? 'Active' : 'Off'}</span>
-                        <span class="px-2 py-0.5 rounded text-[9px] font-bold flex items-center gap-0.5 ${payroll.isBenefitApproved ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-gray-100 text-gray-600'}">
-                            <span class="material-symbols-outlined text-[11px]">${payroll.isBenefitApproved ? 'check_circle' : 'pending'}</span>
-                            ${payroll.isBenefitApproved ? 'ໄດ້ຮັບສະຫວັດດີການ' : 'ຍັງບໍ່ໄດ້ຮັບ'}
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="space-y-1 text-xs border-t border-surface-container-high pt-2 text-on-surface-variant">
-                    <p><span class="text-outline font-semibold">ຕຳແໜ່ງ:</span> <strong>${p.role}</strong></p>
-                    <p><span class="text-outline font-semibold">ກະຫຼັກ:</span> ${p.shift || 'ກະ 1'} <span class="text-[10px] text-emerald-700 font-bold">(Auto-detect)</span></p>
-                    <p><span class="text-outline font-semibold">ເງິນເດືອນພື້ນຖານ:</span> <span class="font-mono font-bold text-emerald-800">${(Number(p.salary) || 0).toLocaleString()} ກີບ</span></p>
-                    <p><span class="text-outline font-semibold">ຄ່າແຮງຕໍ່ມື້:</span> <span class="font-mono font-semibold text-primary">${payroll.dailyRate.toLocaleString()} ກີບ/ມື້</span></p>
-                </div>
-            </div>
-
-            <div class="mt-3 pt-2 border-t border-surface-container-high flex flex-col gap-2 text-xs">
-                <div class="flex justify-between items-center">
-                    <span class="text-outline">PIN: <code class="bg-surface-container-high px-1.5 py-0.5 rounded font-mono font-bold text-primary">${p.pin}</code></span>
-                    
-                    <div class="flex gap-1.5">
-                        <button type="button" onclick="toggleBenefitDirectly('${p.pin}')" class="px-2 py-1 rounded-lg text-xs font-bold transition-all shadow-sm ${payroll.isBenefitApproved ? 'bg-amber-100 text-amber-900 hover:bg-amber-200 border border-amber-300' : 'bg-primary text-white hover:bg-primary-container'}">
-                            ${payroll.isBenefitApproved ? 'ປິດສະຫວັດດີການ' : 'ອະນຸມັດ'}
-                        </button>
-                        <button type="button" onclick="openEditStaffModal('${p.pin}')" class="px-2 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg font-bold transition-all" title="ແກ້ໄຂ">
-                            <span class="material-symbols-outlined text-xs">edit</span>
-                        </button>
-                        <button type="button" onclick="deleteStaff('${p.pin}', '${p.name}')" class="px-2 py-1 bg-red-50 text-error hover:bg-red-600 hover:text-white rounded-lg font-bold transition-all" title="ລຶບ">
-                            <span class="material-symbols-outlined text-xs">delete</span>
-                        </button>
-                    </div>
-                </div>
-
-                <button type="button" onclick="openManualAttendanceModal('${p.pin}')" class="w-full py-1 bg-surface-container hover:bg-surface-container-high rounded-lg font-bold text-[11px] text-primary flex items-center justify-center gap-1 border border-outline-variant/40">
-                    <span class="material-symbols-outlined text-xs text-accent">more_time</span> ລົງເວລາຍ້ອນຫຼັງ
-                </button>
-            </div>
-        `;
-        partnerContainer.appendChild(card);
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-container-low';
-        tr.innerHTML = `
-            <td class="p-3 font-mono font-bold text-primary">${p.pin} / ${p.staff_id || ''}</td>
-            <td class="p-3 font-bold text-on-surface">${p.name}</td>
-            <td class="p-3 font-bold text-outline">${p.shift || 'ກະ 1'}</td>
-            <td class="p-3 font-mono font-bold">${(Number(p.salary) || 0).toLocaleString()} ກີບ</td>
-            <td class="p-3 font-mono font-semibold text-primary">${payroll.dailyRate.toLocaleString()} ກີບ</td>
-            <td class="p-3 font-mono font-bold text-blue-700">
-                ${payroll.daysWorked} ມື້ <span class="text-[10px] font-bold text-emerald-700">(+${(payroll.actualDaysPay).toLocaleString()})</span>
-            </td>
-            <td class="p-3 font-mono font-bold ${payroll.totalLateMinutes > 0 ? 'text-amber-700' : 'text-emerald-700'}">
-                ${payroll.totalLateMinutes > 0 ? `${payroll.totalLateMinutes} ນາທີ` : '✓ ຕົງເວລາ'}
-            </td>
-            <td class="p-3 font-mono text-amber-800 font-bold">
-                ${payroll.otHours} ຊມ <span class="text-[10px]">(+${payroll.otPay.toLocaleString()})</span>
-            </td>
-            <td class="p-3 font-mono ${payroll.isBenefitApproved ? 'text-emerald-800 font-bold' : 'text-gray-400'}">
-                ${payroll.isBenefitApproved ? `+${payroll.effectiveBenefit.toLocaleString()} (ອະນຸມັດ)` : '0 (ຍັງບໍ່ອະນຸມັດ)'}
-            </td>
-            <td class="p-3 font-mono font-bold text-emerald-800 text-xs bg-emerald-50/50">${payroll.totalNetPay.toLocaleString()} ກີບ</td>
-        `;
-        payrollBody.appendChild(tr);
-    });
-
-    const todayStr = getLaosDateString();
-    let todayLateTotal = 0;
-    attendanceLogs.forEach(a => {
-        if (getLaosDateString(parseSafeDate(a.timestamp)) === todayStr && (a.type || '').toLowerCase().includes('in')) {
-            const dt = parseSafeDate(a.timestamp);
-            todayLateTotal += calculateLateMinutes(dt);
+    (window.employeeGroups || []).forEach(function(grp) {
+        if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT_7') {
+            var opt = document.createElement('option');
+            opt.value = grp.id;
+            opt.innerText = grp.name + ' (' + (grp.members || []).length + ' ຄົນ)';
+            select.appendChild(opt);
         }
     });
-    const lateEl = document.getElementById('dash-today-late-mins');
-    if (lateEl) lateEl.textContent = `${todayLateTotal} ນາທີ`;
+
+    document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
 
-async function toggleBenefitDirectly(pin) {
-    const p = partnersData.find(item => item.pin === pin);
-    if (!p) return;
-
-    p.benefit_approved = !p.benefit_approved;
-
-    localBenefitApprovals[pin] = p.benefit_approved;
-    localStorage.setItem('staff_benefit_approvals', JSON.stringify(localBenefitApprovals));
-
-    if (supabaseClient) {
-        try {
-            await supabaseClient.from('staff').update({ benefit_approved: p.benefit_approved }).eq('pin', pin);
-        } catch (e) {
-            console.warn('Supabase staff benefit update error:', e);
-        }
-    }
-
-    renderEmployeesAndPayroll();
-    showToast(`✓ ອັບເດດສະຖານະສະຫວັດດີການຂອງ ${p.name} ເປັນ: ${p.benefit_approved ? 'ອະນຸມັດແລ້ວ' : 'ປິດການໃຫ້'}`);
-}
-
-// =========================================================================
-// 7. STAFF SELF-SERVICE PORTAL (WITH OT & ROUND CONFIRM CARDS)
-// =========================================================================
-let currentViewingStaffPin = null;
-
-function checkStaffSelfService() {
-    const pin = document.getElementById('staff-portal-pin').value.trim();
-    if (!pin) {
-        showToast('⚠️ ກະລຸນາປ້ອນ PIN 6 ຫຼັກ');
+async function executeGroupRandomSchedule() {
+    var sheet = getActiveSheet();
+    if (!sheet) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງທີ່ເລືອກ ກະລຸນາສ້າງ Sheet ກ່ອນ', 'error');
         return;
     }
-
-    const staff = partnersData.find(p => p.pin === pin);
-    if (!staff) {
-        showToast('❌ ບໍ່ພົບຂໍ້ມູນພະນັກງານລະຫັດ PIN ນີ້');
-        document.getElementById('staff-summary-card').classList.add('hidden');
-        return;
-    }
-
-    currentViewingStaffPin = pin;
-    renderStaffPortal(staff);
-}
-
-async function syncStaffSelfServiceData() {
-    showToast('🔄 ກຳລັງດຶງຂໍ້ມູນໃໝ່ລ້າສຸດຈາກ Database...');
-    await fetchDataFromSupabase();
-    if (currentViewingStaffPin) {
-        const staff = partnersData.find(p => p.pin === currentViewingStaffPin);
-        if (staff) renderStaffPortal(staff);
-    }
-    showToast('✓ Sync ດຶງຂໍ້ມູນການມາວຽກຄົບຖ້ວນແລ້ວ!');
-}
-
-function renderStaffPortal(staff) {
-    const card = document.getElementById('staff-summary-card');
-    card.classList.remove('hidden');
-
-    const payroll = calculateRealtimePayroll(staff);
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth() + 1;
-    const daysInMonth = getDaysInMonth(year, month);
-    const curMonthStr = `${year}-${String(month).padStart(2, '0')}`;
-
-    document.getElementById('portal-staff-photo').src = staff.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120';
-    document.getElementById('portal-staff-name').textContent = `${staff.name} (PIN: ${staff.pin})`;
-    document.getElementById('portal-staff-role').textContent = `${staff.role} (${staff.staff_id})`;
-    document.getElementById('portal-staff-branch').textContent = staff.branch || 'NP Branch';
-    document.getElementById('portal-staff-shift-badge').textContent = `ກະຫຼັກ: ${staff.shift || 'ກະ 1'} (Auto-detect)`;
-
-    const benefitBadgeEl = document.getElementById('portal-benefit-status-badge');
-    if (payroll.isBenefitApproved) {
-        benefitBadgeEl.className = 'px-4 py-2 rounded-2xl text-center shadow-sm border bg-emerald-50 border-emerald-300 text-emerald-900';
-        benefitBadgeEl.innerHTML = `
-            <span class="text-xs font-black flex items-center justify-center gap-1">
-                <span class="material-symbols-outlined text-base text-emerald-600">verified</span> ໄດ້ຮັບສິດສະຫວັດດີການ
-            </span>
-        `;
+    var [year, month] = (sheet.monthKey || '2026-10').split('-').map(Number);
+    var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'GRP_MAIN_17';
+    
+    var members = null;
+    if (selectedGrpId === 'GRP_MAIN_17') {
+        members = getPermanentStaffList();
+        sheet.isG7GroupSheet = false;
+    } else if (selectedGrpId === 'GRP_CONTRACT_7') {
+        members = getContractStaffList();
+        sheet.isG7GroupSheet = true;
     } else {
-        benefitBadgeEl.className = 'px-4 py-2 rounded-2xl text-center shadow-sm border bg-gray-50 border-gray-300 text-gray-700';
-        benefitBadgeEl.innerHTML = `
-            <span class="text-xs font-bold flex items-center justify-center gap-1">
-                <span class="material-symbols-outlined text-base text-gray-500">pending</span> ຍັງບໍ່ທັນໄດ້ຮັບສິດສະຫວັດດີການ
-            </span>
-        `;
+        var found = (window.employeeGroups || []).find(function(g) { return g && g.id === selectedGrpId; });
+        if (found && found.members) {
+            members = found.members;
+            sheet.isG7GroupSheet = (members.length === 7);
+        }
     }
 
-    document.getElementById('portal-days-worked').textContent = `${payroll.daysWorked} ມື້`;
-    document.getElementById('portal-total-ot-hours').textContent = `${payroll.otHours} ຊົ່ວໂມງ`;
-    document.getElementById('portal-total-late').textContent = `${payroll.totalLateMinutes} ນາທີ`;
+    sheet.data = generateMonthDataZigzag(year, month, members);
+    
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
 
-    const staffApprovedOffDays = staffOffDays[staff.pin] || [];
-    const thisMonthOffDays = staffApprovedOffDays.filter(d => d.startsWith(curMonthStr));
-    const offDaysCount = thisMonthOffDays.length;
-    const offRemaining = Math.max(0, 4 - offDaysCount);
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
+    showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງ Zigzag ຮຽບຮ້ອຍ!', 'success');
 
-    document.getElementById('portal-days-off').textContent = `${offDaysCount} / 4 ມື້`;
-    document.getElementById('portal-off-quota-tag').textContent = `ໂຄຕ້າ: ເຫຼືອ ${offRemaining} ມື້`;
+    await syncScheduleToSupabase(sheet);
+}
 
-    const staffMonthLogs = attendanceLogs.filter(a => a.pin === staff.pin && getLaosDateString(parseSafeDate(a.timestamp)).startsWith(curMonthStr));
-    const daysMap = {};
-
-    staffMonthLogs.forEach(a => {
-        const dateKey = getLaosDateString(parseSafeDate(a.timestamp));
-        if (!daysMap[dateKey]) daysMap[dateKey] = { in: null, out: null };
-        const time = parseSafeDate(a.timestamp);
-        const type = (a.type || '').toLowerCase();
-        if (type.includes('in')) {
-            if (!daysMap[dateKey].in || time < daysMap[dateKey].in) daysMap[dateKey].in = time;
-        } else if (type.includes('out')) {
-            if (!daysMap[dateKey].out || time > daysMap[dateKey].out) daysMap[dateKey].out = time;
-        }
-    });
-
-    const tbody = document.getElementById('portal-days-table-body');
-    tbody.innerHTML = '';
-
-    let absentCount = 0;
-    const currentDayNum = today.getDate();
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateKey = `${curMonthStr}-${String(day).padStart(2, '0')}`;
-        const dayRecord = daysMap[dateKey];
-        const isPastDay = day <= currentDayNum;
-        const isOffDay = thisMonthOffDays.includes(dateKey);
-
-        let inTimeStr = '--:--';
-        let outTimeStr = '--:--';
-        let lateMins = 0;
-        let dailyOt = 0;
-        let statusBadge = '';
-        let confirmActionCard = '';
-
-        if (dayRecord && dayRecord.in) {
-            inTimeStr = dayRecord.in.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            if (dayRecord.out) {
-                outTimeStr = dayRecord.out.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                dailyOt = calculateDailyOtHours(dayRecord.in, dayRecord.out, staff.shift);
+// 5. BATCH MONTH MODAL
+function openBatchMonthModal() {
+    var select = document.getElementById('batchTargetGroupSelect');
+    if (select) {
+        select.innerHTML = '<option value="GRP_MAIN_17">ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)</option>' +
+                           '<option value="GRP_CONTRACT_7">ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)</option>';
+        (window.employeeGroups || []).forEach(function(grp) {
+            if (grp && grp.id !== 'GRP_MAIN_17' && grp.id !== 'GRP_CONTRACT_7') {
+                select.innerHTML += '<option value="' + grp.id + '">' + grp.name + '</option>';
             }
-            
-            lateMins = calculateLateMinutes(dayRecord.in, staff.shift);
-            statusBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-emerald-100 text-emerald-800 flex items-center gap-0.5"><span class="material-symbols-outlined text-xs">check</span> ມາວຽກ</span>`;
-            confirmActionCard = `<span class="text-[10px] text-outline font-semibold">ປ້ຳໂມງແລ້ວ</span>`;
-        } else if (isOffDay) {
-            statusBadge = `<span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-0.5"><span class="material-symbols-outlined text-xs">event_busy</span> ວັນພັກ Confirmed</span>`;
-            confirmActionCard = `
-                <button type="button" onclick="toggleOffDayProof('${staff.pin}', '${dateKey}')" class="round-card-confirm bg-red-50 text-error hover:bg-red-100 border border-red-200">
-                    <span class="material-symbols-outlined text-sm">cancel</span>
-                    <span>ຍົກເລີກພັກ</span>
-                </button>
-            `;
-        } else if (isPastDay) {
-            absentCount++;
-            statusBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-red-100 text-error font-bold flex items-center gap-0.5"><span class="material-symbols-outlined text-xs">close</span> ຂາດວຽກ</span>`;
-            if (offRemaining > 0) {
-                confirmActionCard = `
-                    <button type="button" onclick="toggleOffDayProof('${staff.pin}', '${dateKey}')" class="round-card-confirm bg-blue-600 hover:bg-blue-700 text-white shadow-md">
-                        <span class="material-symbols-outlined text-sm">event_available</span>
-                        <span>Confirm ວັນພັກ</span>
-                    </button>
-                `;
-            } else {
-                confirmActionCard = `<span class="text-[10px] text-error font-bold">ໂຄຕ້າພັກໝົດ</span>`;
-            }
-        } else {
-            statusBadge = `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-surface-variant text-outline">ຍັງບໍ່ຮອດມື້</span>`;
-            confirmActionCard = `<span class="text-[10px] text-outline">--</span>`;
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-container-low';
-        tr.innerHTML = `
-            <td class="p-2.5 font-mono font-bold">${dateKey}</td>
-            <td class="p-2.5 font-mono text-emerald-700 font-semibold">${inTimeStr}</td>
-            <td class="p-2.5 font-mono text-amber-700 font-semibold">${outTimeStr}</td>
-            <td class="p-2.5 font-mono font-bold ${lateMins > 0 ? 'text-amber-700' : 'text-outline'}">
-                ${lateMins > 0 ? `+${lateMins} ນາທີ` : '0'}
-            </td>
-            <td class="p-2.5 font-mono font-bold ${dailyOt > 0 ? 'text-amber-800' : 'text-outline'}">
-                ${dailyOt > 0 ? `+${dailyOt} ຊມ` : '0'}
-            </td>
-            <td class="p-2.5">${statusBadge}</td>
-            <td class="p-2.5 text-right">${confirmActionCard}</td>
-        `;
-        tbody.appendChild(tr);
+        });
     }
-
-    document.getElementById('portal-days-absent').textContent = `${absentCount} ມື້`;
+    document.getElementById('batchMonthModal')?.classList.remove('hidden');
 }
 
-function toggleOffDayProof(pin, dateStr) {
-    if (!staffOffDays[pin]) staffOffDays[pin] = [];
-    const idx = staffOffDays[pin].indexOf(dateStr);
+async function executeBatchMonthGenerate() {
+    var startM = document.getElementById('batchStartMonth')?.value;
+    var count = parseInt(document.getElementById('batchMonthCount')?.value) || 6;
+    var selectedGrpId = document.getElementById('batchTargetGroupSelect')?.value || 'GRP_MAIN_17';
 
-    if (idx > -1) {
-        staffOffDays[pin].splice(idx, 1);
-        showToast(`✓ ຍົກເລີກການ Confirm ວັນພັກຂອງວັນທີ ${dateStr}`);
-    } else {
-        const currentMonthStr = dateStr.substring(0, 7);
-        const thisMonthOff = staffOffDays[pin].filter(d => d.startsWith(currentMonthStr));
-        if (thisMonthOff.length >= 4) {
-            showToast('⚠️ ໂຄຕ້າວັນພັກປົກກະຕິຄົບ 4 ວັນແລ້ວ');
-            return;
-        }
-        staffOffDays[pin].push(dateStr);
-        showToast(`✓ Confirm ວັນພັກວັນທີ ${dateStr} ສຳເລັດ`);
-    }
-
-    localStorage.setItem('staff_off_days', JSON.stringify(staffOffDays));
-    const staff = partnersData.find(p => p.pin === pin);
-    if (staff) renderStaffPortal(staff);
-}
-
-// =========================================================================
-// 8. STOCK CRUD & EDITING
-// =========================================================================
-function openEditStockModal(sku, branch) {
-    const item = stockData.find(i => i.sku === sku && i.branch === branch);
-    if (!item) return;
-
-    document.getElementById('edit-modal-old-sku').value = item.sku;
-    document.getElementById('edit-modal-old-branch').value = item.branch || 'ສາຂານ້ຳພຸ';
-
-    document.getElementById('edit-modal-sku').value = item.sku;
-    document.getElementById('edit-modal-branch').value = item.branch || 'ສາຂານ້ຳພຸ';
-    document.getElementById('edit-modal-name').value = item.name || '';
-    document.getElementById('edit-modal-category').value = item.category || 'ວັດຖຸດິບ';
-    document.getElementById('edit-modal-qty').value = item.stock || 0;
-    document.getElementById('edit-modal-min').value = item.min_stock || 1;
-
-    openModal('edit-stock-modal');
-}
-
-async function handleEditStockSubmit(e) {
-    e.preventDefault();
-    const oldSku = document.getElementById('edit-modal-old-sku').value;
-    const oldBranch = document.getElementById('edit-modal-old-branch').value;
-
-    const updatedItem = {
-        sku: document.getElementById('edit-modal-sku').value.trim(),
-        branch: document.getElementById('edit-modal-branch').value.trim(),
-        name: document.getElementById('edit-modal-name').value.trim(),
-        category: document.getElementById('edit-modal-category').value,
-        stock: parseInt(document.getElementById('edit-modal-qty').value) || 0,
-        min_stock: parseInt(document.getElementById('edit-modal-min').value) || 1,
-        status: 'OK'
-    };
-
-    if (supabaseClient) {
-        try {
-            await supabaseClient
-                .from('main_inventory')
-                .update(updatedItem)
-                .eq('sku', oldSku)
-                .eq('branch', oldBranch);
-        } catch (e) {
-            console.warn('Stock update error:', e);
-        }
-    }
-
-    const localItem = stockData.find(i => i.sku === oldSku && i.branch === oldBranch);
-    if (localItem) {
-        Object.assign(localItem, updatedItem);
-    }
-
-    renderStockTable();
-    renderStockAnalytics();
-    populateStockMovementDropdown();
-    closeModal('edit-stock-modal');
-    showToast(`✓ ແກ້ໄຂສິນຄ້າ ແລະ ປ່ຽນໝວດໝູ່ເປັນ [${updatedItem.category}] ສຳເລັດແລ້ວ!`);
-}
-
-async function quickChangeCategory(sku, branch, newCategory) {
-    if (!isAdminLoggedIn) return;
-    const item = stockData.find(i => i.sku === sku && i.branch === branch);
-    if (!item) return;
-
-    item.category = newCategory;
-
-    if (supabaseClient) {
-        try {
-            await supabaseClient.from('main_inventory').update({ category: newCategory }).eq('sku', sku).eq('branch', branch);
-        } catch (e) {
-            console.warn('Quick change category error:', e);
-        }
-    }
-
-    renderStockTable();
-    renderStockAnalytics();
-    showToast(`✓ ປ່ຽນໝວດໝູ່ຂອງ ${item.name} ເປັນ [${newCategory}] ແລ້ວ`);
-}
-
-let currentStockFilter = 'all';
-function renderStockTable(filterCat = currentStockFilter) {
-    currentStockFilter = filterCat;
-    const tbody = document.getElementById('stock-table-body');
-    const thActions = document.getElementById('th-stock-actions');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    if (thActions) {
-        if (isAdminLoggedIn) thActions.classList.remove('hidden');
-        else thActions.classList.add('hidden');
-    }
-
-    const filtered = filterCat === 'all' ? stockData : stockData.filter(i => i.category === filterCat);
-
-    filtered.forEach(item => {
-        const isLow = (item.stock || 0) <= (item.min_stock || 1);
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-container-low';
-        tr.innerHTML = `
-            <td class="p-3 font-mono font-bold text-primary">${item.sku}</td>
-            <td class="p-3 font-bold text-on-surface">${item.name}</td>
-            <td class="p-3 font-medium">
-                ${isAdminLoggedIn ? `
-                <select onchange="quickChangeCategory('${item.sku}', '${item.branch || 'ສາຂານ້ຳພຸ'}', this.value)" class="text-xs font-bold py-1 px-2 border border-outline-variant/60 rounded-lg bg-surface focus:ring-1 focus:ring-primary">
-                    <option value="ວັດຖຸດິບ" ${item.category === 'ວັດຖຸດິບ' ? 'selected' : ''}>ວັດຖຸດິບ</option>
-                    <option value="ໄຊຮັບ" ${item.category === 'ໄຊຮັບ' ? 'selected' : ''}>ໄຊຮັບ</option>
-                    <option value="ເຄື່ອງຍ່ອຍ" ${item.category === 'ເຄື່ອງຍ່ອຍ' ? 'selected' : ''}>ເຄື່ອງຍ່ອຍ</option>
-                    <option value="ເຄື່ອງໃຊ້ທົ່ວໄປ" ${item.category === 'ເຄື່ອງໃຊ້ທົ່ວໄປ' ? 'selected' : ''}>ເຄື່ອງໃຊ້ທົ່ວໄປ</option>
-                </select>
-                ` : `<span class="text-on-surface-variant font-semibold">${item.category || 'N/A'}</span>`}
-            </td>
-            <td class="p-3 text-outline">${item.branch || 'ສາຂານ້ຳພຸ'}</td>
-            <td class="p-3 font-mono font-bold text-sm">${item.stock || 0}</td>
-            <td class="p-3 font-mono text-outline">${item.min_stock || 1}</td>
-            <td class="p-3">
-                <span class="px-2 py-0.5 rounded font-bold text-[10px] ${isLow ? 'bg-red-100 text-error' : 'bg-emerald-100 text-emerald-800'}">
-                    ${isLow ? '⚠️ ໄກ້ໝົດ' : '✓ OK'}
-                </span>
-            </td>
-            ${isAdminLoggedIn ? `
-            <td class="p-3 text-right space-x-1 whitespace-nowrap">
-                <button type="button" onclick="openEditStockModal('${item.sku}', '${item.branch || 'ສາຂານ້ຳພຸ'}')" class="px-2 py-1 bg-amber-50 text-amber-900 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all">
-                    ແກ້ໄຂ
-                </button>
-                <button type="button" onclick="adjustStockPrompt('${item.sku}', '${item.branch || 'ສາຂານ້ຳພຸ'}')" class="px-2 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-xs font-bold transition-all">
-                    ປັບ Stock
-                </button>
-                <button type="button" onclick="deleteStock('${item.sku}', '${item.branch || 'ສາຂານ້ຳພຸ'}', '${item.name}')" class="px-2 py-1 bg-red-50 text-error hover:bg-red-600 hover:text-white rounded-lg text-xs font-bold transition-all">
-                    ລຶບ
-                </button>
-            </td>` : ''}
-        `;
-        tbody.appendChild(tr);
-    });
-
-    const dashTotal = document.getElementById('dash-total-items');
-    if (dashTotal) dashTotal.textContent = `${stockData.length} ລາຍການ`;
-    const lowCount = stockData.filter(i => (i.stock || 0) <= (i.min_stock || 1)).length;
-    const dashLow = document.getElementById('dash-low-stock');
-    if (dashLow) dashLow.textContent = `${lowCount} ລາຍການ`;
-}
-
-function filterStockCategory(category) {
-    document.querySelectorAll('.stock-tab-btn').forEach(btn => {
-        btn.className = 'stock-tab-btn whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold bg-surface border border-outline-variant text-on-surface-variant';
-    });
-    const activeTab = document.getElementById(`tab-stock-${category}`);
-    if (activeTab) activeTab.className = 'stock-tab-btn whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-bold bg-primary text-white';
-
-    renderStockTable(category);
-}
-
-async function adjustStockPrompt(sku, branch) {
-    if (!isAdminLoggedIn) {
-        openModal('admin-pin-modal');
-        return;
-    }
-    const item = stockData.find(i => i.sku === sku && i.branch === branch);
-    if (item) {
-        const newQty = prompt(`ປັບຈຳນວນ Stock ໃໝ່ສຳລັບ SKU: ${item.sku} (${item.name})`, item.stock || 0);
-        if (newQty !== null && !isNaN(newQty)) {
-            const parsedQty = parseInt(newQty);
-            item.stock = parsedQty;
-
-            if (supabaseClient) {
-                try {
-                    await supabaseClient.from('main_inventory').update({ stock: parsedQty }).eq('sku', sku).eq('branch', branch);
-                } catch (e) {
-                    console.warn('Adjust stock error:', e);
-                }
-            }
-
-            renderStockTable();
-            renderStockAnalytics();
-            showToast(`✓ ອັບເດດ ${item.name} ເປັນ ${parsedQty} ແລ້ວ`);
-        }
-    }
-}
-
-// =========================================================================
-// 9. INVENTORY ANALYTICS & MOVEMENT HISTORY RENDERING
-// =========================================================================
-function renderStockAnalytics() {
-    const categoryProgressContainer = document.getElementById('analytics-category-progress');
-    const chartContainer = document.getElementById('analytics-chart-container');
-    const chartLabelsContainer = document.getElementById('analytics-chart-labels');
-    const movementsTableBody = document.getElementById('analytics-movements-table-body');
-    const countEl = document.getElementById('analytics-movements-count');
-
-    if (!categoryProgressContainer || !chartContainer || !movementsTableBody) return;
-
-    categoryProgressContainer.innerHTML = '';
-    chartContainer.innerHTML = '';
-    if (chartLabelsContainer) chartLabelsContainer.innerHTML = '';
-    movementsTableBody.innerHTML = '';
-
-    const catCountMap = { 'ວັດຖຸດິບ': 0, 'ໄຊຮັບ': 0, 'ເຄື່ອງຍ່ອຍ': 0, 'ເຄື່ອງໃຊ້ທົ່ວໄປ': 0 };
-    stockData.forEach(item => {
-        const cat = item.category || 'ວັດຖຸດິບ';
-        if (catCountMap[cat] !== undefined) catCountMap[cat] += (item.stock || 0);
-        else catCountMap[cat] = (item.stock || 0);
-    });
-
-    const totalStockQty = Object.values(catCountMap).reduce((a, b) => a + b, 0) || 1;
-    const catColors = {
-        'ວັດຖຸດິບ': 'bg-amber-600',
-        'ໄຊຮັບ': 'bg-yellow-500',
-        'ເຄື່ອງຍ່ອຍ': 'bg-emerald-600',
-        'ເຄື່ອງໃຊ້ທົ່ວໄປ': 'bg-blue-600'
-    };
-
-    Object.keys(catCountMap).forEach(cat => {
-        const count = catCountMap[cat];
-        const pct = Math.round((count / totalStockQty) * 100);
-
-        const row = document.createElement('div');
-        row.className = 'space-y-1';
-        row.innerHTML = `
-            <div class="flex justify-between text-xs font-bold">
-                <span class="text-on-surface">${cat}</span>
-                <span class="text-on-surface-variant font-mono">${count} ຊິ້ນ (${pct}%)</span>
-            </div>
-            <div class="w-full bg-surface-container rounded-full h-2.5 overflow-hidden">
-                <div class="${catColors[cat] || 'bg-primary'} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-            </div>
-        `;
-        categoryProgressContainer.appendChild(row);
-    });
-
-    let totalInQty = 0;
-    let totalOutQty = 0;
-
-    stockMovements.forEach(m => {
-        if (m.type === 'IN') totalInQty += (Number(m.qty) || 0);
-        if (m.type === 'OUT') totalOutQty += (Number(m.qty) || 0);
-    });
-
-    const statIn = document.getElementById('stat-total-in-qty');
-    const statOut = document.getElementById('stat-total-out-qty');
-    if (statIn) statIn.textContent = `${totalInQty} ຊິ້ນ`;
-    if (statOut) statOut.textContent = `${totalOutQty} ຊິ້ນ`;
-
-    const avgBurnRatePerDay = Math.round(totalOutQty / 7) || 0;
-    const statBurn = document.getElementById('stat-avg-burn-rate');
-    if (statBurn) statBurn.textContent = `${avgBurnRatePerDay} ລາຍການ/ມື້`;
-
-    const lowCount = stockData.filter(i => (i.stock || 0) <= (i.min_stock || 1)).length;
-    const statCrit = document.getElementById('stat-critical-items');
-    if (statCrit) statCrit.textContent = `${lowCount} ລາຍການ`;
-
-    const last7Days = [];
-    const today = new Date();
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(today.getDate() - i);
-        last7Days.push(getLaosDateString(d));
-    }
-
-    const dailyQtyMap = {};
-    last7Days.forEach(dayStr => dailyQtyMap[dayStr] = 0);
-
-    stockMovements.forEach(m => {
-        if (m.type === 'OUT') {
-            const mDate = getLaosDateString(parseSafeDate(m.timestamp));
-            if (dailyQtyMap[mDate] !== undefined) dailyQtyMap[mDate] += (Number(m.qty) || 0);
-        }
-    });
-
-    const maxVal = Math.max(...Object.values(dailyQtyMap), 10);
-
-    last7Days.forEach(dayStr => {
-        const val = dailyQtyMap[dayStr];
-        const heightPct = Math.max(15, Math.round((val / maxVal) * 100));
-
-        const bar = document.createElement('div');
-        bar.className = 'w-1/7 bg-emerald-600 hover:bg-emerald-500 rounded-t-lg transition-all relative flex flex-col justify-end items-center shadow-sm cursor-pointer';
-        bar.style.height = `${heightPct}%`;
-        bar.innerHTML = `<span class="text-[9px] font-bold text-emerald-900 mb-1">${val}</span>`;
-        chartContainer.appendChild(bar);
-
-        if (chartLabelsContainer) {
-            const lbl = document.createElement('span');
-            lbl.className = 'text-[9px] text-outline font-mono';
-            lbl.textContent = dayStr.substring(8, 10);
-            chartLabelsContainer.appendChild(lbl);
-        }
-    });
-
-    if (countEl) countEl.textContent = `${stockMovements.length} ລາຍການ`;
-
-    if (stockMovements.length === 0) {
-        movementsTableBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-outline">ບໍ່ມີປະວັດການເຄື່ອນໄຫວສະຕ໋ອກ</td></tr>';
+    if (!startM) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກເດືອນເລີ່ມຕົ້ນ', 'error');
         return;
     }
 
-    stockMovements.slice(0, 30).forEach(m => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-container-low';
-        tr.innerHTML = `
-            <td class="p-2.5 font-mono text-[11px] text-on-surface-variant">${parseSafeDate(m.timestamp).toLocaleDateString('en-GB')} ${parseSafeDate(m.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
-            <td class="p-2.5 font-bold text-on-surface">${m.name || m.sku} <span class="text-[10px] text-outline">(${m.sku || ''})</span></td>
-            <td class="p-2.5">
-                <span class="px-2 py-0.5 rounded font-bold text-[10px] flex items-center gap-0.5 ${m.type === 'IN' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">
-                    <span class="material-symbols-outlined text-xs">${m.type === 'IN' ? 'arrow_downward' : 'arrow_upward'}</span>
-                    ${m.type === 'IN' ? 'ນຳເຂົ້າ' : 'ເບີກອອກ'}
-                </span>
-            </td>
-            <td class="p-2.5 font-mono font-bold ${m.type === 'IN' ? 'text-emerald-700' : 'text-red-700'}">
-                ${m.type === 'IN' ? '+' : '-'}${m.qty}
-            </td>
-            <td class="p-2.5 text-on-surface-variant">${m.note || 'N/A'}</td>
-        `;
-        movementsTableBody.appendChild(tr);
-    });
-}
+    var isContract = (selectedGrpId === 'GRP_CONTRACT_7');
+    var selectedMembers = isContract ? getContractStaffList() : getPermanentStaffList();
+    var groupNameTag = isContract ? ' (ສັນຍາ)' : ' (ສົມບູນ)';
 
-// =========================================================================
-// 10. KIOSK PIN CLOCK-IN/OUT
-// =========================================================================
-let currentPin = '';
-const maxPin = 6;
+    var [startYear, startMonth] = startM.split('-').map(Number);
+    var firstGeneratedSheetId = null;
+    var activeSheet = getActiveSheet();
+    var currentNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
 
-function pressPinKey(num) {
-    if (currentPin.length < maxPin) {
-        currentPin += num;
-        updatePinDots();
-    }
-    if (currentPin.length === maxPin) {
-        verifyKioskPin();
-    }
-}
+    if (!window.scheduleSheets) window.scheduleSheets = [];
 
-function clearPinKey() { currentPin = ''; updatePinDots(); }
-function backspacePinKey() { if (currentPin.length > 0) { currentPin = currentPin.slice(0, -1); updatePinDots(); } }
+    for (var c = 0; c < count; c++) {
+        var targetDate = new Date(startYear, startMonth - 1 + c, 1);
+        var y = targetDate.getFullYear();
+        var m = targetDate.getMonth() + 1;
+        var mStr = m < 10 ? '0' + m : '' + m;
+        var monthKey = y + '-' + mStr;
+        var sheetId = 'sheet-' + monthKey + '-' + (isContract ? 'contract' : 'main');
+        var title = 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການ' + (isContract ? 'ສັນຍາ' : 'ສົມບູນ') + 'ປະຈຳເດືອນ ' + mStr + '/' + y;
 
-function updatePinDots() {
-    for (let i = 1; i <= maxPin; i++) {
-        const dot = document.getElementById(`dot-${i}`);
-        if (dot) dot.className = `w-3.5 h-3.5 rounded-full border-2 border-outline-variant ${i <= currentPin.length ? 'bg-primary border-primary' : 'bg-surface'}`;
-    }
-}
+        var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
 
-function verifyKioskPin() {
-    setTimeout(() => {
-        if (currentPin === '7777' || currentPin === '777777') {
-            unlockAdminMode();
-            navigateTo('employees');
+        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && (s.id === sheetId || (s.monthKey === monthKey && s.title && s.title.includes(groupNameTag))); });
+        var currentSheetObj = null;
+        if (existingIdx !== -1) {
+            window.scheduleSheets[existingIdx].data = generatedData;
+            window.scheduleSheets[existingIdx].title = title;
+            window.scheduleSheets[existingIdx].notes = currentNotes;
+            window.scheduleSheets[existingIdx].isG7GroupSheet = isContract;
+            currentSheetObj = window.scheduleSheets[existingIdx];
         } else {
-            const partner = partnersData.find(p => p.pin === currentPin);
-            if (partner) {
-                selectedPartnerForClock = partner;
-
-                const now = new Date();
-                const detectedShift = detectActualShift(now, partner.shift);
-                const lateMins = calculateLateMinutes(now, partner.shift);
-
-                let statusText = '';
-                if (lateMins === 0) {
-                    statusText = `<span class="text-emerald-700 font-bold block text-[11px] mt-1 flex items-center gap-0.5"><span class="material-symbols-outlined text-xs">check_circle</span> ມາຕົງເວລາ (${detectedShift.name})</span>`;
-                } else {
-                    statusText = `<span class="text-error font-bold block text-[11px] mt-1 flex items-center gap-0.5"><span class="material-symbols-outlined text-xs">warning</span> ມາຊ້າ ${lateMins} ນາທີ (${detectedShift.name})</span>`;
-                }
-
-                document.getElementById('kiosk-user-info').innerHTML = `
-                    <div class="flex items-center justify-center gap-3 mb-2">
-                        <img src="${partner.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-12 h-12 rounded-full object-cover">
-                        <div class="text-left">
-                            <h3 class="font-headline font-bold text-base text-primary">${partner.name}</h3>
-                            <p class="text-xs text-on-surface-variant">${partner.staff_id} • ${partner.role}</p>
-                            ${statusText}
-                        </div>
-                    </div>
-                `;
-                document.getElementById('kiosk-action-panel').classList.remove('hidden');
-            } else {
-                showToast('❌ ລະຫັດ PIN ບໍ່ຖືກຕ້ອງ');
-            }
-        }
-        clearPinKey();
-    }, 200);
-}
-
-async function executeClockAction(actionType) {
-    if (selectedPartnerForClock) {
-        const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
-        const newLog = {
-            pin: selectedPartnerForClock.pin,
-            type: actionType,
-            branch: selectedPartnerForClock.branch || 'NP Branch',
-            timestamp: new Date().toISOString()
-        };
-
-        if (supabaseClient) {
-            try {
-                await supabaseClient.from('attendance').insert([newLog]);
-            } catch (e) {
-                console.warn('Attendance upload error:', e);
-            }
+            currentSheetObj = {
+                id: sheetId,
+                monthKey: monthKey,
+                title: title,
+                notes: currentNotes,
+                status: 'DRAFT',
+                isG7GroupSheet: isContract,
+                data: generatedData
+            };
+            window.scheduleSheets.push(currentSheetObj);
         }
 
-        attendanceLogs.unshift(newLog);
-        renderTodayKioskAttendance();
-        updateOnDutyStaffUI();
-        renderEmployeesAndPayroll();
-        renderEarlyComerStreakRanking();
-
-        showToast(`✓ ບັນທຶກ ${actionType} ສຳເລັດ ສຳລັບ ${selectedPartnerForClock.name} (${nowStr})`);
-        cancelClockAction();
+        if (c === 0) firstGeneratedSheetId = currentSheetObj.id;
+        await syncScheduleToSupabase(currentSheetObj);
     }
+
+    if (firstGeneratedSheetId) window.activeSheetId = firstGeneratedSheetId;
+
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    document.getElementById('batchMonthModal')?.classList.add('hidden');
+    renderSheetDropdown();
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-function cancelClockAction() {
-    selectedPartnerForClock = null;
-    document.getElementById('kiosk-action-panel').classList.add('hidden');
+// ⭐ 6. FIXED SHIFT MODAL FUNCTIONS
+function openFixedShiftModal() {
+    var userSelect = document.getElementById('fixedShiftUserSelect');
+    if (userSelect) {
+        userSelect.innerHTML = '';
+        (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; }).forEach(function(u) {
+            userSelect.innerHTML += '<option value="' + u.nameLao + '">' + u.nameLao + ' (' + u.fullName + ')</option>';
+        });
+    }
+    renderActiveFixedShiftsList();
+    document.getElementById('fixedShiftModal')?.classList.remove('hidden');
 }
 
-function renderTodayKioskAttendance() {
-    const container = document.getElementById('kiosk-today-attendance-container');
+function renderActiveFixedShiftsList() {
+    var container = document.getElementById('activeFixedShiftsList');
     if (!container) return;
     container.innerHTML = '';
-
-    const todayStr = getLaosDateString();
-    const todayLogs = attendanceLogs.filter(a => getLaosDateString(parseSafeDate(a.timestamp)) === todayStr);
-
-    if (todayLogs.length === 0) {
-        container.innerHTML = '<p class="text-outline text-center py-2">ບໍ່ມີປະວັດການປ້ຳໂມງໃນມື້ນີ້</p>';
+    if (!window.fixedShiftsConfig || window.fixedShiftsConfig.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-xs italic py-2">ຍັງບໍ່ມີພະນັກງານທີ່ຖືກລັອກກະປະຈຳ</p>';
         return;
     }
-
-    const staffPairs = {};
-    todayLogs.forEach(a => {
-        if (!staffPairs[a.pin]) staffPairs[a.pin] = { clockIn: null, clockOut: null };
-        const type = (a.type || '').toLowerCase();
-        const logTime = parseSafeDate(a.timestamp);
-
-        if (type.includes('in')) {
-            if (!staffPairs[a.pin].clockIn || logTime < parseSafeDate(staffPairs[a.pin].clockIn.timestamp)) staffPairs[a.pin].clockIn = a;
-        } else if (type.includes('out')) {
-            if (!staffPairs[a.pin].clockOut || logTime > parseSafeDate(staffPairs[a.pin].clockOut.timestamp)) staffPairs[a.pin].clockOut = a;
-        }
-    });
-
-    Object.keys(staffPairs).forEach(pin => {
-        const staff = partnersData.find(p => p.pin === pin) || { name: 'PIN: ' + pin };
-        const pair = staffPairs[pin];
-        
-        let inTime = pair.clockIn ? parseSafeDate(pair.clockIn.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--';
-        let outTime = pair.clockOut ? parseSafeDate(pair.clockOut.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--';
-
-        const isOnDuty = pair.clockIn && !pair.clockOut;
-
-        const item = document.createElement('div');
-        item.className = 'p-3 bg-surface-container-low rounded-xl border border-outline-variant/30 flex items-center justify-between shadow-sm';
-        item.innerHTML = `
-            <div class="flex items-center gap-3">
-                <img src="${staff.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120'}" class="w-9 h-9 rounded-full object-cover border border-primary/20">
-                <div>
-                    <p class="font-bold text-on-surface text-xs">${staff.name}</p>
-                    <p class="text-[10px] text-on-surface-variant font-mono">
-                        ເຂົ້າ: <span class="font-bold text-emerald-700">${inTime}</span> | ອອກ: <span class="font-bold text-amber-700">${outTime}</span>
-                    </p>
-                </div>
-            </div>
-            <span class="px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1 ${isOnDuty ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-gray-200 text-gray-800'}">
-                <span class="w-1.5 h-1.5 rounded-full ${isOnDuty ? 'bg-emerald-600 animate-pulse' : 'bg-gray-500'}"></span>
-                ${isOnDuty ? 'On Duty' : 'End of Duty'}
-            </span>
-        `;
-        container.appendChild(item);
+    window.fixedShiftsConfig.forEach(function(f, idx) {
+        var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
+        container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
+            '<div>' +
+                '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
+                '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
+            '</div>' +
+            '<button type="button" onclick="removeFixedShift(' + idx + ')" class="text-brand-red hover:underline font-bold text-xs cursor-pointer">ລຶບ</button>' +
+        '</div>';
     });
 }
 
-// =========================================================================
-// 11. ADMIN ATTENDANCE LOGS, EDITING & MANUAL ADD
-// =========================================================================
-let currentAdminAttFilter = 'daily';
-
-function filterAdminAttendance(filterType) {
-    currentAdminAttFilter = filterType;
-    document.querySelectorAll('.admin-att-btn').forEach(b => {
-        b.className = 'admin-att-btn px-3 py-1 rounded-lg text-on-surface-variant hover:bg-surface';
-    });
-    const activeBtn = document.getElementById(`btn-att-${filterType}`);
-    if (activeBtn) activeBtn.className = 'admin-att-btn px-3 py-1 rounded-lg bg-primary text-white shadow-sm';
-
-    renderAdminAttendanceTable(filterType);
-}
-
-function renderAdminAttendanceTable(filterType = currentAdminAttFilter) {
-    const tbody = document.getElementById('admin-attendance-table-body');
-    const thActions = document.getElementById('th-attendance-actions');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    if (thActions) {
-        if (isAdminLoggedIn) thActions.classList.remove('hidden');
-        else thActions.classList.add('hidden');
+async function handleAddFixedShift() {
+    var name = document.getElementById('fixedShiftUserSelect')?.value;
+    var shift = document.getElementById('fixedShiftSlotSelect')?.value;
+    if (!window.fixedShiftsConfig) window.fixedShiftsConfig = [];
+    window.fixedShiftsConfig = window.fixedShiftsConfig.filter(function(f) { return f.nameLao !== name; });
+    window.fixedShiftsConfig.push({ nameLao: name, fixedShift: shift });
+    
+    var sheet = getActiveSheet();
+    if (sheet && sheet.data) {
+        Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); }).forEach(function(dStr) {
+            applyFixedShiftsToDayData(sheet.data[dStr]);
+        });
+        await renderScheduleTable({ skipSwapSync: true });
+        await syncScheduleToSupabase(sheet);
     }
 
-    const todayStr = getLaosDateString();
-    const currentMonthStr = todayStr.substring(0, 7);
-
-    let filteredLogs = attendanceLogs;
-
-    if (filterType === 'daily') {
-        filteredLogs = attendanceLogs.filter(a => getLaosDateString(parseSafeDate(a.timestamp)) === todayStr);
-    } else if (filterType === 'monthly') {
-        filteredLogs = attendanceLogs.filter(a => getLaosDateString(parseSafeDate(a.timestamp)).startsWith(currentMonthStr));
-    }
-
-    if (filteredLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isAdminLoggedIn ? '6' : '5'}" class="p-4 text-center text-outline">ບໍ່ມີຂໍ້ມູນປະຫວັດການມາວຽກ</td></tr>`;
-        return;
-    }
-
-    filteredLogs.forEach(a => {
-        const staff = partnersData.find(p => p.pin === a.pin) || { name: 'PIN: ' + a.pin, shift: 'ກະ 1' };
-        const dt = parseSafeDate(a.timestamp);
-        const isClockIn = (a.type || '').toLowerCase().includes('in');
-        const detectedShift = detectActualShift(dt, staff.shift);
-        
-        let lateMins = 0;
-        if (isClockIn) {
-            lateMins = calculateLateMinutes(dt, staff.shift);
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-surface-container-low';
-        tr.innerHTML = `
-            <td class="p-2.5 font-mono text-[11px]">${dt.toLocaleDateString('en-GB')} ${dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
-            <td class="p-2.5 font-bold text-on-surface">${staff.name} (PIN: ${a.pin})</td>
-            <td class="p-2.5">
-                <span class="px-2 py-0.5 rounded font-bold text-[10px] flex items-center gap-0.5 ${isClockIn ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
-                    <span class="material-symbols-outlined text-xs">${isClockIn ? 'login' : 'logout'}</span>
-                    ${a.type || 'Clock-In'}
-                </span>
-            </td>
-            <td class="p-2.5 font-mono font-bold text-xs text-primary">${detectedShift.name}</td>
-            <td class="p-2.5 font-mono font-bold ${lateMins > 0 ? 'text-amber-700' : 'text-emerald-700'}">
-                ${isClockIn ? (lateMins > 0 ? `+${lateMins} ນາທີ` : '✓ ຕົງເວລາ') : '--'}
-            </td>
-            ${isAdminLoggedIn ? `
-            <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
-                <button type="button" onclick="openEditAttendanceModal('${a.id || ''}', '${a.pin}', '${a.type}', '${a.timestamp}')" class="px-2 py-1 bg-amber-50 text-amber-900 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all">
-                    ແກ້ໄຂ
-                </button>
-            </td>` : ''}
-        `;
-        tbody.appendChild(tr);
-    });
+    if (typeof saveAll === 'function') await saveAll();
+    renderActiveFixedShiftsList();
+    showToast('ສຳເລັດ', 'ລັອກ "' + name + '" ໄວ້ ' + shift + ' ຮຽບຮ້ອຍ!', 'success');
 }
 
-function openEditAttendanceModal(id, pin, type, timestamp) {
-    const staff = partnersData.find(p => p.pin === pin) || { name: 'PIN: ' + pin };
-    const dt = parseSafeDate(timestamp);
-
-    document.getElementById('edit-att-id').value = id || '';
-    document.getElementById('edit-att-staff-name').value = `${staff.name} (${pin})`;
-    document.getElementById('edit-att-type-select').value = type || 'Clock-In';
-    document.getElementById('edit-att-date-input').value = getLaosDateString(dt);
-    document.getElementById('edit-att-time-input').value = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-
-    openModal('edit-attendance-modal');
+async function removeFixedShift(idx) {
+    if (window.fixedShiftsConfig) window.fixedShiftsConfig.splice(idx, 1);
+    if (typeof saveAll === 'function') await saveAll();
+    renderActiveFixedShiftsList();
+    showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
 
-async function handleEditAttendanceSubmit(e) {
-    e.preventDefault();
-    const id = document.getElementById('edit-att-id').value;
-    const type = document.getElementById('edit-att-type-select').value;
-    const dateVal = document.getElementById('edit-att-date-input').value;
-    const timeVal = document.getElementById('edit-att-time-input').value;
-
-    const newTimestamp = `${dateVal}T${timeVal}:00+07:00`;
-
-    if (supabaseClient && id) {
-        try {
-            await supabaseClient
-                .from('attendance')
-                .update({ type: type, timestamp: newTimestamp })
-                .eq('id', id);
-        } catch (e) {
-            console.warn('Update attendance log error:', e);
-        }
+// ⭐ 7. FAIRNESS SUMMARY MODAL FUNCTIONS
+function openFairnessSummaryModal() {
+    var sheet = getActiveSheet();
+    var subEl = document.getElementById('fairnessModalSub');
+    if (subEl && sheet) {
+        subEl.innerText = 'ກວດສອບຄວາມສົມດຸນຂອງ ' + (sheet.title || sheet.data?._meta?.title || '');
     }
 
-    const localLog = attendanceLogs.find(a => a.id == id);
-    if (localLog) {
-        localLog.type = type;
-        localLog.timestamp = newTimestamp;
-    }
-
-    renderAdminAttendanceTable(currentAdminAttFilter);
-    renderEmployeesAndPayroll();
-    updateOnDutyStaffUI();
-    renderEarlyComerStreakRanking();
-
-    closeModal('edit-attendance-modal');
-    showToast('✓ ອັບເດດເວລາປ້ຳໂມງຮຽບຮ້ອຍແລ້ວ!');
-}
-
-async function deleteCurrentAttendanceLog() {
-    const id = document.getElementById('edit-att-id').value;
-    if (!confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບ Log ການປ້ຳໂມງນີ້?')) return;
-
-    if (supabaseClient && id) {
-        try {
-            await supabaseClient.from('attendance').delete().eq('id', id);
-        } catch (e) {
-            console.warn('Delete attendance log error:', e);
-        }
-    }
-
-    attendanceLogs = attendanceLogs.filter(a => a.id != id);
-
-    renderAdminAttendanceTable(currentAdminAttFilter);
-    renderEmployeesAndPayroll();
-    updateOnDutyStaffUI();
-    renderEarlyComerStreakRanking();
-
-    closeModal('edit-attendance-modal');
-    showToast('✓ ລຶບ Log ການປ້ຳໂມງແລ້ວ');
-}
-
-function populateManualAttendanceStaffDropdown() {
-    const select = document.getElementById('manual-att-staff-select');
-    if (!select) return;
-    select.innerHTML = '';
-
-    partnersData.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.pin;
-        opt.textContent = `${p.name} (PIN: ${p.pin} | ${p.role})`;
-        select.appendChild(opt);
-    });
-}
-
-function openManualAttendanceModal(preselectPin = null) {
-    populateManualAttendanceStaffDropdown();
-
-    const today = new Date();
-    const dateInput = document.getElementById('manual-att-date-input');
-    const inTimeInput = document.getElementById('manual-att-in-time');
-    const outTimeInput = document.getElementById('manual-att-out-time');
-
-    if (dateInput) dateInput.value = getLaosDateString(today);
-    if (inTimeInput) inTimeInput.value = '07:00';
-    if (outTimeInput) outTimeInput.value = '16:00';
-
-    if (preselectPin) {
-        const select = document.getElementById('manual-att-staff-select');
-        if (select) select.value = preselectPin;
-    }
-
-    openModal('manual-attendance-modal');
-}
-
-async function handleManualAttendanceSubmit(e) {
-    e.preventDefault();
-    const pin = document.getElementById('manual-att-staff-select').value;
-    const dateVal = document.getElementById('manual-att-date-input').value;
-    const inTimeVal = document.getElementById('manual-att-in-time').value;
-    const outTimeVal = document.getElementById('manual-att-out-time').value;
-
-    const staff = partnersData.find(p => p.pin === pin);
-    if (!staff || !dateVal || !inTimeVal) return;
-
-    const recordsToInsert = [];
-
-    const inIsoString = `${dateVal}T${inTimeVal}:00+07:00`;
-    recordsToInsert.push({
-        pin: pin,
-        type: 'Clock-In',
-        branch: staff.branch || 'NP Branch',
-        timestamp: inIsoString
-    });
-
-    if (outTimeVal) {
-        const outIsoString = `${dateVal}T${outTimeVal}:00+07:00`;
-        recordsToInsert.push({
-            pin: pin,
-            type: 'Clock-Out',
-            branch: staff.branch || 'NP Branch',
-            timestamp: outIsoString
+    var select = document.getElementById('fairnessGroupFilterSelect');
+    if (select) {
+        select.innerHTML = '<option value="ALL">ພະນັກງານທັງໝົດ (All Staff)</option>';
+        (window.employeeGroups || []).forEach(function(grp) {
+            if (grp) {
+                var isG7 = (grp.members || []).length === 7;
+                var tag = isG7 ? ' 🔹 [ກຸ່ມ 7 ຄົນ - Rolling 5/2]' : '';
+                select.innerHTML += '<option value="' + grp.id + '">' + grp.name + ' (' + (grp.members || []).length + ' ຄົນ)' + tag + '</option>';
+            }
         });
     }
 
-    if (supabaseClient) {
-        try {
-            await supabaseClient.from('attendance').insert(recordsToInsert);
-        } catch (e) {
-            console.warn('Manual attendance upload error:', e);
+    renderFairnessSummaryData();
+    document.getElementById('fairnessModal')?.classList.remove('hidden');
+}
+
+function closeFairnessSummaryModal() {
+    document.getElementById('fairnessModal')?.classList.add('hidden');
+}
+
+function renderFairnessSummaryData() {
+    var sheet = getActiveSheet();
+    var schedData = (sheet && sheet.data) ? sheet.data : {};
+    var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); });
+    var filterGroupId = document.getElementById('fairnessGroupFilterSelect')?.value || 'ALL';
+
+    var targetUsers = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
+
+    if (filterGroupId !== 'ALL') {
+        var grp = (window.employeeGroups || []).find(function(g) { return g && g.id === filterGroupId; });
+        if (grp && grp.members) {
+            targetUsers = targetUsers.filter(function(u) { return grp.members.includes(u.nameLao); });
         }
     }
 
-    recordsToInsert.forEach(rec => attendanceLogs.unshift(rec));
+    var tbody = document.getElementById('fairnessSummaryTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
 
-    renderAdminAttendanceTable(currentAdminAttFilter);
-    renderTodayKioskAttendance();
-    updateOnDutyStaffUI();
-    renderEmployeesAndPayroll();
-    renderEarlyComerStreakRanking();
+    if (targetUsers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-slate-400 font-lao">ບໍ່ພົບຂໍ້ມູນພະນັກງານ</td></tr>';
+        return;
+    }
 
-    closeModal('manual-attendance-modal');
-    showToast(`✓ ບັນທຶກເວລາຍ້ອນຫຼັງສຳເລັດ ສຳລັບ ${staff.name} (${dateVal})`);
+    targetUsers.forEach(function(u, idx) {
+        var s1 = 0, s2 = 0, s3 = 0, totalOff = 0;
+
+        dates.forEach(function(d) {
+            var day = schedData[d] || {};
+            var onS1 = (day.shift1 || []).includes(u.nameLao);
+            var onS2 = (day.shift2 || []).includes(u.nameLao);
+            var onS3 = (day.shift3 || []).includes(u.nameLao);
+
+            if (onS1) s1++;
+            if (onS2) s2++;
+            if (onS3) s3++;
+
+            if (!onS1 && !onS2 && !onS3) {
+                totalOff++;
+            }
+        });
+
+        var total = s1 + s2 + s3;
+
+        tbody.innerHTML += '<tr class="hover:bg-slate-50 transition border-b border-slate-100 text-slate-800 font-lao">' +
+            '<td class="p-3 text-slate-400 font-mono">' + (idx + 1) + '</td>' +
+            '<td class="p-3 font-bold flex items-center gap-1.5">' +
+                u.nameLao + ' <span class="text-[10px] font-normal text-slate-400">(' + u.fullName + ')</span>' +
+                (u.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.5 rounded font-bold">ຫົວໜ້າ</span>' : '') +
+            '</td>' +
+            '<td class="p-3 text-center font-semibold text-slate-700">' + s1 + '</td>' +
+            '<td class="p-3 text-center font-semibold text-purple-700">' + s2 + '</td>' +
+            '<td class="p-3 text-center font-bold text-brand-red">' + s3 + '</td>' +
+            '<td class="p-3 text-center font-bold text-emerald-600">' + totalOff + ' ວັນ</td>' +
+            '<td class="p-3 text-right font-black text-slate-900">' + total + ' ກະ</td>' +
+        '</tr>';
+    });
 }
 
-// =========================================================================
-// 12. ADMIN AUTHENTICATION & CRUD (WITH PHOTO PERSISTENCE & SAFE SUPABASE INSERT)
-// =========================================================================
-function unlockAdminMode() {
-    isAdminLoggedIn = true;
-    document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-    document.getElementById('admin-banner-sidebar').classList.remove('hidden');
-    document.getElementById('top-admin-tag').classList.remove('hidden');
-    renderStockTable();
-    renderEmployeesAndPayroll();
-    renderAdminAttendanceTable(currentAdminAttFilter);
-    showToast('🔓 ປົດລັອກ HRM Admin ສຳເລັດແລ້ວ!');
+// ⭐ 8. HOLIDAY MODAL FUNCTIONS
+function openHolidayModal() { 
+    document.getElementById('holidayModal')?.classList.remove('hidden'); 
 }
 
-function lockAdminMode() {
-    isAdminLoggedIn = false;
-    document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
-    document.getElementById('admin-banner-sidebar').classList.add('hidden');
-    document.getElementById('top-admin-tag').classList.add('hidden');
-    renderStockTable();
-    renderAdminAttendanceTable(currentAdminAttFilter);
+async function handleSaveHolidayRange() {
+    var title = document.getElementById('holidayTitleInput')?.value.trim();
+    var start = document.getElementById('holidayStartDateInput')?.value;
+    var end = document.getElementById('holidayEndDateInput')?.value;
+    if (!title || !start || !end) return;
     
-    if (window.location.hash === '#employees' || window.location.hash === '#payroll') {
-        navigateTo('dashboard');
-    }
-    showToast('🔒 ອອກຈາກ Admin Mode ແລ້ວ');
-}
+    var newHol = { title: title, start_date: start, end_date: end };
+    if (!window.specialHolidayRanges) window.specialHolidayRanges = [];
+    window.specialHolidayRanges.push(newHol);
 
-function handleAdminPinSubmit(e) {
-    if (e) e.preventDefault();
-    const input = document.getElementById('modal-admin-pin-input');
-    const val = input.value.trim();
+    document.getElementById('holidayModal')?.classList.add('hidden');
+    await renderScheduleTable({ skipSwapSync: true });
+    showToast('ສຳເລັດ', 'ບັນທຶກວັນພັກພິເສດແລ້ວ', 'success');
 
-    if (val === '7777' || val === '777777') {
-        unlockAdminMode();
-        closeAdminModalForce();
-        navigateTo('employees');
-    } else {
-        showToast('❌ ລະຫັດຜ່ານ Admin ບໍ່ຖືກຕ້ອງ');
-    }
-}
-
-function closeAdminModalForce() {
-    const modal = document.getElementById('admin-pin-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-    const input = document.getElementById('modal-admin-pin-input');
-    if (input) input.value = '';
-}
-
-function openEditStaffModal(pin) {
-    const p = partnersData.find(item => item.pin === pin);
-    if (!p) return;
-
-    document.getElementById('edit-staff-pin-hidden').value = p.pin;
-    document.getElementById('edit-staff-pin-disabled').value = p.pin;
-    document.getElementById('edit-staff-id-input').value = p.staff_id || '';
-    document.getElementById('edit-staff-name-input').value = p.name || '';
-    document.getElementById('edit-staff-branch-input').value = p.branch || 'NP Branch';
-    document.getElementById('edit-staff-role-input').value = p.role || 'Barista';
-    document.getElementById('edit-staff-phone-input').value = p.phone || '';
-    document.getElementById('edit-staff-salary-input').value = p.salary || 3800000;
-    document.getElementById('edit-staff-benefit-input').value = p.benefit || 0;
-    document.getElementById('edit-staff-benefit-approved').checked = p.benefit_approved === true;
-    document.getElementById('edit-staff-type-input').value = p.emp_type || 'Full-time';
-    document.getElementById('edit-staff-shift-input').value = p.shift || 'ກະ 1';
-
-    const photoVal = p.photo_url || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120';
-    document.getElementById('edit-staff-photo-input').value = photoVal;
-    document.getElementById('edit-preview-img').src = photoVal;
-
-    openModal('edit-staff-modal');
-}
-
-async function handleEditStaffSubmit(e) {
-    e.preventDefault();
-    const pin = document.getElementById('edit-staff-pin-hidden').value;
-    const isBenefitApproved = document.getElementById('edit-staff-benefit-approved').checked;
-    const photoUrl = document.getElementById('edit-staff-photo-input').value.trim() || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120';
-
-    const updatedData = {
-        staff_id: document.getElementById('edit-staff-id-input').value.trim(),
-        name: document.getElementById('edit-staff-name-input').value.trim(),
-        branch: document.getElementById('edit-staff-branch-input').value.trim(),
-        role: document.getElementById('edit-staff-role-input').value.trim(),
-        phone: document.getElementById('edit-staff-phone-input').value.trim(),
-        salary: parseInt(document.getElementById('edit-staff-salary-input').value) || 0,
-        benefit: parseInt(document.getElementById('edit-staff-benefit-input').value) || 0,
-        benefit_approved: isBenefitApproved,
-        emp_type: document.getElementById('edit-staff-type-input').value,
-        shift: document.getElementById('edit-staff-shift-input').value,
-        photo_url: photoUrl
-    };
-
-    localBenefitApprovals[pin] = isBenefitApproved;
-    localStorage.setItem('staff_benefit_approvals', JSON.stringify(localBenefitApprovals));
-
-    if (supabaseClient) {
-        try {
-            // ກັ່ນຕອງຖັນສະເພາະທີ່ມີໃນ Supabase ເທົ່ານັ້ນ
-            let payload = { ...updatedData };
-            if (knownStaffDbColumns && knownStaffDbColumns.length > 0) {
-                payload = {};
-                for (const col of knownStaffDbColumns) {
-                    if (updatedData[col] !== undefined) payload[col] = updatedData[col];
-                }
-            }
-            const { error } = await supabaseClient.from('staff').update(payload).eq('pin', pin);
-            if (error) {
-                console.error('Update staff error:', error);
-                showToast('⚠️ Supabase Error: ' + error.message);
-            }
-        } catch (err) {
-            console.warn('Update staff exception:', err);
+    try {
+        if (typeof saveAll === 'function') await saveAll();
+        if (window.supabaseClient) {
+            await window.supabaseClient.from('special_holidays').insert([newHol]);
         }
-    }
-
-    const localStaff = partnersData.find(p => p.pin === pin);
-    if (localStaff) Object.assign(localStaff, updatedData);
-
-    renderEmployeesAndPayroll();
-    closeModal('edit-staff-modal');
-    showToast(`✓ ອັບເດດຂໍ້ມູນ ${updatedData.name} ສຳເລັດ!`);
+    } catch (err) {}
 }
 
-async function deleteStaff(pin, name) {
-    if (confirm(`ທ່ານຕ້ອງການລົບພະນັກງານ: ${name} (PIN: ${pin}) ອອກຈາກ Database ແທ້ບໍ?`)) {
-        if (supabaseClient) {
-            try {
-                const { error } = await supabaseClient.from('staff').delete().eq('pin', pin);
-                if (error) {
-                    console.error('Delete staff error:', error);
-                    showToast('⚠️ Supabase Delete Error: ' + error.message);
-                }
-            } catch (e) {
-                console.warn('Delete staff error:', e);
-            }
-        }
+// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່ (ສະແດງສະເພາະຂໍ້ມູນຈາກ Supabase)
+async function renderScheduleTable(options) {
+    var opts = options || {};
+    
+    renderSheetDropdown();
+    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
 
-        partnersData = partnersData.filter(p => p.pin !== pin);
-        renderEmployeesAndPayroll();
-        showToast(`✓ ລົບພະນັກງານ ${name} ແລ້ວ`);
+    var sheet = getActiveSheet();
+    var tbody = document.getElementById('scheduleTableBody');
+    var titleEl = document.getElementById('scheduleTableTitle');
+    var notesEl = document.getElementById('scheduleNotesDisplay');
+    var banner = document.getElementById('scheduleStatusBanner');
+    var badge = document.getElementById('scheduleStatusBadge');
+
+    // ✅ ຖ້າບໍ່ມີຕາຕະລາງໃນ Supabase ໃຫ້ສະແດງສະຖານະວ່າງເປົ່າ ບໍ່ສ້າງຂຶ້ນເອງ!
+    if (!sheet) {
+        if (titleEl) titleEl.innerHTML = '<span class="text-slate-400">ຍັງບໍ່ມີຂໍ້ມູນຕາຕະລາງໃນລະບົບ Supabase</span>';
+        if (notesEl) notesEl.innerText = '';
+        if (badge) badge.innerHTML = '<span class="text-slate-500">ບໍ່ພົບຕາຕະລາງ</span>';
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-slate-400 font-lao text-sm">' +
+                'ຍັງບໍ່ມີຕາຕະລາງປະຈຳການໃນຖານຂໍ້ມູນ Supabase (ກະລຸນາກົດປຸ່ມ "+ ສ້າງຕາຕະລາງໃໝ່" ຫຼື "ສ້າງຫຼາຍເດືອນ")' +
+                '</td></tr>';
+        }
+        return;
     }
-}
 
-async function deleteStock(sku, branch, name) {
-    if (confirm(`ທ່ານຕ້ອງການລົບສິນຄ້າ SKU: ${sku} (${name}) ແທ້ບໍ?`)) {
-        if (supabaseClient) {
-            try {
-                await supabaseClient.from('main_inventory').delete().eq('sku', sku).eq('branch', branch);
-            } catch (e) {
-                console.warn('Delete stock error:', e);
-            }
-        }
+    await fetchScheduleSwapsFromCloud();
 
-        stockData = stockData.filter(s => !(s.sku === sku && s.branch === branch));
-        renderStockTable();
-        renderStockAnalytics();
-        populateStockMovementDropdown();
-        showToast(`✓ ລົບສິນຄ້າ ${name} ແລ້ວ`);
+    if (!opts.skipSwapSync) {
+        syncAllApprovedSwapsIntoSheet(sheet);
     }
-}
 
-// -------------------------------------------------------------------------
-// SAFE STAFF SUBMISSION WITH AUTO SCHEMA DETECTION & RETRY
-// -------------------------------------------------------------------------
-async function handlePartnerSubmit(e) {
-    e.preventDefault();
-    const isBenefitApproved = document.getElementById('staff-benefit-approved-input').checked;
-    const pin = document.getElementById('staff-pin-input').value.trim();
-    const photoUrl = document.getElementById('staff-photo-input').value.trim() || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120';
+    var scheduleData = sheet.data || {};
+    var mKey = sheet.monthKey || sheet.month_key || '2026-10';
+    var parts = mKey.split('-').map(Number);
+    var year = parts[0] || 2026;
+    var month = parts[1] || 10;
+    var daysCount = new Date(year, month, 0).getDate() || 30;
 
-    const newStaff = {
-        pin: pin,
-        staff_id: document.getElementById('staff-id-input').value.trim(),
-        name: document.getElementById('staff-name-input').value.trim(),
-        branch: document.getElementById('staff-branch-input').value.trim(),
-        role: document.getElementById('staff-role-input').value.trim(),
-        phone: document.getElementById('staff-phone-input').value.trim(),
-        salary: parseInt(document.getElementById('staff-salary-input').value) || 3800000,
-        benefit: parseInt(document.getElementById('staff-benefit-input').value) || 0,
-        benefit_approved: isBenefitApproved,
-        emp_type: document.getElementById('staff-type-input').value,
-        shift: document.getElementById('staff-shift-input').value,
-        photo_url: photoUrl,
-        active: true
-    };
+    var isOfficial = (sheet.status === 'PUBLISHED');
+    var isG7 = Boolean(sheet.isG7GroupSheet);
 
-    localBenefitApprovals[pin] = isBenefitApproved;
-    localStorage.setItem('staff_benefit_approvals', JSON.stringify(localBenefitApprovals));
+    var currentTitle = sheet.title || sheet.data?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + month + '/' + year);
+    var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
-    if (!supabaseClient) {
-        showToast('⚠️ ຍັງບໍ່ທັນເຊື່ອມຕໍ່ກັບ Supabase (ກວດສອບ API Key ທີ່ປຸ່ມຕັ້ງຄ່າ)');
-    } else {
-        showToast('⏳ ກຳລັງບັນທຶກພະນັກງານລົງ Supabase...');
-        
-        let payload = { ...newStaff };
+    if (titleEl) {
+        titleEl.innerHTML = '<span>' + currentTitle + '</span>' +
+            '<span class="no-print ml-2 text-xs font-semibold ' + (isOfficial ? 'text-emerald-700' : 'text-amber-700') + '">' +
+                '(' + (isOfficial ? 'ສະບັບທາງການ' : 'ສະບັບຮ່າງລ່ວງໜ້າ') + ')' +
+            '</span>';
+    }
+    
+    if (notesEl) notesEl.innerText = currentNotes;
 
-        // ຖ້າຮູ້ຖັນທີ່ມີແທ້ໆໃນ Database ໃຫ້ສົ່ງສະເພາະຖັນນັ້ນ
-        if (knownStaffDbColumns && knownStaffDbColumns.length > 0) {
-            payload = {};
-            for (const col of knownStaffDbColumns) {
-                if (newStaff[col] !== undefined) {
-                    payload[col] = newStaff[col];
-                }
-            }
-        }
+    var modCountText = document.getElementById('modifiedCellCountText');
 
-        let { error } = await supabaseClient.from('staff').insert([payload]);
-
-        // ຖ້າຕິດ Error ເລື່ອງຖັນບໍ່ມີ (PGRST204 ຫຼື Column doesn't exist)
-        if (error) {
-            console.warn('Initial insert failed:', error.message);
-
-            // ລອງຕັດຖັນທີ່ມັກບໍ່ມີໃນ DB ເຊັ່ນ: photo_url, benefit_approved, active, emp_type
-            delete payload.photo_url;
-            delete payload.benefit_approved;
-            delete payload.active;
-            delete payload.emp_type;
-            delete payload.benefit;
-
-            const retryResult = await supabaseClient.from('staff').insert([payload]);
-            error = retryResult.error;
-        }
-
-        if (error) {
-            console.error('Supabase staff insert error:', error);
-            showToast('❌ Supabase ປະຕິເສດ: ' + (error.message || error.details || 'ກະລຸນາກວດສອບ RLS'));
-            return; // ຖ້າບໍ່ລົງ Database ແທ້ ຈະບໍ່ປິດ Modal
+    if (banner && badge) {
+        var g7Badge = isG7 ? '<span class="ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🔹 ກຸ່ມ 7 ຄົນ</span>' : '';
+        if (isOfficial) {
+            banner.className = "no-print px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs";
+            badge.className = "font-bold text-emerald-800 flex items-center gap-2";
+            badge.innerHTML = '<span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official) ' + g7Badge;
         } else {
-            showToast('✓ ບັນທຶກລົງ Supabase ສຳເລັດແລ້ວ!');
+            banner.className = "no-print px-6 py-2 bg-amber-50 border-b border-amber-200 flex justify-between items-center text-xs";
+            badge.className = "font-bold text-amber-900 flex items-center gap-2";
+            badge.innerHTML = '<span class="material-symbols-outlined text-sm text-amber-700">pending_actions</span> ສະບັບຮ່າງລ່ວງໜ້າ ' + g7Badge;
         }
     }
 
-    // ເພີ່ມລົງໃນລາຍການ Client ທັນທີ
-    partnersData = partnersData.filter(p => p.pin !== pin); // ກັນ duplicate
-    partnersData.unshift(newStaff);
+    var sheetLogs = (window.scheduleAuditLogs || []).filter(function(l) { return l && l.sheetId === sheet.id; });
+    if (modCountText) {
+        modCountText.innerHTML = sheetLogs.length > 0 ? '<span class="material-symbols-outlined text-xs text-amber-700">history_edu</span> ມີການດັດແກ້: ' + sheetLogs.length + ' ຈຸດ' : '';
+    }
 
-    renderEmployeesAndPayroll();
-    populateManualAttendanceStaffDropdown();
-    closeModal('partner-modal');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    var dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
 
-    // ລ້າງຄ່າໃນຟອມ
-    document.getElementById('staff-pin-input').value = '';
-    document.getElementById('staff-name-input').value = '';
-    document.getElementById('staff-phone-input').value = '';
-    document.getElementById('staff-photo-input').value = '';
+    var prevHeaderType = null;
+
+    for (var i = 1; i <= daysCount; i++) {
+        var dayNum = i < 10 ? '0' + i : '' + i;
+        var mNum = month < 10 ? '0' + month : '' + month;
+        var dStr = year + '-' + mNum + '-' + dayNum;
+        var dayOfWeek = dayNamesLao[new Date(year, month - 1, i).getDay()];
+        var dayData = scheduleData[dStr] || { isWeekend: false, shift1: [], shift2: [], shift3: [] };
+        
+        var isHol = isDateInHolidayRange(dStr);
+        var isWeekendOrHol = (dayOfWeek === 'SAT' || dayOfWeek === 'SUN' || isHol || dayData.isWeekend);
+
+        var currentHeaderType = isWeekendOrHol ? 'HOLIDAY' : 'REGULAR';
+        var shouldShowHeader = (i === 1) || 
+                                (dayOfWeek === 'SAT') || 
+                                (dayOfWeek === 'MON' && !isWeekendOrHol) || 
+                                (currentHeaderType !== prevHeaderType);
+
+        if (shouldShowHeader) {
+            if (isWeekendOrHol) {
+                tbody.innerHTML += '<tr class="bg-red-50/80 font-bold border-t-2 border-b border-black text-brand-red">' +
+                    '<td colspan="2" style="width: 140px; min-width: 140px;" class="p-1 text-center font-bold text-xs">ວັນພັກ</td>' +
+                    '<td style="width: 33%;" class="p-1 text-center font-bold text-xs">08:00 - 13:30</td>' +
+                    '<td style="width: 31%;" class="p-1 text-center font-bold text-xs">13:30 - 19:00</td>' +
+                    '<td style="width: 22%;" class="p-1 text-center font-bold text-xs">19:00 - 08:00</td>' +
+                '</tr>';
+            } else {
+                tbody.innerHTML += '<tr class="bg-slate-100 font-bold border-t-2 border-b border-black text-slate-800">' +
+                    '<th style="width: 90px; min-width: 90px;" class="p-1 text-center font-bold text-xs">ວັນທີ</th>' +
+                    '<th style="width: 50px; min-width: 50px;" class="p-1 text-center font-bold text-xs">ວັນ</th>' +
+                    '<th style="width: 33%;" class="p-1 font-bold text-xs">08:00 - 16:00</th>' +
+                    '<th style="width: 31%;" class="p-1 font-bold text-xs">12:00 - 20:00</th>' +
+                    '<th style="width: 22%;" class="p-1 font-bold text-xs">20:00 - 08:00</th>' +
+                '</tr>';
+            }
+        }
+        prevHeaderType = currentHeaderType;
+
+        var s1Rows = isWeekendOrHol ? 1 : 2;
+        var s1Cols = isWeekendOrHol ? 3 : 4;
+
+        var s2Rows = isWeekendOrHol ? 1 : 2;
+        var s2Cols = isWeekendOrHol ? 3 : 3;
+
+        var s3Rows = isWeekendOrHol ? 1 : 2;
+        var s3Cols = isWeekendOrHol ? 3 : 2;
+
+        tbody.innerHTML += '<tr class="' + (isWeekendOrHol ? 'bg-slate-50' : 'bg-white') + '">' +
+            '<td class="font-bold text-center text-xs whitespace-nowrap px-1" style="width: 90px; min-width: 90px;">' + i + '/' + mNum + '/' + year + '</td>' +
+            '<td class="font-bold text-center text-xs ' + (isWeekendOrHol ? 'text-brand-red' : '') + '" style="width: 50px; min-width: 50px;">' + dayOfWeek + '</td>' +
+            '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift1', dayData.shift1 || [], s1Rows, s1Cols, isAdmin, sheet.id) + '</td>' +
+            '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift2', dayData.shift2 || [], s2Rows, s2Cols, isAdmin, sheet.id) + '</td>' +
+            '<td class="p-0">' + renderPixelExcelGrid(dStr, 'shift3', dayData.shift3 || [], s3Rows, s3Cols, isAdmin, sheet.id) + '</td>' +
+        '</tr>';
+    }
 }
 
-async function handleStockSubmit(e) {
+// ⭐ 10. RENDER PIXEL EXCEL GRID (ພ້ອມລະບົບ Drag & Drop Swap ສະຫຼັບຊື່ໃນຕາຕະລາງ)
+function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
+    cols = Math.max(cols, 1); rows = Math.max(rows, 1);
+    var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
+    var total = rows * cols;
+
+    for (var idx = 0; idx < total; idx++) {
+        var name = list[idx] || '';
+        var isLeader = (window.users || []).find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, name) && u.isLeader; });
+        var cleanName = (name || '').replace(/'/g, "\\'");
+        var clickHandler = isAdmin ? 'onclick="openCellModal(\'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
+        var dragHandlers = isAdmin ? 'draggable="true" ondragstart="handleSchedCellDragStart(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')" ondragover="handleSchedCellDragOver(event)" ondragleave="handleSchedCellDragLeave(event)" ondrop="handleSchedCellDrop(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
+
+        var isSwapped = (window.swapHistory || []).some(function(sw) {
+            if (!sw) return false;
+            var st = String(sw.status || '').toUpperCase();
+            var sStart = sw.startDate || sw.start_date;
+            var sEnd = sw.endDate || sw.end_date || sStart;
+            return st === 'COMPLETED' && (date >= sStart && date <= sEnd) &&
+                   (isSchedNameMatch(sw.fromName || sw.from_name, name) || isSchedNameMatch(sw.toName || sw.to_name, name));
+        });
+
+        var borderR = ((idx + 1) % cols !== 0) ? 'border-r border-black' : '';
+        var borderB = (idx < (rows - 1) * cols) ? 'border-b border-black' : '';
+
+        var leaveInfo = (typeof getStaffLeaveInfo === 'function' && name) ? getStaffLeaveInfo(name, shift, date) : null;
+
+        var cellBg = 'bg-white';
+        if (isSwapped && name) {
+            cellBg = 'bg-amber-50/50 hover:bg-amber-100/60';
+        } else if (leaveInfo && name) {
+            cellBg = 'bg-slate-50/60';
+        } else if (isAdmin) {
+            cellBg = 'bg-white hover:bg-slate-50';
+        }
+
+        var textClass = isLeader ? 'text-brand-red font-bold' : 'text-slate-800 font-medium';
+        if (leaveInfo) {
+            textClass = 'line-through text-slate-400 opacity-60';
+        }
+
+        var badgesHtml = '';
+        if (isLeader && name) {
+            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block" title="ຫົວໜ້າກະ"></span>';
+        }
+        if (isSwapped && name) {
+            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs" title="ປ່ຽນກະມາ">' +
+                            '<span class="material-symbols-outlined text-[10px] leading-none">sync_alt</span>' +
+                          '</span>';
+        }
+        if (leaveInfo && name) {
+            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline">ພັກ</span>';
+        }
+
+        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-pointer select-none' : '') + '" ' + clickHandler + ' ' + dragHandlers + '>' +
+            '<span class="inline-flex items-center justify-center pointer-events-none ' + textClass + '">' +
+                '<span>' + name + '</span>' +
+                badgesHtml +
+            '</span>' +
+        '</div>';
+    }
+    html += '</div>';
+    return html;
+}
+
+// ⭐ 10.5 INTERACTIVE CELL-TO-CELL DRAG & DROP SWAP HANDLERS
+window.draggedSchedCell = null;
+
+function handleSchedCellDragStart(e, date, shift, index, currentName) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.draggedSchedCell = {
+        date: date,
+        shift: shift,
+        index: parseInt(index, 10) || 0,
+        name: (currentName || '').replace(/\\'/g, "'")
+    };
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', window.draggedSchedCell.name);
+    }
+}
+
+function handleSchedCellDragOver(e) {
+    if (!window.draggedSchedCell) return;
     e.preventDefault();
-    const newItem = {
-        sku: document.getElementById('modal-sku').value.trim(),
-        branch: document.getElementById('modal-branch').value.trim(),
-        name: document.getElementById('modal-item-name').value.trim(),
-        category: document.getElementById('modal-item-category').value,
-        stock: parseInt(document.getElementById('modal-item-qty').value) || 0,
-        min_stock: parseInt(document.getElementById('modal-item-min').value) || 1,
-        status: 'OK'
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('ring-2', 'ring-brand-red', 'bg-red-50/40', 'z-10');
+}
+
+function handleSchedCellDragLeave(e) {
+    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/40', 'z-10');
+}
+
+async function handleSchedCellDrop(e, targetDate, targetShift, targetIndex, targetName) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/40', 'z-10');
+
+    var src = window.draggedSchedCell;
+    window.draggedSchedCell = null;
+    if (!src) return;
+
+    var tIdx = parseInt(targetIndex, 10) || 0;
+    var tName = (targetName || '').replace(/\\'/g, "'");
+
+    if (src.date === targetDate && src.shift === targetShift && src.index === tIdx) return;
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    if (!sheet.data) sheet.data = {};
+    if (!sheet.data[src.date]) sheet.data[src.date] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[targetDate]) sheet.data[targetDate] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[src.date][src.shift]) sheet.data[src.date][src.shift] = [];
+    if (!sheet.data[targetDate][targetShift]) sheet.data[targetDate][targetShift] = [];
+
+    var srcList = sheet.data[src.date][src.shift];
+    var tgtList = sheet.data[targetDate][targetShift];
+
+    while (srcList.length <= src.index) srcList.push('');
+    while (tgtList.length <= tIdx) tgtList.push('');
+
+    srcList[src.index] = tName;
+    tgtList[tIdx] = src.name;
+
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(err) {}
+
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    await syncScheduleToSupabase(sheet);
+    showToast('ສະຫຼັບຊື່ສຳເລັດ', 'ອັບເດດຕຳແໜ່ງລົງ Supabase ແລ້ວ!', 'success');
+}
+
+// 11. CELL MODAL & UPDATES
+function openCellModal(date, shift, index, currentName) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.activeEditCell = { 
+        date: date, 
+        shift: shift, 
+        index: parseInt(index, 10) || 0, 
+        currentName: (currentName || '').replace(/\\'/g, "'") 
+    };
+    
+    var subtitle = document.getElementById('cellModalSubtitle');
+    if (subtitle) subtitle.innerText = 'ວັນທີ: ' + date + ' [' + shift + ']';
+    
+    var searchInput = document.getElementById('searchCellStaffInput');
+    if (searchInput) searchInput.value = '';
+
+    renderCellStaffList('');
+    document.getElementById('cellSelectModal')?.classList.remove('hidden');
+}
+
+async function selectStaffForCell(nameLao) {
+    if (!window.activeEditCell) return;
+    var act = window.activeEditCell;
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    if (sheet.status === 'PUBLISHED' && act.currentName !== nameLao) {
+        closeCellModal();
+        openEditPublishedRemarkModal({ 
+            date: act.date, 
+            shift: act.shift, 
+            index: act.index, 
+            currentName: act.currentName, 
+            newName: nameLao 
+        });
+        return;
+    }
+
+    await applyCellUpdate(sheet, act.date, act.shift, act.index, nameLao);
+}
+
+async function clearCurrentCell() {
+    if (!window.activeEditCell) return;
+    var act = window.activeEditCell;
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    if (sheet.status === 'PUBLISHED' && act.currentName) {
+        closeCellModal();
+        openEditPublishedRemarkModal({
+            date: act.date,
+            shift: act.shift,
+            index: act.index,
+            currentName: act.currentName,
+            newName: '(ວ່າງ)'
+        });
+        return;
+    }
+
+    await applyCellUpdate(sheet, act.date, act.shift, act.index, '');
+}
+
+async function applyCellUpdate(sheet, date, shift, index, nameLao) {
+    if (!sheet) return;
+    if (!sheet.data) sheet.data = {};
+    if (!sheet.data[date]) sheet.data[date] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[date][shift]) sheet.data[date][shift] = [];
+
+    var list = sheet.data[date][shift];
+
+    if (!nameLao || nameLao === '(ວ່າງ)') {
+        if (index < list.length) list[index] = '';
+    } else {
+        while (list.length <= index) {
+            list.push('');
+        }
+        list[index] = nameLao;
+    }
+
+    sheet.data[date][shift] = list;
+
+    try {
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    closeCellModal();
+
+    var isSynced = await syncScheduleToSupabase(sheet);
+    if (isSynced) {
+        showToast('ສຳເລັດ', 'ດັດແກ້ຕາຕະລາງ ແລະ ບັນທຶກລົງ Database ແລ້ວ!', 'success');
+    }
+
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+}
+
+function openEditPublishedRemarkModal(editData) {
+    window.pendingPublishedCellEdit = editData;
+    var targetEl = document.getElementById('remarkModalTargetInfo');
+    var oldEl = document.getElementById('remarkOldName');
+    var newEl = document.getElementById('remarkNewName');
+    var inputEl = document.getElementById('editPublishedRemarkInput');
+
+    if (targetEl) targetEl.innerText = 'ວັນທີ: ' + editData.date + ' [' + editData.shift + ']';
+    if (oldEl) oldEl.innerText = editData.currentName || '(ຊ່ອງວ່າງ)';
+    if (newEl) newEl.innerText = editData.newName;
+    if (inputEl) {
+        inputEl.value = '';
+        setTimeout(function() { inputEl.focus(); }, 100);
+    }
+
+    document.getElementById('editPublishedRemarkModal')?.classList.remove('hidden');
+}
+
+function closeEditPublishedRemarkModal() {
+    document.getElementById('editPublishedRemarkModal')?.classList.add('hidden');
+    window.pendingPublishedCellEdit = null;
+}
+
+async function confirmApplyPublishedCellUpdate() {
+    if (!window.pendingPublishedCellEdit) return;
+    var act = window.pendingPublishedCellEdit;
+    var reasonInput = document.getElementById('editPublishedRemarkInput');
+    var reason = reasonInput ? reasonInput.value.trim() : '';
+    if (!reason) reason = 'ດັດແກ້ຕາມຄວາມຈຳເປັນ';
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
+    window.scheduleAuditLogs.unshift({
+        id: Date.now(),
+        sheetId: sheet.id,
+        sheetTitle: sheet.title,
+        date: act.date,
+        shift: act.shift,
+        oldName: act.currentName || '(ວ່າງ)',
+        newName: act.newName,
+        reason: reason,
+        adminName: window.currentUser?.fullName || 'Admin',
+        timestamp: new Date().toLocaleString('lo-LA')
+    });
+
+    closeEditPublishedRemarkModal();
+    await applyCellUpdate(sheet, act.date, act.shift, act.index, act.newName);
+}
+
+// ⭐ 12. DROPDOWN & SHEET ACTIONS (ບໍ່ເອີ້ນສ້າງຕາຕະລາງຈຳລອງ)
+function renderSheetDropdown() {
+    var select = document.getElementById('scheduleSheetSelect');
+    if (!select) return;
+    select.innerHTML = '';
+
+    if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
+        var emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.innerText = '-- ບໍ່ມີຕາຕະລາງໃນ Supabase --';
+        select.appendChild(emptyOpt);
+        return;
+    }
+
+    (window.scheduleSheets || []).forEach(function(sheet) {
+        if (!sheet) return;
+        var opt = document.createElement('option');
+        opt.value = sheet.id;
+        var sTitle = sheet.title || sheet.data?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + (sheet.monthKey || ''));
+        opt.innerText = (sheet.status === 'PUBLISHED' ? '[ທາງການ] ' : '[ສະບັບຮ່າງ] ') + sTitle;
+        if (String(sheet.id) === String(window.activeSheetId)) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+function changeActiveSheet() {
+    window.activeSheetId = document.getElementById('scheduleSheetSelect')?.value;
+    renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    try {
+        if (typeof saveAll === 'function') saveAll();
+    } catch(e) {}
+}
+
+async function handleCreateNewSheet() {
+    var month = document.getElementById('newSheetMonthInput')?.value;
+    if (!month) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກເດືອນ', 'error');
+        return;
+    }
+    var title = document.getElementById('newSheetTitleInput')?.value.trim() || ('ຕາຕະລາງປະຈຳການ ' + month);
+    var [y, m] = month.split('-').map(Number);
+    var newId = 'sheet-' + Date.now();
+    
+    var isContract = title.includes('ສັນຍາ');
+    var targetMembers = isContract ? getContractStaffList() : getPermanentStaffList();
+    var generated = generateMonthDataZigzag(y, m, targetMembers);
+
+    var activeSheet = getActiveSheet();
+    var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
+
+    var newSheet = {
+        id: newId,
+        monthKey: month,
+        title: title,
+        notes: inheritedNotes,
+        status: 'DRAFT',
+        isG7GroupSheet: isContract,
+        data: generated
     };
 
-    if (supabaseClient) {
-        try {
-            await supabaseClient.from('main_inventory').insert([newItem]);
-        } catch (e) {
-            console.warn('Insert stock error:', e);
-        }
-    }
-
-    stockData.unshift(newItem);
-
-    renderStockTable();
-    renderStockAnalytics();
-    populateStockMovementDropdown();
-    closeModal('stock-modal');
-    showToast(`✓ ເພີ່ມ SKU ${newItem.sku} ແລ້ວ!`);
-}
-
-// Fetch Supabase Data with Safe Network Retry & Schema Recording
-async function fetchDataFromSupabase() {
-    if (!supabaseClient) return;
+    if (!window.scheduleSheets) window.scheduleSheets = [];
+    window.scheduleSheets.push(newSheet);
+    window.activeSheetId = newId;
 
     try {
-        const { data: stockRes } = await supabaseClient.from('main_inventory').select('*').not('sku', 'ilike', '%XS').order('sku');
-        if (stockRes && stockRes.length > 0) {
-            stockData = stockRes;
-            renderStockTable();
-            renderStockAnalytics();
-            populateStockMovementDropdown();
-        }
-    } catch (e) {
-        console.warn('Stock fetch warning:', e);
-    }
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    document.getElementById('newSheetModal')?.classList.add('hidden');
+    renderSheetDropdown();
+    await renderScheduleTable({ skipSwapSync: true });
+    showToast('ສຳເລັດ', 'ສ້າງ "' + title + '" ສຳເລັດ!', 'success');
+
+    await syncScheduleToSupabase(newSheet);
+}
+
+function openNewSheetModal() { document.getElementById('newSheetTitleInput').value = ''; document.getElementById('newSheetModal')?.classList.remove('hidden'); }
+
+function openEditSheetInfoModal() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    document.getElementById('editSheetTitleInput').value = sheet.title || sheet.data?._meta?.title || '';
+    document.getElementById('editSheetNotesInput').value = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
+    document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
+}
+
+async function handleSaveSheetInfo() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    var newTitle = document.getElementById('editSheetTitleInput')?.value.trim();
+    var newNotes = document.getElementById('editSheetNotesInput')?.value.trim();
+
+    sheet.title = newTitle || sheet.title;
+    sheet.notes = newNotes;
+
+    if (!sheet.data) sheet.data = {};
+    sheet.data._meta = { title: sheet.title, notes: sheet.notes };
 
     try {
-        const { data: staffRes, error } = await supabaseClient.from('staff').select('*').order('pin');
-        if (error) {
-            console.error('Fetch staff error:', error);
-        } else if (staffRes && staffRes.length > 0) {
-            // ບັນທຶກໂຄງສ້າງຖັນທີ່ Supabase ມີແທ້ໆ
-            knownStaffDbColumns = Object.keys(staffRes[0]);
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
 
-            partnersData = staffRes.map(s => ({
-                ...s,
-                benefit_approved: localBenefitApprovals[s.pin] !== undefined ? localBenefitApprovals[s.pin] : (s.benefit_approved === true)
-            }));
-            renderEmployeesAndPayroll();
-        }
-    } catch (e) {
-        console.warn('Staff fetch warning:', e);
-    }
+    document.getElementById('editSheetInfoModal')?.classList.add('hidden');
+    renderSheetDropdown();
+    await renderScheduleTable({ skipSwapSync: true });
+    showToast('ສຳເລັດ', 'ບັນທຶກຫົວຂໍ້ & ໝາຍເຫດ ສຳເລັດ!', 'success');
+    await syncScheduleToSupabase(sheet);
+}
+
+// ⭐ 13. ຟັງຊັນ RESET ຕາຕະລາງ (ລ້າງຊື່ພະນັກງານທຸກຄົນອອກ 100% ໃຫ້ເປັນຕາຕະລາງວ່າງ)
+async function promptResetSchedule() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
+
+    var parts = (sheet.monthKey || '2026-10').split('-').map(Number);
+    var year = parts[0] || 2026;
+    var month = parts[1] || 10;
+
+    sheet.data = createBlankMonthData(year, month);
 
     try {
-        const { data: moveRes } = await supabaseClient.from('daily_inventory_movement').select('*').order('id', { ascending: false }).limit(100);
-        if (moveRes) {
-            stockMovements = moveRes;
-            renderStockAnalytics();
-            renderKioskMovementLogs();
-        }
-    } catch (e) {
-        console.warn('Movement fetch warning:', e);
-    }
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    await renderScheduleTable({ skipSwapSync: true });
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ລ້າງຊື່ພະນັກງານອອກຈາກຕາຕະລາງທັງໝົດແລ້ວ!', 'success');
+
+    await syncScheduleToSupabase(sheet);
+}
+
+async function promptDeleteCurrentSheet() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    if (!confirm('ທ່ານຕ້ອງການລຶບ "' + sheet.title + '" ອອກຈາກລະບົບແທ້ບໍ່?')) return;
+
+    var delId = sheet.id;
+    window.scheduleSheets = (window.scheduleSheets || []).filter(function(s) { return String(s.id) !== String(delId); });
+    window.activeSheetId = window.scheduleSheets.length > 0 ? window.scheduleSheets[0].id : null;
 
     try {
-        const { data: attRes } = await supabaseClient.from('attendance').select('*').order('id', { ascending: false });
-        if (attRes) {
-            attendanceLogs = attRes.map(normalizeAttendanceLog);
-            renderTodayKioskAttendance();
-            updateOnDutyStaffUI();
-            renderEmployeesAndPayroll();
-            renderEarlyComerStreakRanking();
-            renderAdminAttendanceTable(currentAdminAttFilter);
+        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+    } catch(e) {}
+
+    if (window.supabaseClient) {
+        await window.supabaseClient.from('schedule_sheets').delete().eq('id', delId);
+    }
+
+    renderSheetDropdown();
+    await renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ລຶບຕາຕະລາງອອກຈາກ Supabase ແລ້ວ!', 'success');
+}
+
+async function saveDraft() { 
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    sheet.status = 'DRAFT'; 
+    renderSheetDropdown(); 
+    await renderScheduleTable({ skipSwapSync: true }); 
+    showToast('ສຳເລັດ', 'ບັນທຶກສະບັບຮ່າງ (Draft) ສຳເລັດ', 'success'); 
+    await syncScheduleToSupabase(sheet);
+}
+
+async function publishSchedule() {
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    sheet.status = 'PUBLISHED';
+    renderSheetDropdown();
+    await renderScheduleTable({ skipSwapSync: true });
+    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ!', 'success');
+    await syncScheduleToSupabase(sheet);
+}
+
+// 14. REBALANCE SHIFT 3
+async function rebalanceNightShifts() {
+    var sheet = getActiveSheet();
+    var schedData = sheet?.data || {};
+    var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); });
+    if (dates.length === 0) {
+        showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງຍັງວ່າງເປົ່າ', 'info');
+        return;
+    }
+
+    var leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
+    dates.forEach(function(d) {
+        var day = schedData[d];
+        if (day && !day.isWeekend && !isDateInHolidayRange(d)) {
+            var s3 = day.shift3 || [];
+            var s2 = day.shift2 || [];
+            var lInS3 = s3.filter(function(n) { return leaderNames.includes(n); });
+            var lInS2 = s2.filter(function(n) { return leaderNames.includes(n); });
+
+            if (lInS3.length > 1 && lInS2.length === 0) {
+                var extraLeader = lInS3[1];
+                var s2StaffIdx = s2.findIndex(function(n) { return !leaderNames.includes(n); });
+                if (s2StaffIdx !== -1) {
+                    var s2Staff = s2[s2StaffIdx];
+                    var idx3 = s3.indexOf(extraLeader);
+                    s3[idx3] = s2Staff;
+                    s2[s2StaffIdx] = extraLeader;
+                }
+            }
         }
-    } catch (e) {
-        console.warn('Attendance fetch warning:', e);
-    }
+    });
+
+    await renderScheduleTable({ skipSwapSync: true });
+    await syncScheduleToSupabase(sheet);
+    showToast('Rebalance ສຳເລັດ', 'ປັບສົມດຸນຮຽບຮ້ອຍ!', 'success');
 }
 
-async function refreshAllData() {
-    showToast('🔄 ກຳລັງດຶງຂໍ້ມູນໃໝ່ລ້າສຸດ...');
-    await fetchDataFromSupabase();
-    showToast('✓ ດຶງຂໍ້ມູນສຳເລັດແລ້ວ!');
+// 15. EXPORT A4 PDF
+function exportToA4PDF() {
+    var sheet = getActiveSheet();
+    var element = document.getElementById('pdfExportArea');
+    if (!element || !sheet) return;
+
+    showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4...', 'info');
+
+    var parent = element.parentElement;
+    var prevScrollTop = parent ? parent.scrollTop : 0;
+    var prevScrollLeft = parent ? parent.scrollLeft : 0;
+    if (parent) { parent.scrollTop = 0; parent.scrollLeft = 0; }
+
+    var originalClass = element.className;
+    var originalStyle = element.getAttribute('style') || '';
+
+    element.classList.remove('mx-auto');
+    element.style.margin = '0 !important';
+    element.style.marginLeft = '0 !important';
+    element.style.boxShadow = 'none';
+
+    var noPrintEls = element.querySelectorAll('.no-print');
+    noPrintEls.forEach(function(el) { el.style.display = 'none'; });
+
+    var opt = {
+        margin:       [4, 4, 4, 4],
+        filename:     (sheet?.title || sheet?.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ') + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(function() {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        if (parent) { parent.scrollTop = prevScrollTop; parent.scrollLeft = prevScrollLeft; }
+        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        showToast('ສຳເລັດ', 'Export PDF A4 ສຳເລັດ!', 'success');
+    }).catch(function() {
+        element.className = originalClass;
+        element.setAttribute('style', originalStyle);
+        noPrintEls.forEach(function(el) { el.style.display = ''; });
+        showToast('ຜິດພາດ', 'Export ບໍ່ສຳເລັດ', 'error');
+    });
 }
 
-// SAFE MODAL OPEN/CLOSE
-function openModal(id) { 
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
+function closeCellModal() { 
+    document.getElementById('cellSelectModal')?.classList.add('hidden'); 
+    window.activeEditCell = null; 
 }
 
-function closeModal(id) { 
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-    }
-}
-
-function showToast(msg) {
-    const container = document.getElementById('toast-container');
+function renderCellStaffList(q) {
+    var container = document.getElementById('cellStaffListContainer');
     if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'bg-primary text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-xl flex items-center gap-2 pointer-events-auto border border-white/20';
-    toast.innerHTML = `<span class="material-symbols-outlined text-accent text-sm">info</span><span>${msg}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    container.innerHTML = '';
+    (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN' && ((u.nameLao && u.nameLao.includes(q)) || (u.fullName && u.fullName.includes(q))); }).forEach(function(u) {
+        container.innerHTML += '<div onclick="selectStaffForCell(\'' + u.nameLao + '\')" class="p-2.5 border rounded-2xl hover:bg-red-50 flex items-center justify-between cursor-pointer text-xs font-lao">' +
+            '<span>' + u.nameLao + ' (' + u.fullName + ')</span>' +
+            (u.isLeader ? '<span class="text-[10px] bg-brand-red text-white px-2 py-0.5 rounded-full font-bold">ຫົວໜ້າ</span>' : '') +
+        '</div>';
+    });
 }
 
-// Clock Loop
-setInterval(() => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
-    
-    const topClock = document.getElementById('top-live-clock');
-    const topDate = document.getElementById('top-live-date');
-    const kioskClock = document.getElementById('kiosk-digital-clock');
-    const kioskDate = document.getElementById('kiosk-current-date');
-
-    if (topClock) topClock.textContent = timeStr;
-    if (topDate) topDate.textContent = dateStr;
-    if (kioskClock) kioskClock.textContent = timeStr;
-    if (kioskDate) kioskDate.textContent = dateStr;
-}, 1000);
-
-const mobileBtn = document.getElementById('mobile-menu-btn');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebar-overlay');
-
-function openMobileMenu() { 
-    if (sidebar) sidebar.classList.remove('-translate-x-full'); 
-    if (overlay) overlay.classList.remove('hidden'); 
+function filterCellStaffList() { 
+    renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim() || ''); 
 }
-function closeMobileMenu() { 
-    if (sidebar) sidebar.classList.add('-translate-x-full'); 
-    if (overlay) overlay.classList.add('hidden'); 
-}
-if (mobileBtn) mobileBtn.onclick = openMobileMenu;
-if (overlay) overlay.onclick = closeMobileMenu;
 
-// APP INITIALIZATION
-window.addEventListener('DOMContentLoaded', () => {
-    checkIfAlreadyInstalled();
-
-    if (supabaseUrl) {
-        const urlInput = document.getElementById('config-supabase-url');
-        if (urlInput) urlInput.value = supabaseUrl;
+// Auto-load ຈາກ Supabase 100%
+var _origTabForSchedule = window.switchTab;
+window.switchTab = async function(tab) {
+    if (typeof _origTabForSchedule === 'function') _origTabForSchedule(tab);
+    if (tab === 'schedule') {
+        await fetchScheduleSheetsFromCloud();
+        await renderScheduleTable();
     }
-    if (supabaseKey) {
-        const keyInput = document.getElementById('config-supabase-key');
-        if (keyInput) keyInput.value = supabaseKey;
-    }
+};
 
-    initSupabase();
-    renderStockTable();
-    renderStockAnalytics();
-    renderEmployeesAndPayroll();
-    populateStockMovementDropdown();
-    renderTodayKioskAttendance();
-    renderKioskMovementLogs();
-    updateOnDutyStaffUI();
-    renderEarlyComerStreakRanking();
-    
-    // LAND AT DASHBOARD FIRST
-    navigateTo('dashboard');
+document.addEventListener('DOMContentLoaded', async function() {
+    await fetchScheduleSheetsFromCloud();
+    await renderScheduleTable();
 });
+
+// ⭐ ຜູກຄົບທຸກ Functions ຂອງປຸ່ມ Toolbar ເຂົ້າ Window 100%
+window.isDateInHolidayRange = isDateInHolidayRange;
+window.syncScheduleToSupabase = syncScheduleToSupabase;
+window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
+window.fetchScheduleSheetsFromCloud = fetchScheduleSheetsFromCloud;
+window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
+window.getMondayBasedWeekIndex = getMondayBasedWeekIndex;
+window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
+window.rebalanceNightShifts = rebalanceNightShifts;
+window.renderScheduleTable = renderScheduleTable;
+window.renderSheetDropdown = renderSheetDropdown;
+window.changeActiveSheet = changeActiveSheet;
+window.generateMonthDataZigzag = generateMonthDataZigzag;
+window.generate7PersonFlexZigzag = generate7PersonFlexZigzag;
+window.generate17PersonLeadersAndStaffZigzag = generate17PersonLeadersAndStaffZigzag;
+window.executeGroupRandomSchedule = executeGroupRandomSchedule;
+window.openRandomGroupSelectModal = openRandomGroupSelectModal;
+window.promptDeleteCurrentSheet = promptDeleteCurrentSheet;
+window.openNewSheetModal = openNewSheetModal;
+window.handleCreateNewSheet = handleCreateNewSheet;
+window.openEditSheetInfoModal = openEditSheetInfoModal;
+window.handleSaveSheetInfo = handleSaveSheetInfo;
+window.promptResetSchedule = promptResetSchedule;
+window.saveDraft = saveDraft;
+window.publishSchedule = publishSchedule;
+window.exportToA4PDF = exportToA4PDF;
+window.openCellModal = openCellModal;
+window.closeCellModal = closeCellModal;
+window.filterCellStaffList = filterCellStaffList;
+window.selectStaffForCell = selectStaffForCell;
+window.clearCurrentCell = clearCurrentCell;
+window.openEditPublishedRemarkModal = openEditPublishedRemarkModal;
+window.closeEditPublishedRemarkModal = closeEditPublishedRemarkModal;
+window.confirmApplyPublishedCellUpdate = confirmApplyPublishedCellUpdate;
+window.getPermanentStaffList = getPermanentStaffList;
+window.getContractStaffList = getContractStaffList;
+window.openBatchMonthModal = openBatchMonthModal;
+window.executeBatchMonthGenerate = executeBatchMonthGenerate;
+window.openFixedShiftModal = openFixedShiftModal;
+window.renderActiveFixedShiftsList = renderActiveFixedShiftsList;
+window.handleAddFixedShift = handleAddFixedShift;
+window.removeFixedShift = removeFixedShift;
+window.openFairnessSummaryModal = openFairnessSummaryModal;
+window.closeFairnessSummaryModal = closeFairnessSummaryModal;
+window.renderFairnessSummaryData = renderFairnessSummaryData;
+window.openHolidayModal = openHolidayModal;
+window.handleSaveHolidayRange = handleSaveHolidayRange;
+window.createBlankMonthData = createBlankMonthData;
+window.applyFixedShiftsToDayData = applyFixedShiftsToDayData;
+window.handleSchedCellDragStart = handleSchedCellDragStart;
+window.handleSchedCellDragOver = handleSchedCellDragOver;
+window.handleSchedCellDragLeave = handleSchedCellDragLeave;
+window.handleSchedCellDrop = handleSchedCellDrop;
