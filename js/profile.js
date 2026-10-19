@@ -1,867 +1,534 @@
-// ================= ⭐ PROFILE, LEAVE & P2P SHIFT SWAP HUB (100% REALTIME SYNC) =================
+// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER 100%) =================
 
-// 0. Helper ດຶງ User ປັດຈຸບັນແບບປອດໄພ
-function getCurrentUserSafe() {
-    if (window.currentUser && window.currentUser.nameLao) return window.currentUser;
+// 0. GLOBAL HOLIDAY CHECKER
+function isDateInHolidayRange(dStr) {
+    if (!dStr) return false;
+    var holList = window.specialHolidayRanges || [];
+    return holList.some(function(h) {
+        if (!h) return false;
+        var s = h.start_date || h.start;
+        var e = h.end_date || h.end;
+        if (!s || !e) return false;
+        return dStr >= s && dStr <= e;
+    });
+}
+window.isDateInHolidayRange = isDateInHolidayRange;
+
+var DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
+window.DEFAULT_AVATAR = DEFAULT_AVATAR;
+
+function safeJSONParse(str, fallback) {
+    if (fallback === undefined) fallback = null;
+    if (!str || typeof str !== 'string') return fallback;
+    var trimmed = str.trim();
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return fallback;
     try {
-        var saved = localStorage.getItem('ot_auth_live') || localStorage.getItem('currentUser') || localStorage.getItem('user');
-        if (saved) {
-            window.currentUser = JSON.parse(saved);
-            return window.currentUser;
+        return JSON.parse(trimmed);
+    } catch (e) {
+        return fallback;
+    }
+}
+window.safeJSONParse = safeJSONParse;
+
+// ລຶບຄ່າ LocalStorage ທີ່ເຄີຍເສຍຫາຍ
+try {
+    var badKey = localStorage.getItem('ot_users_master');
+    if (badKey && !badKey.trim().startsWith('[') && !badKey.trim().startsWith('{')) localStorage.removeItem('ot_users_master');
+    var badUsers = localStorage.getItem('ot_users');
+    if (badUsers && !badUsers.trim().startsWith('[') && !badUsers.trim().startsWith('{')) localStorage.removeItem('ot_users');
+} catch (e) {}
+
+// ⭐ 1. ລາຍຊື່ທາງການ 24 ທ່ານ + 1 Admin (ກົງກັບ Supabase Database 100%)
+var defaultSystemUsers = [
+    { user: 'admin', pass: 'admin123', nameLao: 'Admin', fullName: 'Super Admin', role: 'SUPER_ADMIN', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 8877' },
+    
+    // --- ທີມວິຊາການສົມບູນ (17 ທ່ານ) ---
+    { user: 'BCEL0765', pass: 'bcel2026', nameLao: 'ແສງດາວ', fullName: 'SENGDAO DOUANGSOMBATH', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5501 2345' },
+    { user: 'BCEL0272', pass: 'bcel2026', nameLao: 'ພອນສະຫວັນ', fullName: 'PHONESAVANH HEUANGVILAY', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5502 3456' },
+    { user: 'BCEL1055', pass: 'bcel2026', nameLao: 'ບຸນປະເສີດ', fullName: 'BOUNPRASEUTH SILIMANOTHAM', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5503 4567' },
+    { user: 'BCEL0872', pass: 'bcel2026', nameLao: 'ພັນນິກອນ', fullName: 'PHANNIKONE SAYAPHET', role: 'Staff', isLeader: true, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5504 5678' },
+    { user: 'BCEL0277', pass: 'bcel2026', nameLao: 'ສົນທະຍາ', fullName: 'SONTHAYA MONLATHOM', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5505 6789' },
+    { user: 'BCEL0707', pass: 'bcel2026', nameLao: 'ນິກກີ້', fullName: 'NICKEE KHAMKHOSY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5506 7890' },
+    { user: 'BCEL1431', pass: 'bcel2026', nameLao: 'ໜູຮັກ', fullName: 'NOUHACK SOULAIYAKHAM', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5507 8901' },
+    { user: 'BCEL1532', pass: 'bcel2026', nameLao: 'ແພັກເກີ້', fullName: 'PAKKER VILAISANG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5508 9012' },
+    { user: 'BCEL2007', pass: 'bcel2026', nameLao: 'ເອກສະຫວ່າງ', fullName: 'AEKSAVANG PHOUVONGKHAMCHAN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5509 0123' },
+    { user: 'BCEL2120', pass: 'bcel2026', nameLao: 'ໂທນິກ', fullName: 'TONICK BOUDDASIEN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5599 1122' },
+    { user: 'BCEL2101', pass: 'bcel2026', nameLao: 'ບຸນຮັກ', fullName: 'BOUNHAK BOUTTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5510 1122' },
+    { user: 'BCEL1102', pass: 'bcel2026', nameLao: 'ປະສົງສິນ', fullName: 'PASONGSIN SOULIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5511 2233' },
+    { user: 'BCEL2104', pass: 'bcel2026', nameLao: 'ສາຍທອງ', fullName: 'SAIYTHONG VONGDALA', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5512 3344' },
+    { user: 'BCEL2105', pass: 'bcel2026', nameLao: 'ສົມຊາຍ', fullName: 'SOXAY SOULIYAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5513 4455' },
+    { user: 'BCEL2323', pass: 'bcel2026', nameLao: 'ສີຊົມພູ', fullName: 'SISOMPHOU INTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5514 5566' },
+    { user: 'BCEL2426', pass: 'bcel2026', nameLao: 'ສຸລິຍະສັກ', fullName: 'SOULIYASACK KHAMPHAIVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5515 6677' },
+    { user: 'BCEL1107', pass: 'bcel2026', nameLao: 'ໄກສະຫວາດ', fullName: 'KAISAVATH PHOMMAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ', phone: '020 5516 7788' },
+
+    // --- ທີມວິຊາການສັນຍາ (7 ທ່ານ) ---
+    { user: 'BCEL2319', pass: 'bcel2026', nameLao: 'ໄຊຍະສິດ', fullName: 'XAYYASITH VONGDONEXAI (Gz)', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5517 8899' },
+    { user: 'BCEL2321', pass: 'bcel2026', nameLao: 'ລິດຕະສອນ', fullName: 'LITTASONE HUEANGKHAMSAEN', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5518 9900' },
+    { user: 'BCEL2425', pass: 'bcel2026', nameLao: 'ທອງສະຫວັນ', fullName: 'THONGSAVANH VANNAXAY', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5519 0011' },
+    { user: 'BCEL2516', pass: 'bcel2026', nameLao: 'ໄຊຍະພອນ', fullName: 'XAIYAPHONE SYLAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5520 1122' },
+    { user: 'BCEL2517', pass: 'bcel2026', nameLao: 'ແກ້ວວິໄລ', fullName: 'KEOVILAY XAYYALATH', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5521 2233' },
+    { user: 'BCEL2579', pass: 'bcel2026', nameLao: 'ຈິດສະດາ', fullName: 'CHITSADA CHANTHAVONG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5522 3344' },
+    { user: 'BCEL2580', pass: 'bcel2026', nameLao: 'ນະລົງສັກ', fullName: 'NALONGSAK YASENG', role: 'Staff', isLeader: false, dept: 'ຂະແໜງບໍລິການອອນລາຍ (ສັນຍາ)', phone: '020 5523 4455' }
+];
+
+// ⭐ 2. ແຍກ 2 ກຸ່ມມາດຕະຖານໃຫ້ກົງກັບ Database 100%
+window.defaultEmployeeGroups = [
+    { 
+        id: 'GRP_MAIN_17', 
+        name: 'ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)', 
+        members: [
+            'ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ',
+            'ສົນທະຍາ', 'ນິກກີ້', 'ໜູຮັກ', 'ແພັກເກີ້',
+            'ເອກສະຫວ່າງ', 'ໂທນິກ', 'ບຸນຮັກ', 'ປະສົງສິນ',
+            'ສາຍທອງ', 'ສົມຊາຍ', 'ສີຊົມພູ', 'ສຸລິຍະສັກ', 'ໄກສະຫວາດ'
+        ] 
+    },
+    { 
+        id: 'GRP_CONTRACT_7', 
+        name: 'ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)', 
+        members: [
+            'ໄຊຍະສິດ', 'ລິດຕະສອນ', 'ທອງສະຫວັນ', 'ໄຊຍະພອນ',
+            'ແກ້ວວິໄລ', 'ຈິດສະດາ', 'ນະລົງສັກ'
+        ] 
+    }
+];
+
+window.defaultNotesTemplate = `1. ກະ 1 (08:00 - 16:00), ກະ 2 (12:00 - 20:00), ກະ 3 (20:00 - 08:00).
+2. ວັນເສົາ-ອາທິດ: ກະ 1 (08:00 - 13:30), ກະ 2 (13:30 - 19:00), ກະ 3 (19:00 - 08:00).
+3. ຫາກມີການຂໍປ່ຽນກະ ຕ້ອງແຈ້ງ ແລະ ໄດ້ຮັບການເຫັນດີຜ່ານລະບົບລ່ວງໜ້າຢ່າງໜ້ອຍ 24 ຊົ່ວໂມງ.`;
+
+function showToast(title, message, type) {
+    if (!type) type = 'success';
+    var toast = document.getElementById('appToast');
+    var tTitle = document.getElementById('toastTitle');
+    var tMsg = document.getElementById('toastMessage');
+    var tIcon = document.getElementById('toastIcon');
+    var tBox = document.getElementById('toastIconBox');
+    if (!toast) return;
+
+    if (tTitle) tTitle.innerText = title;
+    if (tMsg) tMsg.innerText = message;
+
+    if (tIcon && tBox) {
+        if (type === 'error') {
+            tIcon.innerText = 'error';
+            tBox.className = 'w-9 h-9 rounded-xl bg-red-50 text-brand-red flex items-center justify-center shrink-0';
+        } else if (type === 'warning' || type === 'info') {
+            tIcon.innerText = 'info';
+            tBox.className = 'w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0';
+        } else {
+            tIcon.innerText = 'check_circle';
+            tBox.className = 'w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0';
         }
-    } catch(e) {}
-    return window.currentUser || null;
+    }
+
+    toast.classList.remove('opacity-0', 'translate-y-[-150%]', 'pointer-events-none');
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+    if (window._toastTimer) clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(hideToast, 4000);
 }
 
-// 0.1 Helper ດຶງ Sheet ປັດຈຸບັນ
-function getActiveSheetSafe(targetMonthKey) {
+function hideToast() {
+    var toast = document.getElementById('appToast');
+    if (toast) {
+        toast.classList.add('opacity-0', 'translate-y-[-150%]', 'pointer-events-none');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+    }
+}
+window.showToast = showToast;
+window.hideToast = hideToast;
+
+var _confirmCallback = null;
+function askConfirm(title, message, callback, icon, btnText) {
+    if (!icon) icon = 'help';
+    if (!btnText) btnText = 'ຢືນຢັນ';
+    _confirmCallback = callback;
+
+    var modal = document.getElementById('appConfirmModal');
+    var mTitle = document.getElementById('confirmModalTitle');
+    var mMsg = document.getElementById('confirmModalMessage');
+    var mIcon = document.getElementById('confirmModalIcon');
+    var mBtn = document.getElementById('btnConfirmAction');
+
+    if (mTitle) mTitle.innerText = title;
+    if (mMsg) mMsg.innerText = message;
+    if (mIcon) mIcon.innerText = icon;
+    if (mBtn) mBtn.innerText = btnText;
+
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeConfirmModal(confirmed) {
+    var modal = document.getElementById('appConfirmModal');
+    if (modal) modal.classList.add('hidden');
+    if (confirmed && typeof _confirmCallback === 'function') {
+        _confirmCallback();
+    }
+    _confirmCallback = null;
+}
+window.askConfirm = askConfirm;
+window.closeConfirmModal = closeConfirmModal;
+
+function switchTab(tabName) {
+    var views = document.querySelectorAll('.tab-view');
+    views.forEach(function(v) {
+        v.classList.remove('active');
+        v.style.display = 'none';
+    });
+
+    var targetView = document.getElementById('view-' + tabName);
+    if (targetView) {
+        targetView.classList.add('active');
+        targetView.style.display = 'flex';
+    }
+
+    var topLinks = document.querySelectorAll('.top-nav-link');
+    topLinks.forEach(function(btn) {
+        btn.classList.remove('text-brand-red', 'font-bold', 'border-b-2', 'border-brand-red');
+        btn.classList.add('text-slate-600');
+    });
+    var activeTopBtn = document.getElementById('top-btn-' + tabName);
+    if (activeTopBtn) {
+        activeTopBtn.classList.remove('text-slate-600');
+        activeTopBtn.classList.add('text-brand-red', 'font-bold', 'border-b-2', 'border-brand-red');
+    }
+
+    var sideBtns = document.querySelectorAll('.side-nav-btn');
+    sideBtns.forEach(function(btn) {
+        btn.classList.remove('bg-red-50', 'text-brand-red', 'font-bold');
+        btn.classList.add('text-slate-600');
+    });
+    var activeSideBtn = document.getElementById('side-' + tabName);
+    if (activeSideBtn) {
+        activeSideBtn.classList.remove('text-slate-600');
+        activeSideBtn.classList.add('bg-red-50', 'text-brand-red', 'font-bold');
+    }
+
+    var mobBtns = document.querySelectorAll('.mob-side-btn');
+    mobBtns.forEach(function(btn) {
+        btn.classList.remove('bg-red-50', 'text-brand-red', 'font-bold');
+        btn.classList.add('text-slate-600');
+    });
+    var activeMobBtn = document.getElementById('mob-side-' + tabName);
+    if (activeMobBtn) {
+        activeMobBtn.classList.remove('text-slate-600');
+        activeMobBtn.classList.add('bg-red-50', 'text-brand-red', 'font-bold');
+    }
+
+    if (tabName === 'schedule') {
+        if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+        if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+    } else if (tabName === 'dashboard') {
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    } else if (tabName === 'groups') {
+        if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
+    } else if (tabName === 'employees') {
+        if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+    } else if (tabName === 'profile') {
+        if (typeof window.initProfileWorkspace === 'function') window.initProfileWorkspace();
+    }
+}
+window.switchTab = switchTab;
+
+function toggleMobileDrawer() {
+    var drawer = document.getElementById('mobileDrawer');
+    if (!drawer) return;
+    drawer.classList.toggle('-translate-x-full');
+}
+window.toggleMobileDrawer = toggleMobileDrawer;
+
+// ⭐ ACTIVE SCHEDULE SHEET (ເຊື່ອມໂຍງກັບ schedule.js ໂດຍບໍ່ສ້າງ Sheet ຈຳລອງ 09/2026)
+function getActiveSheet() {
+    if (typeof window.getActiveSheet === 'function' && window.getActiveSheet !== getActiveSheet) {
+        return window.getActiveSheet();
+    }
     var sheets = window.scheduleSheets || [];
-    if (sheets.length === 0) {
-        try {
-            var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
-            if (cached) sheets = JSON.parse(cached);
-        } catch(e) {}
-    }
+    if (sheets.length === 0) return null;
 
-    if (sheets.length > 0) {
-        if (targetMonthKey) {
-            var pub = sheets.find(function(s) { 
-                var sm = (s.monthKey || s.month_key || '').slice(0, 7);
-                return sm === targetMonthKey && s.status === 'PUBLISHED';
-            });
-            if (pub) return pub;
-            
-            var anyMatch = sheets.find(function(s) { 
-                var sm = (s.monthKey || s.month_key || '').slice(0, 7);
-                return sm === targetMonthKey;
-            });
-            if (anyMatch) return anyMatch;
-        }
-
-        var activePub = sheets.find(function(s) { return s.id === window.activeSheetId && s.status === 'PUBLISHED'; });
-        if (activePub) return activePub;
-
-        var firstPub = sheets.find(function(s) { return s.status === 'PUBLISHED'; });
-        if (firstPub) return firstPub;
-
-        return sheets[0];
-    }
-
-    if (typeof getActiveSheet === 'function') {
-        var s = getActiveSheet();
-        if (s) return s;
-    }
-    return null;
+    var found = sheets.find(function(s) {
+        return s && String(s.id) === String(window.activeSheetId);
+    });
+    return found || sheets[0];
 }
+window.getActiveSheet = getActiveSheet;
 
-// ⭐ 0.15 ດຶງຂໍ້ມູນ Cloud ຫຼ້າສຸດສຳລັບ Profile Workspace (ດຶງຮູບພາບ Profile ຈາກ Supabase 100%)
-async function fetchProfileCloudData() {
-    if (!window.supabaseClient) return;
+function saveAll() {
     try {
-        var user = getCurrentUserSafe();
+        if (window.scheduleSheets) {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        }
+        if (window.activeSheetId) localStorage.setItem('ot_active_sheet_id', window.activeSheetId);
+        if (window.users) localStorage.setItem('ot_users', JSON.stringify(window.users));
+        if (window.employeeGroups) localStorage.setItem('ot_employee_groups', JSON.stringify(window.employeeGroups));
+        if (window.fixedShiftsConfig) localStorage.setItem('ot_fixed_shifts_cfg', JSON.stringify(window.fixedShiftsConfig));
+        if (window.specialHolidayRanges) localStorage.setItem('ot_special_holidays', JSON.stringify(window.specialHolidayRanges));
+        if (window.annualBookings) localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
+        if (window.swapHistory) localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
+        if (window.scheduleAuditLogs) localStorage.setItem('ot_schedule_audit_logs', JSON.stringify(window.scheduleAuditLogs));
+    } catch (e) {
+        console.warn("Storage save error:", e);
+    }
+}
+window.saveAll = saveAll;
 
-        // A. ດຶງຮູບ Profile ຂອງ User ປັດຈຸບັນຈາກ Supabase profiles table
-        if (user && user.user) {
-            var profRes = await window.supabaseClient
-                .from('profiles')
-                .select('*')
-                .or('user_code.eq.' + user.user + ',username.eq.' + user.user);
+// ⭐ DRAG & DROP ROSTER SIDEBAR
+function handleStaffDragStart(event, nameLao) {
+    window.draggedStaffName = nameLao;
+    if (event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', nameLao);
+        event.dataTransfer.setData('text', nameLao);
+        event.dataTransfer.effectAllowed = 'copyMove';
+    }
+}
+window.handleStaffDragStart = handleStaffDragStart;
 
-            if (!profRes.error && profRes.data && profRes.data.length > 0) {
-                var myProf = profRes.data[0];
-                var photoUrl = myProf.photo || myProf.avatar_url || myProf.avatar || '';
-                if (photoUrl) {
-                    user.photo = photoUrl;
-                    if (window.currentUser) window.currentUser.photo = photoUrl;
-                    localStorage.setItem('ot_auth_live', JSON.stringify(user));
+function renderScheduleStaffRoster() {
+    var container = document.getElementById('scheduleStaffRoster');
+    var countEl = document.getElementById('rosterCountText');
+    if (!container) return;
+
+    var staffList = (window.users || []).filter(function(u) {
+        return u && u.role !== 'SUPER_ADMIN';
+    });
+
+    if (countEl) countEl.innerText = staffList.length;
+    container.innerHTML = '';
+
+    staffList.forEach(function(u) {
+        var isL = u.isLeader;
+        var avatarUrl = u.photo || DEFAULT_AVATAR;
+        container.innerHTML += `
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs mb-1.5" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຊ່ອງໄດ້ເລີຍ">
+                <div class="flex items-center gap-2 pointer-events-none">
+                    <img draggable="false" src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0 select-none"/>
+                    <span class="font-bold select-none ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
+                </div>
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none select-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none select-none">' + u.user + '</span>'}
+            </div>
+        `;
+    });
+}
+window.renderScheduleStaffRoster = renderScheduleStaffRoster;
+
+function filterRosterSidebar() {
+    var q = document.getElementById('rosterSearchInput')?.value.trim().toLowerCase() || '';
+    var container = document.getElementById('scheduleStaffRoster');
+    if (!container) return;
+
+    var staffList = (window.users || []).filter(function(u) {
+        return u && u.role !== 'SUPER_ADMIN' && (
+            (u.nameLao && u.nameLao.toLowerCase().includes(q)) ||
+            (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+            (u.user && u.user.toLowerCase().includes(q))
+        );
+    });
+
+    container.innerHTML = '';
+    staffList.forEach(function(u) {
+        var isL = u.isLeader;
+        var avatarUrl = u.photo || DEFAULT_AVATAR;
+        container.innerHTML += `
+            <div draggable="true" ondragstart="handleStaffDragStart(event, '${u.nameLao}')" class="p-2 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs hover:bg-slate-100 hover:border-brand-red/50 transition cursor-grab active:cursor-grabbing select-none shadow-xs mb-1.5" title="ກົດໃສ່ຊ່ອງຕາຕະລາງ ຫຼື ລາກຊື່ນີ້ໄປວາງໃສ່ຊ່ອງໄດ້ເລີຍ">
+                <div class="flex items-center gap-2 pointer-events-none">
+                    <img draggable="false" src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-7 h-7 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0 select-none"/>
+                    <span class="font-bold select-none ${isL ? 'text-brand-red' : 'text-slate-800'}">${u.nameLao}</span>
+                </div>
+                ${isL ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded font-bold border border-red-200 pointer-events-none select-none">ຫົວໜ້າ</span>' : '<span class="text-[10px] text-slate-400 font-mono pointer-events-none select-none">' + u.user + '</span>'}
+            </div>
+        `;
+    });
+}
+window.filterRosterSidebar = filterRosterSidebar;
+
+function renderEmployeesTable() {
+    var tbody = document.getElementById('employeesTableBody');
+    var countHeader = document.getElementById('empCountHeader');
+    if (!tbody) return;
+
+    var allStaff = window.users || [];
+    if (countHeader) countHeader.innerText = allStaff.length;
+
+    tbody.innerHTML = '';
+    allStaff.forEach(function(u, idx) {
+        var avatarUrl = u.photo || DEFAULT_AVATAR;
+        var isLeader = u.isLeader;
+        var roleBadge = u.role === 'SUPER_ADMIN' 
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Super Admin</span>'
+            : (isLeader 
+                ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-brand-red border border-red-200">ຫົວໜ້າກະ</span>'
+                : '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">ພະນັກງານ</span>');
+
+        tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 font-lao text-xs">
+                <td class="p-3.5 font-mono font-bold text-slate-700">${u.user}</td>
+                <td class="p-3.5 font-semibold text-slate-800 flex items-center gap-2.5">
+                    <img src="${avatarUrl}" onerror="this.src='${DEFAULT_AVATAR}'" class="w-8 h-8 rounded-full object-cover border-2 border-slate-200 bg-red-50 shrink-0"/>
+                    <div>
+                        <p class="font-bold text-slate-800">${u.fullName || '-'}</p>
+                        <p class="text-[10px] text-slate-400">${u.dept || 'ຂະແໜງບໍລິການອອນລາຍ'} ${u.phone ? '• ' + u.phone : ''}</p>
+                    </div>
+                </td>
+                <td class="p-3.5 font-bold ${isLeader ? 'text-brand-red' : 'text-slate-700'}">${u.nameLao}</td>
+                <td class="p-3.5">${roleBadge}</td>
+                <td class="p-3.5 text-right space-x-1">
+                    <button type="button" onclick="if(typeof openEditEmpModal === 'function') openEditEmpModal(${idx})" class="px-2.5 py-1 text-slate-600 hover:text-brand-red hover:bg-red-50 rounded-lg font-bold transition">ແກ້ໄຂ</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+window.renderEmployeesTable = renderEmployeesTable;
+
+// ⭐ MASTER CLOUD SYNC
+async function loadEverythingFromSupabase(retryCount) {
+    if (retryCount === undefined) retryCount = 0;
+
+    if (!window.supabaseClient) {
+        if (retryCount < 10) {
+            setTimeout(function() {
+                loadEverythingFromSupabase(retryCount + 1);
+            }, 300);
+        }
+        return;
+    }
+
+    try {
+        // A. Employee Groups
+        var grpRes = await window.supabaseClient.from('employee_groups').select('*');
+        if (!grpRes.error && grpRes.data && grpRes.data.length > 0) {
+            window.employeeGroups = grpRes.data.map(function(g) {
+                return { id: g.id, name: g.name, members: g.members || [] };
+            });
+        }
+        if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
+
+        // B. Profiles (ດຶງພະນັກງານຕົວຈິງຈາກ Database Supabase)
+        var profRes = await window.supabaseClient.from('profiles').select('*');
+        var cloudProfiles = profRes.data;
+
+        if (!profRes.error && cloudProfiles && cloudProfiles.length > 0) {
+            cloudProfiles.forEach(function(cp) {
+                var userCode = cp.user_code || cp.username || cp.user || '';
+                var rawNameLao = cp.name_lao || cp.nameLao || '';
+                var nameLao = rawNameLao.replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '').replace(/\s*ຫົວໜ້າກະ|\s*ຫົວໜ້າ/g, '').trim();
+                if (!userCode && !nameLao) return;
+
+                var existingIdx = (window.users || []).findIndex(function(u) {
+                    return (userCode && u.user && u.user.toLowerCase() === userCode.toLowerCase()) ||
+                           (nameLao && u.nameLao && u.nameLao === nameLao);
+                });
+
+                var normalizedUser = {
+                    user: userCode || ('BCEL' + Math.floor(1000 + Math.random() * 9000)),
+                    nameLao: nameLao || cp.full_name || userCode,
+                    fullName: cp.full_name || nameLao,
+                    role: cp.role || (cp.is_leader ? 'SUPER_ADMIN' : 'Staff'),
+                    isLeader: Boolean(cp.is_leader || cp.isLeader),
+                    dept: cp.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
+                    phone: cp.phone || '',
+                    photo: cp.photo || '',
+                    pass: cp.pass || cp.password || 'bcel2026'
+                };
+
+                if (existingIdx !== -1) {
+                    window.users[existingIdx] = Object.assign({}, window.users[existingIdx], normalizedUser, {
+                        photo: cp.photo || window.users[existingIdx].photo || ''
+                    });
+                } else {
+                    window.users.push(normalizedUser);
                 }
+            });
+
+            var topAv = document.getElementById('topAvatar');
+            if (topAv) {
+                topAv.src = (window.currentUser && window.currentUser.photo) ? window.currentUser.photo : DEFAULT_AVATAR;
+                topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
             }
+
+            if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
+            if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
         }
 
-        // B. ດຶງ Schedule Sheets (ບັງຄັບ JSON.parse ຂໍ້ມູນ data)
-        var resSheets = await window.supabaseClient.from('schedule_sheets').select('*');
-        if (!resSheets.error && resSheets.data) {
-            window.scheduleSheets = resSheets.data.map(function(d) {
-                var rawData = d.data || {};
+        // C. Schedule Sheets (ດຶງສະເພາະຕາຕະລາງຕົວຈິງຈາກ Cloud ເທົ່ານັ້ນ)
+        var schedRes = await window.supabaseClient.from('schedule_sheets').select('*');
+        var cloudSchedules = schedRes.data;
+        if (!schedRes.error && cloudSchedules && cloudSchedules.length > 0) {
+            window.scheduleSheets = cloudSchedules.map(function(cs) {
+                var rawData = cs.data || cs.schedule_data || {};
                 if (typeof rawData === 'string') {
-                    try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                    try { rawData = JSON.parse(rawData); } catch (e) { rawData = {}; }
                 }
+
+                var mKey = cs.monthKey || cs.month_key || '2026-10';
                 return {
-                    id: String(d.id),
-                    title: d.title,
-                    monthKey: d.monthKey || d.month_key,
-                    notes: d.notes,
-                    status: d.status || 'DRAFT',
+                    id: String(cs.id),
+                    monthKey: String(mKey),
+                    title: cs.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                    notes: cs.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
+                    status: cs.status || 'PUBLISHED',
                     data: rawData
                 };
             });
-            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-        }
 
-        // C. ດຶງ Swaps
-        var resSwaps = await window.supabaseClient
-            .from('shift_swaps')
-            .select('*')
-            .order('id', { ascending: false });
-
-        if (!resSwaps.error && resSwaps.data) {
-            window.swapHistory = resSwaps.data.map(function(d) {
-                var isCover = Boolean(d.reason && d.reason.indexOf('[COVER]') !== -1);
-                return {
-                    id: d.id,
-                    swapType: isCover ? 'COVER' : 'SWAP',
-                    fromName: d.from_name || d.fromName,
-                    toName: d.to_name || d.toName,
-                    startDate: d.start_date || d.startDate,
-                    endDate: d.end_date || d.endDate,
-                    fromShift: d.from_shift || d.fromShift,
-                    toShift: d.to_shift || d.toShift,
-                    reason: d.reason || '',
-                    status: String(d.status || '').toUpperCase(),
-                    created_at: d.created_at || d.createdAt || null
-                };
-            });
-            localStorage.setItem('ot_swap_history', JSON.stringify(window.swapHistory));
-        }
-
-        // D. ດຶງ Annual Bookings
-        var resLeaves = await window.supabaseClient
-            .from('annual_bookings')
-            .select('*')
-            .order('id', { ascending: false });
-
-        if (!resLeaves.error && resLeaves.data) {
-            window.annualBookings = resLeaves.data.map(function(d) {
-                return {
-                    id: d.id,
-                    user: d.user_code || d.user,
-                    nameLao: d.name_lao || d.nameLao,
-                    startDate: d.start_date || d.startDate,
-                    endDate: d.end_date || d.endDate,
-                    days: d.days,
-                    shift: d.shift || 'ທຸກກະ',
-                    reason: d.reason || '',
-                    status: String(d.status || '').toUpperCase(),
-                    created_at: d.created_at || null
-                };
-            });
-            localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
-        }
-    } catch(err) {
-        console.warn("Profile cloud sync error:", err);
-    }
-}
-
-// ⭐ 0.2 HELPER ທຽບຊື່ແບບ SMART FUZZY (ຮອງຮັບທັງ ໂທນິກ ແລະ ໂທມິກ ໃຫ້ກົງກັນ 100%)
-function isSamePerson(a, b) {
-    if (!a || !b) return false;
-    var clean = function(s) {
-        return s.toString().trim().toLowerCase()
-            .replace(/^(ທ້າວ|ນາງ|ທ\.|ນ\.)\s*/, '')
-            .replace(/\s*ຫົວໜ້າກະ|\s*ຫົວໜ້າ/g, '')
-            .replace(/\s+/g, '')
-            .replace(/ໂທນິກ/g, 'ໂທມິກ') // ⭐ ຜູກ ໂທນິກ = ໂທມິກ
-            .replace(/ໜູຮັກ/g, 'ທູຮັກ') // ຜູກ ໜູຮັກ = ທູຮັກ
-            .replace(/ປະສົງສິນ/g, 'ປະສັງສິນ')
-            .replace(/ສີຊົມພູ/g, 'ສີຊຸມພູ')
-            .replace(/ໄກສະຫວາດ/g, 'ໄທສະຫວາດ')
-            .replace(/ສົນທະຍາ/g, 'ສົມທະຍາ')
-            .replace(/ນິກກີ້/g, 'ມິກກີ້')
-            .replace(/ແພັກເກີ້/g, 'ແພັກກີ້');
-    };
-    var ca = clean(a);
-    var cb = clean(b);
-    return ca === cb || ca.indexOf(cb) !== -1 || cb.indexOf(ca) !== -1;
-}
-
-function isNameMatch(a, b) {
-    return isSamePerson(a, b);
-}
-
-// ⭐ 1. RENDER WORKSPACE ຂອງພະນັກງານ (Sync ກັບຕາຕະລາງ ແລະ ສະແດງຮູບ Profile 100%)
-function renderUserCurrentWeekWorkspace() {
-    var user = getCurrentUserSafe();
-    if (!user) return;
-
-    var titleEl = document.getElementById('userCurrentShiftTitle');
-    var pillsContainer = document.getElementById('userWeekDaysPills');
-
-    var nameInput = document.getElementById('profNameInput');
-    var deptInput = document.getElementById('profDeptInput');
-    var phoneInput = document.getElementById('profPhoneInput');
-    var nameDisplay = document.getElementById('profNameDisplay');
-    var codeDisplay = document.getElementById('profCodeDisplay');
-    var photoPreview = document.getElementById('profPhotoPreview');
-    var topAvatar = document.getElementById('topAvatar');
-
-    if (nameInput) nameInput.value = user.fullName || user.nameLao || '';
-    if (deptInput) deptInput.value = user.dept || user.department || 'ຂະແໜງບໍລິການອອນລາຍ';
-    if (phoneInput) phoneInput.value = user.phone || '';
-    if (nameDisplay) nameDisplay.innerText = user.nameLao + ' (' + (user.fullName || user.nameLao) + ')';
-    if (codeDisplay) codeDisplay.innerText = user.user || 'BCEL2120';
-    
-    // ⭐ ອັບເດດຮູບ Profile ທັງໃນບັດ ແລະ ມຸມຂວາເທິງ
-    if (user.photo) {
-        if (photoPreview) photoPreview.src = user.photo;
-        if (topAvatar) topAvatar.src = user.photo;
-    }
-
-    if (titleEl && pillsContainer) {
-        var myName = user.nameLao;
-        pillsContainer.innerHTML = '';
-
-        var now = new Date();
-        var todayY = now.getFullYear();
-        var todayM = String(now.getMonth() + 1).padStart(2, '0');
-        var todayD = String(now.getDate()).padStart(2, '0');
-        var todayDateStr = todayY + '-' + todayM + '-' + todayD;
-
-        var dayOfWeek = now.getDay();
-        var diffToMon = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-        var monday = new Date(now);
-        monday.setDate(now.getDate() + diffToMon);
-        monday.setHours(0, 0, 0, 0);
-
-        var dayNamesLao = ['ອາທິດ', 'ຈັນ', 'ອັງຄານ', 'ພຸດ', 'ພະຫັດ', 'ສຸກ', 'ເສົາ'];
-        var todayShiftLabel = null;
-        var weekdayShiftsList = [];
-
-        for (var d = 0; d < 7; d++) {
-            var curr = new Date(monday);
-            curr.setDate(monday.getDate() + d);
-
-            var cY = curr.getFullYear();
-            var cM = String(curr.getMonth() + 1).padStart(2, '0');
-            var cD = String(curr.getDate()).padStart(2, '0');
-            var dStr = cY + '-' + cM + '-' + cD;
-            var monthKey = cY + '-' + cM;
-
-            // ⭐ Scan ທຸກໆ Sheet ທີ່ Publish ໃນເດືອນນີ້ ເພື່ອຮັບປະກັນວ່າຫາຊື່ເຫັນແນ່ນອນ
-            var monthSheets = (window.scheduleSheets || []).filter(function(s) {
-                var sm = (s.monthKey || s.month_key || '').slice(0, 7);
-                return sm === monthKey && s.status === 'PUBLISHED';
-            });
-            if (monthSheets.length === 0) {
-                monthSheets = (window.scheduleSheets || []).filter(function(s) {
-                    var sm = (s.monthKey || s.month_key || '').slice(0, 7);
-                    return sm === monthKey;
-                });
-            }
-            if (monthSheets.length === 0 && window.activeSheetId) {
-                var act = (window.scheduleSheets || []).find(function(s) { return s.id === window.activeSheetId; });
-                if (act) monthSheets = [act];
-            }
-
-            var isWeekend = (curr.getDay() === 0 || curr.getDay() === 6);
-            var isHol = (typeof isDateInHolidayRange === 'function') ? isDateInHolidayRange(dStr) : false;
-            var isOffDay = (isWeekend || isHol);
-
-            // ກວດສອບ Swap
-            if (typeof autoApplyCompletedSwapsForDate === 'function') {
-                autoApplyCompletedSwapsForDate(dStr);
-            }
-
-            // ກວດສອບວ່າຜູ້ກ່ຽວຢູ່ກະໃດໃນວັນທີ dStr
-            var foundShiftKey = null;
-            monthSheets.forEach(function(sh) {
-                if (typeof sh.data === 'string') {
-                    try { sh.data = JSON.parse(sh.data); } catch(e) {}
-                }
-                var dInfo = (sh.data && sh.data[dStr]) ? sh.data[dStr] : {};
-                if (dInfo.shift1 && dInfo.shift1.some(function(n) { return isSamePerson(n, myName); })) foundShiftKey = 'shift1';
-                else if (dInfo.shift2 && dInfo.shift2.some(function(n) { return isSamePerson(n, myName); })) foundShiftKey = 'shift2';
-                else if (dInfo.shift3 && dInfo.shift3.some(function(n) { return isSamePerson(n, myName); })) foundShiftKey = 'shift3';
+            window.scheduleSheets.sort(function(a, b) {
+                return String(b.monthKey).localeCompare(String(a.monthKey));
             });
 
-            // ກວດສອບການລາພັກ
-            var leaveInfo = (typeof getStaffLeaveInfo === 'function') ? getStaffLeaveInfo(myName, 'all', dStr) : null;
-
-            var shift = 'ພັກ (OFF)';
-            var pillClass = 'bg-slate-50 text-slate-400 border-slate-200';
-            var shiftDetail = 'ພັກຜ່ອນ (OFF)';
-
-            if (leaveInfo) {
-                shift = 'ລາພັກ';
-                pillClass = 'bg-rose-50 text-rose-600 font-bold border-rose-200 line-through';
-                shiftDetail = 'ລາພັກ (' + (leaveInfo.reason || 'ລາພັກ') + ')';
-            } else if (foundShiftKey === 'shift1') {
-                shift = 'ກະ 1';
-                pillClass = 'bg-red-50 text-brand-red font-bold border-red-200';
-                shiftDetail = isOffDay ? 'ກະ 1 (08:00 - 13:30)' : 'ກະ 1 (08:00 - 16:00)';
-                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
-            } else if (foundShiftKey === 'shift2') {
-                shift = 'ກະ 2';
-                pillClass = 'bg-purple-50 text-purple-800 font-bold border-purple-200';
-                shiftDetail = isOffDay ? 'ກະ 2 (13:30 - 19:00)' : 'ກະ 2 (12:00 - 20:00)';
-                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
-            } else if (foundShiftKey === 'shift3') {
-                shift = 'ກະ 3';
-                pillClass = 'bg-slate-800 text-white font-bold border-slate-900';
-                shiftDetail = isOffDay ? 'ກະ 3 (19:00 - 08:00)' : 'ກະ 3 (20:00 - 08:00)';
-                if (!isOffDay) weekdayShiftsList.push(shiftDetail);
+            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
+                window.activeSheetId = window.scheduleSheets[0].id;
             }
 
-            var isToday = (dStr === todayDateStr);
-            if (isToday) {
-                todayShiftLabel = shiftDetail;
-                pillClass += ' ring-2 ring-brand-red shadow-sm';
-            }
-
-            var todayTag = isToday ? '<span class="block text-[8px] bg-brand-red text-white rounded px-1 mt-0.5 font-bold">ມື້ນີ້</span>' : '';
-            var dayLabel = dayNamesLao[curr.getDay()];
-
-            pillsContainer.innerHTML += '<div class="px-2 py-1.5 border rounded-xl text-center text-[10px] ' + pillClass + ' transition font-lao min-w-[50px]">' +
-                '<div class="text-[9px] opacity-75">' + dayLabel + '</div>' +
-                '<div class="font-bold text-xs">' + curr.getDate() + '/' + (curr.getMonth() + 1) + '</div>' +
-                '<div class="mt-0.5">' + shift + '</div>' +
-                todayTag +
-            '</div>';
-        }
-
-        // ⭐ 1.2 ສະແດງຫົວຂໍ້: ບອກກະມື້ນີ້ + ກະຫຼັກປະຈຳອາທິດ
-        var primaryWeekShift = weekdayShiftsList[0] || (todayShiftLabel || 'ພັກຜ່ອນ (OFF)');
-        var todayText = todayShiftLabel ? todayShiftLabel : 'ພັກຜ່ອນ (OFF)';
-
-        titleEl.innerHTML = '<span>ມື້ນີ້: </span><span class="text-brand-red font-black underline">' + todayText + '</span>' +
-            (primaryWeekShift && primaryWeekShift !== todayText ? ' <span class="text-xs text-slate-500 font-normal">(ອາທິດນີ້: ' + primaryWeekShift + ')</span>' : '');
-    }
-
-    var peerSelect = document.getElementById('swapTargetPeer');
-    if (peerSelect) {
-        peerSelect.innerHTML = '';
-        (window.users || []).filter(function(u) { 
-            return !isSamePerson(u.nameLao, user.nameLao) && u.role !== 'SUPER_ADMIN'; 
-        }).forEach(function(u) {
-            peerSelect.innerHTML += '<option value="' + u.nameLao + '">' + u.nameLao + ' (' + u.fullName + ')</option>';
-        });
-    }
-
-    renderAnnualLeaveBookings();
-    renderSwapHistory();
-}
-
-// 2. ລາຍງານ ADMIN REPORT
-function renderAdminAllStaffReport() {
-    var user = getCurrentUserSafe();
-    if (!user || user.role !== 'SUPER_ADMIN') return;
-
-    var sheet = getActiveSheetSafe();
-    var matrixTbody = document.getElementById('adminAllStaffMatrixReportBody');
-    var auditTbody = document.getElementById('adminScheduleAuditTableBody');
-    var anomalyTbody = document.getElementById('adminAnomalyTableBody');
-
-    var staffList = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
-    var staffCountEl = document.getElementById('adminMetricStaffCount');
-    var swapCountEl = document.getElementById('adminMetricSwapCount');
-    var leaveCountEl = document.getElementById('adminMetricLeaveCount');
-    var dutyCountEl = document.getElementById('adminMetricDutyCount');
-
-    if (staffCountEl) staffCountEl.innerText = staffList.length + ' ທ່ານ';
-    if (swapCountEl) swapCountEl.innerText = ((window.swapHistory || []).length) + ' ລາຍການ';
-
-    var totalLeavesCount = 0;
-    var totalDutyCount = 0;
-
-    var stats = {};
-    staffList.forEach(function(u) {
-        var usedL = u.usedAnnual || 0;
-        totalLeavesCount += usedL;
-        stats[u.nameLao] = Object.assign({}, u, { 
-            s1: 0, s2: 0, s3: 0, 
-            weekendShifts: 0, 
-            totalDuty: 0,
-            swapsRequested: 0,
-            swappedIntoS3: 0
-        });
-    });
-
-    if (leaveCountEl) leaveCountEl.innerText = totalLeavesCount + ' ມື້';
-
-    var schedData = (sheet && sheet.data) ? sheet.data : {};
-    var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); });
-
-    dates.forEach(function(d) {
-        var day = schedData[d];
-        var isWk = day.isWeekend;
-
-        (day.shift1 || []).forEach(function(n) { 
-            if (stats[n]) { stats[n].s1++; stats[n].totalDuty++; totalDutyCount++; if (isWk) stats[n].weekendShifts++; } 
-        });
-        (day.shift2 || []).forEach(function(n) { 
-            if (stats[n]) { stats[n].s2++; stats[n].totalDuty++; totalDutyCount++; if (isWk) stats[n].weekendShifts++; } 
-        });
-        (day.shift3 || []).forEach(function(n) { 
-            if (stats[n]) { stats[n].s3++; stats[n].totalDuty++; totalDutyCount++; if (isWk) stats[n].weekendShifts++; } 
-        });
-    });
-
-    (window.swapHistory || []).forEach(function(sw) {
-        if (sw.status === 'COMPLETED') {
-            if (stats[sw.fromName]) stats[sw.fromName].swapsRequested++;
-            if (stats[sw.toName]) stats[sw.toName].swapsRequested++;
-            if (sw.toShift === 'shift3' && stats[sw.fromName]) stats[sw.fromName].swappedIntoS3++;
-            if (sw.fromShift === 'shift3' && stats[sw.toName]) stats[sw.toName].swappedIntoS3++;
-        }
-    });
-
-    if (dutyCountEl) dutyCountEl.innerText = totalDutyCount + ' ກະ';
-
-    if (matrixTbody) {
-        matrixTbody.innerHTML = '';
-        Object.values(stats).forEach(function(st) {
-            var quota = st.annualQuota || 15;
-            var used = st.usedAnnual || 0;
-            var remaining = quota - used;
-
-            matrixTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
-                '<td class="p-3 font-bold text-slate-700">' + st.user + '</td>' +
-                '<td class="p-3 font-semibold text-slate-800">' + st.fullName + '</td>' +
-                '<td class="p-3 font-bold ' + (st.isLeader ? 'text-brand-red' : 'text-slate-800') + '">' +
-                    st.nameLao + (st.isLeader ? '<span class="text-[9px] bg-red-50 text-brand-red px-1.5 py-0.5 rounded ml-1 border border-red-200">ຫົວໜ້າ</span>' : '') +
-                '</td>' +
-                '<td class="p-3 text-center">' + st.s1 + '</td>' +
-                '<td class="p-3 text-center">' + st.s2 + '</td>' +
-                '<td class="p-3 text-center font-bold text-brand-red bg-red-50/40">' + st.s3 + '</td>' +
-                '<td class="p-3 text-center font-bold text-slate-900 bg-slate-100/50">' + st.totalDuty + ' ກະ</td>' +
-                '<td class="p-3 text-amber-700 font-bold text-center">' + used + ' / ' + quota + '</td>' +
-                '<td class="p-3 text-brand-red font-bold text-center">' + remaining + ' ມື້</td>' +
-                '<td class="p-3 text-center text-slate-600 font-semibold">' + (used + (st.otherLeaves || 0)) + ' ມື້</td>' +
-            '</tr>';
-        });
-    }
-
-    if (auditTbody) {
-        auditTbody.innerHTML = '';
-        var auditLogs = window.scheduleAuditLogs || [];
-        if (auditLogs.length === 0) {
-            auditTbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີປະຫວັດການແກ້ໄຂຕາຕະລາງຫຼັງ Publish</td></tr>';
-        } else {
-            auditLogs.forEach(function(log) {
-                auditTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
-                    '<td class="p-3 font-bold text-slate-700 truncate max-w-[150px]">' + log.sheetTitle + '</td>' +
-                    '<td class="p-3 font-semibold">' + log.date + ' (' + log.shift + ')</td>' +
-                    '<td class="p-3 text-amber-950 font-bold bg-amber-50 rounded">' + log.oldName + ' ➔ ' + log.newName + '</td>' +
-                    '<td class="p-3 text-slate-600 italic">"' + log.reason + '"</td>' +
-                    '<td class="p-3 font-medium text-brand-red">' + log.adminName + '</td>' +
-                    '<td class="p-3 text-right text-slate-400 text-[11px]">' + log.timestamp + '</td>' +
-                '</tr>';
-            });
-        }
-    }
-
-    if (anomalyTbody) {
-        anomalyTbody.innerHTML = '';
-        var sortedStats = Object.values(stats).sort(function(a, b) { 
-            return (b.totalDuty - a.totalDuty) || (b.swapsRequested - a.swapsRequested); 
-        });
-
-        sortedStats.forEach(function(st) {
-            var badges = [];
-            if (st.totalDuty > 25) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-brand-red border border-red-200">⚠️ ເກີນມາດຕະຖານ (' + st.totalDuty + ' ກະ)</span>');
-            if (st.swappedIntoS3 >= 3) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">🌙 ຮັບກະ 3 ຫຼາຍ (+' + st.swappedIntoS3 + ')</span>');
-            if (st.swapsRequested >= 4) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">🔄 ປ່ຽນກະເລື້ອຍໆ (' + st.swapsRequested + ' ຄັ້ງ)</span>');
-            if (st.weekendShifts >= 5) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">📅 ເສົາ-ອາທິດສູງ (' + st.weekendShifts + ' ມື້)</span>');
-            if (badges.length === 0) badges.push('<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">ປົກກະຕິ (Balanced)</span>');
-
-            anomalyTbody.innerHTML += '<tr class="hover:bg-slate-50 font-lao text-xs">' +
-                '<td class="p-3 font-bold text-slate-800 flex items-center gap-1.5">' +
-                    st.nameLao + ' <span class="text-[10px] font-normal text-slate-400">(' + st.fullName + ')</span>' +
-                    (st.isLeader ? '<span class="text-[9px] bg-brand-red text-white px-1.5 py-0.2 rounded font-bold">ຫົວໜ້າ</span>' : '') +
-                '</td>' +
-                '<td class="p-3 text-center font-bold ' + (st.swapsRequested > 0 ? 'text-amber-700' : 'text-slate-400') + '">' + st.swapsRequested + ' ຄັ້ງ</td>' +
-                '<td class="p-3 text-center font-bold ' + (st.swappedIntoS3 > 0 ? 'text-purple-700' : 'text-slate-400') + '">' + st.swappedIntoS3 + ' ກະ</td>' +
-                '<td class="p-3 text-center font-bold text-blue-700">' + st.weekendShifts + ' ວັນ</td>' +
-                '<td class="p-3 text-center font-black ' + (st.totalDuty > 25 ? 'text-brand-red text-sm' : 'text-slate-900') + '">' + st.totalDuty + ' ກະ</td>' +
-                '<td class="p-3 text-center space-x-1">' + badges.join(' ') + '</td>' +
-            '</tr>';
-        });
-    }
-}
-
-// ⭐ 3. ອັບໂຫຼດຮູບໂປຣໄຟລ໌ (Sync ລົງ Supabase Profiles ທັນທີ)
-function handlePhotoUploadAndCompress(event) {
-    var file = event.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
-        var img = new Image();
-        img.onload = async function() {
-            var canvas = document.createElement('canvas');
-            var max = 150;
-            var w = img.width, h = img.height;
-            if (w > max) { h = Math.round((h * max) / w); w = max; }
-            else { if (h > max) { w = Math.round((w * max) / h); h = max; } }
-            canvas.width = w; canvas.height = h;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            var photoBase64 = canvas.toDataURL('image/jpeg', 0.75);
-
-            var user = getCurrentUserSafe();
-            if (user) {
-                user.photo = photoBase64;
-                if (window.currentUser) window.currentUser.photo = photoBase64;
-                var userIdx = (window.users || []).findIndex(function(u) { 
-                    return u.user.toLowerCase() === user.user.toLowerCase(); 
-                });
-                if (userIdx !== -1) window.users[userIdx].photo = photoBase64;
-                localStorage.setItem('ot_auth_live', JSON.stringify(user));
-            }
-
-            if (typeof saveAll === 'function') saveAll();
-
-            var topAvatar = document.getElementById('topAvatar');
-            var profPreview = document.getElementById('profPhotoPreview');
-            if (topAvatar) topAvatar.src = photoBase64;
-            if (profPreview) profPreview.src = photoBase64;
-
+            saveAll();
+            if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
+            if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
-            if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
-
-            // ອັບເດດລົງ Supabase Database
-            if (window.supabaseClient && user && user.user) {
-                try {
-                    await window.supabaseClient
-                        .from('profiles')
-                        .update({ photo: photoBase64 })
-                        .or('user_code.eq.' + user.user + ',username.eq.' + user.user);
-                } catch (err) {}
-            }
-
-            showToast('ສຳເລັດ', 'ອັບເດດຮູບໂປຣໄຟລ໌ຮຽບຮ້ອຍ!', 'success');
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-// 4. ບັນທຶກໂປຣໄຟລ໌
-async function handleUpdateProfile() {
-    var user = getCurrentUserSafe();
-    if (!user) return;
-
-    var nameInput = document.getElementById('profNameInput');
-    var passInput = document.getElementById('profPassInput');
-    var deptInput = document.getElementById('profDeptInput');
-    var phoneInput = document.getElementById('profPhoneInput');
-
-    var name = nameInput ? nameInput.value.trim() : '';
-    var pass = passInput ? passInput.value.trim() : '';
-    var dept = deptInput ? deptInput.value.trim() : 'ຂະແໜງບໍລິການອອນລາຍ';
-    var phone = phoneInput ? phoneInput.value.trim() : '';
-
-    if (!name) { 
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ຊື່ເຕັມ', 'error'); 
-        return; 
-    }
-
-    if (pass) user.pass = pass;
-    user.fullName = name;
-    user.dept = dept;
-    user.department = dept;
-    user.phone = phone;
-
-    var idx = (window.users || []).findIndex(function(u) { 
-        return u.user.toLowerCase() === user.user.toLowerCase(); 
-    });
-    if (idx !== -1) {
-        window.users[idx] = Object.assign({}, window.users[idx], { 
-            fullName: name, 
-            dept: dept,
-            department: dept,
-            phone: phone,
-            pass: pass || window.users[idx].pass 
-        });
-    }
-
-    if (typeof saveAll === 'function') saveAll();
-    localStorage.setItem('ot_auth_live', JSON.stringify(user));
-
-    if (window.supabaseClient) {
-        try {
-            var updatePayload = { full_name: name, dept: dept, phone: phone };
-            if (pass) { updatePayload.pass = pass; updatePayload.password = pass; }
-
-            await window.supabaseClient
-                .from('profiles')
-                .update(updatePayload)
-                .or('user_code.eq.' + user.user + ',username.eq.' + user.user);
-        } catch (e) {}
-    }
-
-    if (typeof window.checkAuth === 'function') window.checkAuth();
-    if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
-    renderUserCurrentWeekWorkspace();
-    showToast('ສຳເລັດ', 'ອັບເດດຂໍ້ມູນສ່ວນຕົວ ແລະ Sync ລົງ Supabase ແລ້ວ!', 'success');
-}
-
-// 5. ຈອງມື້ພັກປະຈຳປີ
-async function handleBookAnnualLeave() {
-    var user = getCurrentUserSafe();
-    if (!user) return;
-
-    var start = (document.getElementById('bookLeaveStart') || {}).value;
-    var end = (document.getElementById('bookLeaveEnd') || {}).value;
-    var shift = (document.getElementById('bookLeaveShiftSelect') || {}).value || 'ກະ 1 (08:00 - 16:00)';
-    var reason = ((document.getElementById('bookLeaveReason') || {}).value || '').trim();
-    if (!start || !end || !reason) { showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາປ້ອນຂໍ້ມູນໃຫ້ຄົບ', 'error'); return; }
-
-    var conflictingBooking = (window.annualBookings || []).find(function(b) {
-        if (b.status === 'REJECTED') return false;
-        if (b.user === user.user) return false;
-        if (b.shift !== shift && b.shift !== 'ທຸກກະ (All Shifts)') return false;
-        return (start <= b.endDate && end >= b.startDate);
-    });
-
-    var bookingStatus = 'CONFIRMED';
-
-    if (conflictingBooking) {
-        var confirmSubmitPending = confirm(
-            '⚠️ ແຈ້ງເຕືອນໂຄຕ້າກະ:\n\nໃນກະ [' + shift + '] ວັນທີ ' + conflictingBooking.startDate + ' ຫາ ' + conflictingBooking.endDate + ' ມີທ່ານ "' + conflictingBooking.nameLao + '" ລາພັກແລ້ວ!\n\nທ່ານຕ້ອງການສົ່ງຄຳຂໍແບບ "ລໍຖ້າ Admin ອະນຸມັດພິເສດ" ແທ້ບໍ່?'
-        );
-
-        if (!confirmSubmitPending) {
-            showToast('ແນະນຳ', 'ກະລຸນາໄປທີ່ຟອມ "ຂໍປ່ຽນກະ (Shift Swap)" ເພື່ອແລກກະກັບໝູ່ກ່ອນ', 'info');
-            return;
         }
 
-        bookingStatus = 'PENDING_ADMIN';
+    } catch (e) {
+        console.error("Cloud Sync Exception:", e);
     }
+}
+window.loadEverythingFromSupabase = loadEverythingFromSupabase;
 
-    var diffDays = Math.ceil(Math.abs(new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)) + 1;
+// INITIALIZE APPLICATION
+document.addEventListener('DOMContentLoaded', function() {
+    var storedUsers = safeJSONParse(localStorage.getItem('ot_users'), null);
+    window.users = (storedUsers && storedUsers.length > 0) ? storedUsers : defaultSystemUsers;
+
+    window.scheduleSheets = safeJSONParse(localStorage.getItem('ot_schedule_sheets'), null) || 
+                            safeJSONParse(localStorage.getItem('ot_schedules_sheets'), null) || [];
+    window.activeSheetId = localStorage.getItem('ot_active_sheet_id') || null;
+
+    getActiveSheet();
     
-    if (bookingStatus === 'CONFIRMED') {
-        user.usedAnnual = (user.usedAnnual || 0) + diffDays;
-        var idx = (window.users || []).findIndex(function(u) { 
-            return u.user.toLowerCase() === user.user.toLowerCase(); 
-        });
-        if (idx !== -1) window.users[idx].usedAnnual = user.usedAnnual;
+    var storedGroups = safeJSONParse(localStorage.getItem('ot_employee_groups'), null);
+    window.employeeGroups = (storedGroups && storedGroups.length > 0) ? storedGroups : window.defaultEmployeeGroups;
+
+    window.fixedShiftsConfig = safeJSONParse(localStorage.getItem('ot_fixed_shifts_cfg'), window.fixedShiftsConfig || []);
+    window.specialHolidayRanges = safeJSONParse(localStorage.getItem('ot_special_holidays'), window.specialHolidayRanges || []);
+    window.annualBookings = safeJSONParse(localStorage.getItem('ot_annual_bookings'), window.annualBookings || []);
+    window.swapHistory = safeJSONParse(localStorage.getItem('ot_swap_history'), window.swapHistory || []);
+    window.scheduleAuditLogs = safeJSONParse(localStorage.getItem('ot_schedule_audit_logs'), window.scheduleAuditLogs || []);
+
+    var topAv = document.getElementById('topAvatar');
+    if (topAv) {
+        var curUser = safeJSONParse(localStorage.getItem('ot_auth_live'), null);
+        topAv.src = (curUser && curUser.photo) ? curUser.photo : DEFAULT_AVATAR;
+        topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
     }
 
-    var newBooking = {
-        id: Date.now(),
-        user: user.user,
-        nameLao: user.nameLao,
-        startDate: start,
-        endDate: end,
-        shift: shift,
-        days: diffDays,
-        reason: reason,
-        status: bookingStatus,
-        created_at: new Date().toISOString()
-    };
-
-    if (!window.annualBookings) window.annualBookings = [];
-    window.annualBookings.unshift(newBooking);
-    localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
-
-    if (bookingStatus === 'CONFIRMED') {
-        if (!window.leavesList) window.leavesList = [];
-        window.leavesList.unshift({
-            id: Date.now(),
-            date: start,
-            shift: shift,
-            empName: user.nameLao,
-            reason: reason
-        });
-    }
-
-    if (typeof saveAll === 'function') saveAll();
-
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('annual_bookings').insert([{
-                user_code: user.user,
-                name_lao: user.nameLao,
-                start_date: start,
-                end_date: end,
-                shift: shift,
-                days: diffDays,
-                reason: reason,
-                status: bookingStatus,
-                created_at: newBooking.created_at
-            }]);
-        } catch (e) {}
-    }
-
-    renderAnnualLeaveBookings();
+    if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
+    if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
+    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
 
-    if (bookingStatus === 'PENDING_ADMIN') {
-        showToast('ສົ່ງຄຳຂໍແລ້ວ', 'ຄຳຮ້ອງກຳລັງລໍຖ້າ Admin ພິຈາລະນາ', 'warning');
-    } else {
-        showToast('ສຳເລັດ', 'ຈອງມື້ພັກ [' + shift + '] ຈຳນວນ ' + diffDays + ' ມື້ສຳເລັດ!', 'success');
-    }
-}
+    // ດຶງ Cloud Data & ແຈ້ງເຕືອນ
+    setTimeout(function() { loadEverythingFromSupabase(0); }, 300);
+    setTimeout(function() { if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications(); }, 1200);
 
-function promptCancelAnnualLeave(bookingId) {
-    var booking = (window.annualBookings || []).find(function(b) { return b.id === bookingId; });
-    if (!booking) return;
-
-    if (!confirm('ທ່ານຕ້ອງການຍົກເລີກການຈອງມື້ພັກວັນທີ ' + booking.startDate + ' ຫາ ' + booking.endDate + ' ແທ້ບໍ່?')) return;
-
-    var user = getCurrentUserSafe();
-    if (booking.status === 'CONFIRMED' && user) {
-        user.usedAnnual = Math.max(0, (user.usedAnnual || 0) - booking.days);
-        var idx = (window.users || []).findIndex(function(u) { return u.user.toLowerCase() === user.user.toLowerCase(); });
-        if (idx !== -1) window.users[idx].usedAnnual = user.usedAnnual;
-    }
-
-    window.annualBookings = window.annualBookings.filter(function(b) { return b.id !== bookingId; });
-    localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
-    window.leavesList = (window.leavesList || []).filter(function(l) { return l.date !== booking.startDate || !isSamePerson(l.empName, booking.nameLao); });
-
-    if (typeof saveAll === 'function') saveAll();
-    renderAnnualLeaveBookings();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
-
-    if (window.supabaseClient) {
-        try {
-            window.supabaseClient.from('annual_bookings')
-                .delete()
-                .eq('user_code', booking.user || (user && user.user))
-                .eq('start_date', booking.startDate).then();
-        } catch (e) {}
-    }
-
-    showToast('ສຳເລັດ', 'ຍົກເລີກການຈອງມື້ພັກຮຽບຮ້ອຍແລ້ວ!', 'success');
-}
-
-// 5.1 RENDER ປະຕິທິນຈອງມື້ພັກ
-async function renderAnnualLeaveBookings() {
-    var tbody = document.getElementById('annualLeaveBookingsTableBody');
-    if (!tbody) return;
-
-    try {
-        var localB = localStorage.getItem('ot_annual_bookings');
-        if (localB) window.annualBookings = JSON.parse(localB);
-    } catch(e) {}
-
-    tbody.innerHTML = '';
-
-    var bookings = (window.annualBookings || []).slice().sort(function(a, b) {
-        var timeA = a.created_at ? new Date(a.created_at).getTime() : (Number(a.id) || 0);
-        var timeB = b.created_at ? new Date(b.created_at).getTime() : (Number(b.id) || 0);
-        return timeB - timeA;
-    });
-
-    if (bookings.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400 font-lao">ຍັງບໍ່ມີລາຍການຈອງມື້ພັກປະຈຳປີ</td></tr>';
-        return;
-    }
-
-    var user = getCurrentUserSafe();
-    var now = new Date();
-    var todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-
-    bookings.forEach(function(b) {
-        var isMyBooking = (b.user === (user && user.user) || isSamePerson(b.nameLao, user && user.nameLao)) || (user && user.role === 'SUPER_ADMIN');
-        var isAdmin = (user && user.role === 'SUPER_ADMIN');
-
-        var isPast = Boolean(b.endDate && b.endDate < todayStr);
-
-        var timeFormatted = '-';
-        if (b.created_at) {
-            var dObj = new Date(b.created_at);
-            timeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
-                            ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
-        } else if (b.id && String(b.id).length >= 12) {
-            var dObj = new Date(Number(b.id));
-            timeFormatted = dObj.toLocaleDateString('lo-LA', { day: '2-digit', month: '2-digit', year: 'numeric' }) + 
-                            ' ' + dObj.toLocaleTimeString('lo-LA', { hour: '2-digit', minute: '2-digit' });
-        }
-
-        var statusBadge = '';
-        if (b.status === 'CONFIRMED') {
-            if (isPast) {
-                statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">ໃຊ້ມື້ພັກແລ້ວ</span>';
-            } else {
-                statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">ອະນຸມັດແລ້ວ</span>';
-            }
-        } else if (b.status === 'PENDING_ADMIN') {
-            statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">⚠️ ລໍຖ້າ Admin (ພັກຊ້ອນ)</span>';
-        } else {
-            statusBadge = '<span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-brand-red border border-red-200">ປະຕິເສດ</span>';
-        }
-
-        var rowStyleClass = isPast 
-            ? 'opacity-50 bg-slate-50/60 hover:opacity-80 transition' 
-            : 'hover:bg-slate-50 transition';
-
-        var reasonHtml = b.reason || '-';
-        if (isPast && b.status === 'CONFIRMED') {
-            reasonHtml += ' <span class="text-[10px] text-slate-400 font-normal block mt-0.5 italic">✓ ໃຊ້ມື້ພັກແລ້ວ</span>';
-        }
-
-        tbody.innerHTML += '<tr class="' + rowStyleClass + ' font-lao border-b border-slate-100 text-xs">' +
-            '<td class="p-3 font-bold text-brand-red">' + b.nameLao + '</td>' +
-            '<td class="p-3 text-slate-700">' +
-                '<div class="font-semibold">' + b.startDate + ' ຫາ ' + b.endDate + '</div>' +
-                '<span class="text-[10px] text-emerald-600 font-mono block mt-0.5 font-medium">🕒 ຈອງເມື່ອ: ' + timeFormatted + '</span>' +
-            '</td>' +
-            '<td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">' + (b.shift || 'ທຸກກະ') + '</span></td>' +
-            '<td class="p-3 font-bold text-slate-800">' + b.days + ' ມື້</td>' +
-            '<td class="p-3 text-slate-500">' + reasonHtml + '</td>' +
-            '<td class="p-3 text-right">' +
-                '<div class="flex items-center justify-end gap-2">' +
-                    statusBadge +
-                    (isAdmin && b.status === 'PENDING_ADMIN' ? '<button type="button" onclick="adminApproveLeave(' + b.id + ')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow transition cursor-pointer">ອະນຸມັດ</button>' : '') +
-                    (isMyBooking && !isPast ? '<button type="button" onclick="promptCancelAnnualLeave(' + b.id + ')" class="px-2.5 py-1 bg-white hover:bg-red-50 text-brand-red border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-0.5 cursor-pointer"><span class="material-symbols-outlined text-xs">delete</span> ຍົກເລີກ</button>' : '') +
-                '</div>' +
-            '</td>' +
-        '</tr>';
-    });
-}
-
-async function adminApproveLeave(id) {
-    var b = (window.annualBookings || []).find(function(item) { return item.id === id; });
-    if (!b) return;
-
-    b.status = 'CONFIRMED';
-    var userObj = (window.users || []).find(function(u) { return u.user === b.user || isSamePerson(u.nameLao, b.nameLao); });
-    if (userObj) {
-        userObj.usedAnnual = (userObj.usedAnnual || 0) + b.days;
-    }
-
-    if (!window.leavesList) window.leavesList = [];
-    window.leavesList.unshift({
-        id: Date.now(),
-        date: b.startDate,
-        shift: b.shift,
-        empName: b.nameLao,
-        reason: b.reason
-    });
-
-    if (typeof saveAll === 'function') saveAll();
-    localStorage.setItem('ot_annual_bookings', JSON.stringify(window.annualBookings));
-
-    if (window.supabaseClient) {
-        try {
-            await window.supabaseClient.from('annual_bookings')
-                .update({ status: 'CONFIRMED' })
-                .eq('user_code', b.user)
-                .eq('start_date', b.startDate);
-        } catch (e) {}
-    }
-
-    renderAnnualLeaveBookings();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
-    showToast('ອະນຸມັດສຳເລັດ', 'Admin ໄດ້ອະນຸມັດໃຫ້ "' + b.nameLao + '" ລາພັກແລ້ວ', 'success');
-}
-
-// 6. ສົ່ງຄຳຮ້ອງປ່ຽນກະ
-async function handleCreateSwap() {
-    var user = getCurrentUserSafe();
-    if (!user) {
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນສົ່ງຄຳຮ້ອງ', 'error');
-        return;
-    }
-
-    var start = (document.getElementById('swapDateStart') || {}).value;
-    var end = (document.getElementById('swapDateEnd') || {}).value;
-    var toName = (document.getElementById('swapTargetPeer') || {}).value;
-    var fromShift = (document.getElementById('swapMyShift') || {}).value;
-    var toShift = (document.getElementById('swapTargetShift') || {}).value;
-    var swapType = (document.getElementById('swapT
+    setInterval(function() { if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications(); }, 20000);
+    setInterval(function() { loadEverythingFromSupabase(0); }, 30000);
+});
