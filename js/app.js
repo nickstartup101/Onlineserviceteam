@@ -532,3 +532,13 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() { if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications(); }, 20000);
     setInterval(function() { loadEverythingFromSupabase(0); }, 30000);
 });
+// ⭐ ລົງທະບຽນ PWA Service Worker ເພື່ອໃຫ້ Install ໄດ້
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js').then(function(reg) {
+            console.log('✅ PWA Service Worker Registered:', reg.scope);
+        }).catch(function(err) {
+            console.warn('PWA Registration failed:', err);
+        });
+    });
+}
