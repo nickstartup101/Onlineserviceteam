@@ -6,6 +6,15 @@
     <title>Online Team - ເຄື່ອງມືສຳລັບຂະແໜງບໍລິການອອນລາຍ</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2a9 9 0 0 0-9 9v4a4 4 0 0 0 4 4h1v-7H5v-1a7 7 0 0 1 14 0v1h-3v7h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5v2h5a3 3 0 0 0 3-3v-1.17A3.99 3.99 0 0 0 21 15v-4a9 9 0 0 0-9-9z'/%3E%3C/svg%3E"/>
 
+    <!-- PWA Settings ສຳລັບ Android & iOS -->
+    <link rel="manifest" href="manifest.json"/>
+    <meta name="theme-color" content="#c01e2e"/>
+    <meta name="mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+    <meta name="apple-mobile-web-app-title" content="Online Team"/>
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%23c01e2e'/%3E%3Cpath d='M256 96c-88.37 0-160 71.63-160 160v64c0 35.35 28.65 64 64 64h16V256h-48v-16c0-70.69 57.31-128 128-128s128 57.31 128 128v16h-48v128h32c8.84 0 16 7.16 16 16v16c0 8.84-7.16 16-16 16h-80v32h80c26.51 0 48-21.49 48-48v-18.72C434.59 385.19 448 366.09 448 344v-88c0-88.37-71.63-160-160-160z' fill='%23ffffff'/%3E%3C/svg%3E"/>
+
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <script>
         tailwind.config = {
@@ -27,11 +36,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="css/style.css"/>
     <style>
-        /* ປ້ອງກັນ Tailwind md:flex ໄປຝືນສະແດງກ່ອງຂາວຕອນທີ່ຖືກສັ່ງ hidden */
         .admin-only.hidden { display: none !important; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col font-lao">
+
     <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
         <div class="bg-white border border-slate-200 shadow-xl rounded-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-md">
@@ -109,15 +118,15 @@
         <nav class="flex flex-col gap-1.5 flex-1 text-xs">
             <button type="button" onclick="switchTab('dashboard'); toggleMobileDrawer();" id="mob-side-dashboard" class="mob-side-btn flex items-center gap-3 px-4 py-3 bg-red-50 text-brand-red rounded-xl font-bold text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">dashboard</span> Dashboard ຕິດຕາມ</button>
             <button type="button" onclick="switchTab('schedule'); toggleMobileDrawer();" id="mob-side-schedule" class="mob-side-btn flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">table_view</span> ຕາຕະລາງປະຈຳການ</div><span class="bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded font-bold">All</span></button>
-            <button type="button" onclick="switchTab('groups')" id="mob-side-groups" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
-            <button type="button" onclick="switchTab('employees')" id="mob-side-employees" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
-            <button type="button" onclick="switchTab('profile')" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
+            <button type="button" onclick="switchTab('groups'); toggleMobileDrawer();" id="mob-side-groups" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">category</span> ຕັ້ງໝວດ Random</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
+            <button type="button" onclick="switchTab('employees'); toggleMobileDrawer();" id="mob-side-employees" class="mob-side-btn admin-only flex items-center justify-between px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">group</span> ຈັດການພະນັກງານ</div><span class="bg-brand-red text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Admin</span></button>
+            <button type="button" onclick="switchTab('profile'); toggleMobileDrawer();" id="mob-side-profile" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">account_circle</span> <span id="mobSideProfileNavTitle">Workspace & ໂປຣໄຟລ໌</span></button>
             <button type="button" onclick="switchTab('library'); toggleMobileDrawer();" id="mob-side-library" class="mob-side-btn flex items-center gap-3 px-4 py-3 text-slate-600 hover:bg-slate-50 rounded-xl text-left cursor-pointer"><span class="material-symbols-outlined text-[18px]">menu_book</span> Library ຄວາມຮູ້</button>
         </nav>
-        <button type="button" id="pwaInstallMobBtn" onclick="triggerPwaInstall()" class="w-full mb-2 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer">
-        <span class="material-symbols-outlined text-base">install_mobile</span> ຕິດຕັ້ງແອັບລົງມືຖື (Install App)
-        </button>
-        <div class="pt-4 border-t border-slate-100">
+        <div class="pt-4 border-t border-slate-100 space-y-2">
+            <button type="button" id="pwaInstallMobBtn" onclick="triggerPwaInstall()" class="w-full py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer">
+                <span class="material-symbols-outlined text-base">install_mobile</span> ຕິດຕັ້ງແອັບລົງມືຖື (Install App)
+            </button>
             <button type="button" onclick="logout()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-sm">logout</span> ອອກຈາກລະບົບ</button>
         </div>
     </aside>
@@ -141,12 +150,13 @@
                 <button type="button" onclick="switchTab('library')" id="top-btn-library" class="top-nav-link text-slate-600 hover:bg-slate-50 rounded-lg px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">menu_book</span> Library ຄວາມຮູ້</button>
             </nav>
         </div>
-        <!-- ປຸ່ມຕິດຕັ້ງແອັບສຳລັບ Android / Chrome -->
-        <button type="button" id="pwaInstallTopBtn" onclick="triggerPwaInstall()" class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-brand-red text-brand-red hover:text-white border border-red-200 transition text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs">
-        <span class="material-symbols-outlined text-[18px]">install_mobile</span>
-        <span class="hidden sm:inline">ຕິດຕັ້ງແອັບ</span>
-        </button>
         <div class="flex items-center gap-2 md:gap-3">
+            <!-- ປຸ່ມຕິດຕັ້ງແອັບສຳລັບ Android / Chrome (ຢູ່ໃນ div ຝັ່ງຂວາ ຄູ່ກັບກະດິ່ງແຈ້ງເຕືອນ) -->
+            <button type="button" id="pwaInstallTopBtn" onclick="triggerPwaInstall()" class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-brand-red text-brand-red hover:text-white border border-red-200 transition text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs" title="ຕິດຕັ້ງແອັບລົງອຸປະກອນ">
+                <span class="material-symbols-outlined text-[18px]">install_mobile</span>
+                <span class="hidden sm:inline">ຕິດຕັ້ງແອັບ</span>
+            </button>
+
             <div class="relative flex items-center">
                 <button type="button" onclick="toggleNotificationDropdown()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition relative cursor-pointer flex items-center justify-center">
                     <span class="material-symbols-outlined text-[22px]">notifications</span>
@@ -171,7 +181,7 @@
         </div>
     </header>
 
-    <!-- Main Wrapper (Clean Tree: ບໍ່ມີ div ຄ້າງ) -->
+    <!-- Main Wrapper -->
     <div class="flex flex-1 overflow-hidden">
         
         <!-- Desktop Sidebar -->
@@ -187,7 +197,7 @@
             </nav>
         </aside>
 
-        <!-- VIEW 1: DASHBOARD (ແກ້ໄຂ overflow-y-auto ໃຫ້ເລື່ອນໄດ້ 100%) -->
+        <!-- VIEW 1: DASHBOARD -->
         <main id="view-dashboard" class="tab-view active flex-1 overflow-y-auto h-full p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full flex flex-col gap-6">
                 <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
@@ -276,13 +286,13 @@
             </div>
         </main>
 
-        <!-- VIEW 2: MONTHLY SCHEDULE BUILDER (ກູ້ຄືນແຖບເຄື່ອງມືທັງໝົດ 100%) -->
+        <!-- VIEW 2: MONTHLY SCHEDULE BUILDER -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100 pb-20 md:pb-0">
             
-            <!-- Toolbar ເຄື່ອງມືຄົບຊຸດ -->
+            <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2.5 shrink-0 shadow-sm">
                 
-                <!-- ເຄື່ອງມືຝັ່ງຊ້າຍ (Sheet, ສ້າງໃໝ່, ລ່ວງໜ້າ, Fix Shift, ໝາຍເຫດ, ລຶບ) -->
+                <!-- ຝັ່ງຊ້າຍ -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <div class="flex items-center border border-slate-300 rounded-xl bg-slate-50 p-0.5">
                         <span class="material-symbols-outlined text-slate-500 text-lg px-2">calendar_today</span>
@@ -310,17 +320,13 @@
                     </button>
                 </div>
 
-                <!-- ເຄື່ອງມືຝັ່ງຂວາ (Zigzag, Zigzag ອາທິດ 1, Rebalance, ຄວາມເທົ່າທຽມ, Reset, ວັນພັກ, Draft, Publish, PDF) -->
+                <!-- ຝັ່ງຂວາ -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer">
                         <span class="material-symbols-outlined text-base">autorenew</span> Random Zigzag
                     </button>
 
-                    <button type="button" onclick="executeZigzagFromWeek1()" class="admin-only px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer" title="ເອົາອາທິດທີ 1 ເປັນແມ່ແບບ ແລ້ວແລ່ນສູດ Zigzag ຕໍ່ໃຫ້ຄົບທຸກອາທິດ">
-                        <span class="material-symbols-outlined text-base">auto_fix_high</span> Zigzag ຈາກອາທິດ 1
-                    </button>
-
-                    <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer" title="ດຶງກະດຶກເສົາ-ອາທິດ ໄປສະເລ່ຍໃຫ້ຄົນທີ່ໄດ້ໜ້ອຍ">
+                    <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer">
                         <span class="material-symbols-outlined text-base text-slate-700">balance</span> Rebalance ກະ 3
                     </button>
 
@@ -360,7 +366,7 @@
 
             <!-- Schedule Content Wrapper -->
             <div class="flex flex-1 overflow-hidden" id="scheduleTableWrapper">
-                <!-- Roster Sidebar (ສຳລັບ Admin ເພື່ອ Drag & Drop) -->
+                <!-- Roster Sidebar -->
                 <div class="admin-only w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-3 shrink-0 flex flex-col shadow-sm">
                     <div>
                         <p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ (<span id="rosterCountText">0</span> ທ່ານ)</p>
@@ -373,7 +379,7 @@
                     <div id="scheduleStaffRoster" class="space-y-1.5 flex-1 overflow-y-auto pr-1"></div>
                 </div>
 
-                <!-- ຕາຕະລາງໃຫຍ່ (Paper A4 Area) -->
+                <!-- ຕາຕະລາງໃຫຍ່ -->
                 <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
                         <div class="text-center font-bold text-sm py-1.5 border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
@@ -390,8 +396,7 @@
                 </div>
             </div>
         </main>
-
-        <!-- VIEW 3: GROUPS -->
+         <!-- VIEW 3: GROUPS -->
         <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -726,8 +731,7 @@
         </main>
     </div>
 
-    <!-- MODALS (Manage Category, Staff Info, Remarks, Fix Shift, Batch, Groups, Fairness, Emp, Random, Cell, Sheet Info, Holiday, Library) -->
-    
+    <!-- MODALS -->
     <div id="manageCategoryModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[90vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
@@ -924,14 +928,9 @@
                         <option value="12">12 ເດືອນ (ເຕັມ 1 ປີ)</option>
                     </select>
                 </div>
-                <div class="flex justify-between items-center pt-3 border-t">
-                    <button type="button" onclick="deleteAllDraftSheets()" class="px-3 py-2 bg-white hover:bg-red-50 text-slate-600 hover:text-brand-red border border-slate-200 rounded-xl font-bold flex items-center gap-1 cursor-pointer">
-                        <span class="material-symbols-outlined text-xs">delete_sweep</span> ລຶບ Draft ທັງໝົດ
-                    </button>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="document.getElementById('batchMonthModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl cursor-pointer">ຍົກເລີກ</button>
-                        <button type="button" onclick="executeBatchMonthGenerate()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow cursor-pointer flex items-center gap-1"><span class="material-symbols-outlined text-sm">play_arrow</span> ສ້າງຕາຕະລາງ</button>
-                    </div>
+                <div class="flex justify-end items-center pt-3 border-t gap-2">
+                    <button type="button" onclick="document.getElementById('batchMonthModal').classList.add('hidden')" class="px-4 py-2 border rounded-xl cursor-pointer">ຍົກເລີກ</button>
+                    <button type="button" onclick="executeBatchMonthGenerate()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold shadow cursor-pointer flex items-center gap-1"><span class="material-symbols-outlined text-sm">play_arrow</span> ສ້າງຕາຕະລາງ</button>
                 </div>
             </div>
         </div>
@@ -1057,7 +1056,7 @@
         </div>
     </div>
 
-    <!-- Library Item Modal -->
+   <!-- Library Item Modal -->
     <div id="libraryItemModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
