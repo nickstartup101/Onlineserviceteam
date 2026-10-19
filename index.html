@@ -32,7 +32,14 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col font-lao">
-
+<!-- PWA Settings ສຳລັບ Android & iOS -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#c01e2e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Online Team">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
         <div class="bg-white border border-slate-200 shadow-xl rounded-2xl p-4 flex items-center gap-3 min-w-[300px] max-w-md">
