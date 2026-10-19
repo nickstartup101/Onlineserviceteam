@@ -1,4 +1,4 @@
-// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER 100%) =================
+// ================= ⭐ ONLINE TEAM - CORE APP & CLOUD CONTROLLER (MASTER 100% + ANDROID PWA INSTALL) =================
 
 // 0. GLOBAL HOLIDAY CHECKER
 function isDateInHolidayRange(dStr) {
@@ -96,6 +96,44 @@ window.defaultEmployeeGroups = [
 window.defaultNotesTemplate = `1. ກະ 1 (08:00 - 16:00), ກະ 2 (12:00 - 20:00), ກະ 3 (20:00 - 08:00).
 2. ວັນເສົາ-ອາທິດ: ກະ 1 (08:00 - 13:30), ກະ 2 (13:30 - 19:00), ກະ 3 (19:00 - 08:00).
 3. ຫາກມີການຂໍປ່ຽນກະ ຕ້ອງແຈ້ງ ແລະ ໄດ້ຮັບການເຫັນດີຜ່ານລະບົບລ່ວງໜ້າຢ່າງໜ້ອຍ 24 ຊົ່ວໂມງ.`;
+
+// ⭐ ຟັງຊັນອັບເດດຮູບໂປຣໄຟລ໌ (Avatar) ໃນ Header ມຸມຂວາເທິງ ແລະ ໜ້າ Profile ໃຫ້ກົງກັບ Supabase 100%
+function refreshCurrentUserAvatarUI() {
+    if (!window.currentUser) {
+        var saved = safeJSONParse(localStorage.getItem('ot_auth_live'), null);
+        if (saved) window.currentUser = saved;
+    }
+    if (!window.currentUser) return;
+
+    var matched = (window.users || []).find(function(u) {
+        return u && (
+            (u.user && window.currentUser.user && u.user.toLowerCase() === window.currentUser.user.toLowerCase()) ||
+            (u.nameLao && window.currentUser.nameLao && u.nameLao === window.currentUser.nameLao)
+        );
+    });
+
+    if (matched) {
+        if (matched.photo) window.currentUser.photo = matched.photo;
+        window.currentUser.fullName = matched.fullName || window.currentUser.fullName;
+        window.currentUser.nameLao = matched.nameLao || window.currentUser.nameLao;
+        try { localStorage.setItem('ot_auth_live', JSON.stringify(window.currentUser)); } catch(e) {}
+    }
+
+    var avatarSrc = (window.currentUser && window.currentUser.photo) ? window.currentUser.photo : DEFAULT_AVATAR;
+
+    var topAv = document.getElementById('topAvatar');
+    if (topAv) {
+        topAv.src = avatarSrc;
+        topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
+    }
+
+    var profPreview = document.getElementById('profPhotoPreview');
+    if (profPreview) {
+        profPreview.src = avatarSrc;
+        profPreview.onerror = function() { this.src = DEFAULT_AVATAR; };
+    }
+}
+window.refreshCurrentUserAvatarUI = refreshCurrentUserAvatarUI;
 
 function showToast(title, message, type) {
     if (!type) type = 'success';
@@ -216,6 +254,8 @@ function switchTab(tabName) {
         activeMobBtn.classList.add('bg-red-50', 'text-brand-red', 'font-bold');
     }
 
+    refreshCurrentUserAvatarUI();
+
     if (tabName === 'schedule') {
         if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
         if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -227,6 +267,8 @@ function switchTab(tabName) {
         if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
     } else if (tabName === 'profile') {
         if (typeof window.initProfileWorkspace === 'function') window.initProfileWorkspace();
+    } else if (tabName === 'library') {
+        if (typeof window.renderLibraryItems === 'function') window.renderLibraryItems();
     }
 }
 window.switchTab = switchTab;
@@ -238,7 +280,7 @@ function toggleMobileDrawer() {
 }
 window.toggleMobileDrawer = toggleMobileDrawer;
 
-// ⭐ ACTIVE SCHEDULE SHEET (ເຊື່ອມໂຍງກັບ schedule.js ໂດຍບໍ່ສ້າງ Sheet ຈຳລອງ 09/2026)
+// ⭐ ACTIVE SCHEDULE SHEET
 function getActiveSheet() {
     if (typeof window.getActiveSheet === 'function' && window.getActiveSheet !== getActiveSheet) {
         return window.getActiveSheet();
@@ -404,7 +446,7 @@ async function loadEverythingFromSupabase(retryCount) {
         }
         if (typeof window.renderGroupsListGrid === 'function') window.renderGroupsListGrid();
 
-        // B. Profiles (ດຶງພະນັກງານຕົວຈິງຈາກ Database Supabase)
+        // B. Profiles (ດຶງພະນັກງານຕົວຈິງ + ຮູບໂປຣໄຟລ໌ຈາກ Database Supabase)
         var profRes = await window.supabaseClient.from('profiles').select('*');
         var cloudProfiles = profRes.data;
 
@@ -428,24 +470,21 @@ async function loadEverythingFromSupabase(retryCount) {
                     isLeader: Boolean(cp.is_leader || cp.isLeader),
                     dept: cp.dept || 'ຂະແໜງບໍລິການອອນລາຍ',
                     phone: cp.phone || '',
-                    photo: cp.photo || '',
+                    photo: cp.photo || cp.avatar_url || cp.avatar || '',
                     pass: cp.pass || cp.password || 'bcel2026'
                 };
 
                 if (existingIdx !== -1) {
                     window.users[existingIdx] = Object.assign({}, window.users[existingIdx], normalizedUser, {
-                        photo: cp.photo || window.users[existingIdx].photo || ''
+                        photo: normalizedUser.photo || window.users[existingIdx].photo || ''
                     });
                 } else {
                     window.users.push(normalizedUser);
                 }
             });
 
-            var topAv = document.getElementById('topAvatar');
-            if (topAv) {
-                topAv.src = (window.currentUser && window.currentUser.photo) ? window.currentUser.photo : DEFAULT_AVATAR;
-                topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
-            }
+            saveAll();
+            refreshCurrentUserAvatarUI();
 
             if (typeof window.renderEmployeesTable === 'function') window.renderEmployeesTable();
             if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
@@ -455,30 +494,36 @@ async function loadEverythingFromSupabase(retryCount) {
         // C. Schedule Sheets (ດຶງສະເພາະຕາຕະລາງຕົວຈິງຈາກ Cloud ເທົ່ານັ້ນ)
         var schedRes = await window.supabaseClient.from('schedule_sheets').select('*');
         var cloudSchedules = schedRes.data;
-        if (!schedRes.error && cloudSchedules && cloudSchedules.length > 0) {
-            window.scheduleSheets = cloudSchedules.map(function(cs) {
-                var rawData = cs.data || cs.schedule_data || {};
-                if (typeof rawData === 'string') {
-                    try { rawData = JSON.parse(rawData); } catch (e) { rawData = {}; }
+        if (!schedRes.error && Array.isArray(cloudSchedules)) {
+            if (cloudSchedules.length > 0) {
+                window.scheduleSheets = cloudSchedules.map(function(cs) {
+                    var rawData = cs.data || cs.schedule_data || {};
+                    if (typeof rawData === 'string') {
+                        try { rawData = JSON.parse(rawData); } catch (e) { rawData = {}; }
+                    }
+
+                    var mKey = cs.monthKey || cs.month_key || '2026-10';
+                    return {
+                        id: String(cs.id),
+                        monthKey: String(mKey),
+                        title: cs.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                        notes: cs.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
+                        status: cs.status || 'PUBLISHED',
+                        isG7GroupSheet: Boolean(cs.is_g7 || cs.isG7GroupSheet || (cs.title && cs.title.includes('ສັນຍາ'))),
+                        data: rawData
+                    };
+                });
+
+                window.scheduleSheets.sort(function(a, b) {
+                    return String(b.monthKey).localeCompare(String(a.monthKey));
+                });
+
+                if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
+                    window.activeSheetId = window.scheduleSheets[0].id;
                 }
-
-                var mKey = cs.monthKey || cs.month_key || '2026-10';
-                return {
-                    id: String(cs.id),
-                    monthKey: String(mKey),
-                    title: cs.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
-                    notes: cs.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
-                    status: cs.status || 'PUBLISHED',
-                    data: rawData
-                };
-            });
-
-            window.scheduleSheets.sort(function(a, b) {
-                return String(b.monthKey).localeCompare(String(a.monthKey));
-            });
-
-            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
-                window.activeSheetId = window.scheduleSheets[0].id;
+            } else {
+                window.scheduleSheets = [];
+                window.activeSheetId = null;
             }
 
             saveAll();
@@ -492,6 +537,65 @@ async function loadEverythingFromSupabase(retryCount) {
     }
 }
 window.loadEverythingFromSupabase = loadEverythingFromSupabase;
+
+// ================= ⭐ ANDROID & DESKTOP PWA INSTALL ENGINE =================
+window.deferredPwaPrompt = null;
+
+window.addEventListener('beforeinstallprompt', function(e) {
+    // ປ້ອງກັນ Chrome ບໍ່ໃຫ້ເຊື່ອງ prompt ແລະ ເກັບໄວ້ໃຊ້ກັບປຸ່ມ Install ຂອງເຮົາ
+    e.preventDefault();
+    window.deferredPwaPrompt = e;
+    showPwaInstallButtons(true);
+});
+
+window.addEventListener('appinstalled', function() {
+    window.deferredPwaPrompt = null;
+    showPwaInstallButtons(false);
+    showToast('ຕິດຕັ້ງສຳເລັດ', 'ຕິດຕັ້ງແອັບ Online Team ລົງໃນອຸປະກອນຮຽບຮ້ອຍແລ້ວ!', 'success');
+});
+
+function showPwaInstallButtons(visible) {
+    var btnTop = document.getElementById('pwaInstallTopBtn');
+    var btnMob = document.getElementById('pwaInstallMobBtn');
+    if (btnTop) {
+        if (visible) btnTop.classList.remove('hidden');
+        else btnTop.classList.add('hidden');
+    }
+    if (btnMob) {
+        if (visible) btnMob.classList.remove('hidden');
+        else btnMob.classList.add('hidden');
+    }
+}
+
+async function triggerPwaInstall() {
+    if (window.deferredPwaPrompt) {
+        window.deferredPwaPrompt.prompt();
+        var choiceResult = await window.deferredPwaPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+            window.deferredPwaPrompt = null;
+            showPwaInstallButtons(false);
+        }
+    } else {
+        // ຖ້າເປີດໃນ Android/iOS ທີ່ບໍ່ທັນຍິງ beforeinstallprompt ໃຫ້ແນະນຳວິທີກົດຕິດຕັ້ງທັນທີ
+        showToast(
+            'ວິທີຕິດຕັ້ງແອັບ (Install App)',
+            'ສຳລັບ Android: ກົດປຸ່ມ ⋮ (ມຸມຂວາເທິງຂອງ Chrome) ແລ້ວເລືອກ "Install app" ຫຼື "Add to Home screen"',
+            'info'
+        );
+    }
+}
+window.triggerPwaInstall = triggerPwaInstall;
+
+// ລົງທະບຽນ PWA Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js').then(function(reg) {
+            console.log('✅ PWA Service Worker Registered:', reg.scope);
+        }).catch(function(err) {
+            console.warn('PWA Registration failed:', err);
+        });
+    });
+}
 
 // INITIALIZE APPLICATION
 document.addEventListener('DOMContentLoaded', function() {
@@ -513,12 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.swapHistory = safeJSONParse(localStorage.getItem('ot_swap_history'), window.swapHistory || []);
     window.scheduleAuditLogs = safeJSONParse(localStorage.getItem('ot_schedule_audit_logs'), window.scheduleAuditLogs || []);
 
-    var topAv = document.getElementById('topAvatar');
-    if (topAv) {
-        var curUser = safeJSONParse(localStorage.getItem('ot_auth_live'), null);
-        topAv.src = (curUser && curUser.photo) ? curUser.photo : DEFAULT_AVATAR;
-        topAv.onerror = function() { this.src = DEFAULT_AVATAR; };
-    }
+    refreshCurrentUserAvatarUI();
 
     if (typeof window.renderSheetDropdown === 'function') window.renderSheetDropdown();
     if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
@@ -532,13 +631,3 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() { if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications(); }, 20000);
     setInterval(function() { loadEverythingFromSupabase(0); }, 30000);
 });
-// ⭐ ລົງທະບຽນ PWA Service Worker ເພື່ອໃຫ້ Install ໄດ້
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('./sw.js').then(function(reg) {
-            console.log('✅ PWA Service Worker Registered:', reg.scope);
-        }).catch(function(err) {
-            console.warn('PWA Registration failed:', err);
-        });
-    });
-}
