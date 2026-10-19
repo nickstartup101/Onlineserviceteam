@@ -1,22 +1,18 @@
 {
-  "name": "Online Team - ລະບົບປະຈຳການ",
+  "name": "Online Team - ລະບົບປະຈຳການ BCEL",
   "short_name": "Online Team",
   "description": "ລະບົບຈັດຕາຕະລາງປະຈຳການ ແລະ ສູນຄວາມຮູ້ Library ສຳລັບຂະແໜງບໍລິການອອນລາຍ",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#c01e2e",
-  "orientation": "portrait",
+  "orientation": "any",
   "icons": [
     {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='110' fill='%23c01e2e'/%3E%3Cpath d='M256 96c-88.37 0-160 71.63-160 160v64c0 35.35 28.65 64 64 64h16V256h-48v-16c0-70.69 57.31-128 128-128s128 57.31 128 128v16h-48v128h32c8.84 0 16 7.16 16 16v16c0 8.84-7.16 16-16 16h-80v32h80c26.51 0 48-21.49 48-48v-18.72C434.59 385.19 448 366.09 448 344v-88c0-88.37-71.63-160-160-160z' fill='%23ffffff'/%3E%3C/svg%3E",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
