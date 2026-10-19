@@ -1,4 +1,4 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% FIXED) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% SUPABASE ONLY - NO AUTO MOCK) =================
 
 // 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
@@ -101,7 +101,6 @@ function applyFixedShiftsToDayData(dayData) {
         var targetShift = cfg.fixedShift; // 'shift1', 'shift2', 'shift3'
         if (!name || !targetShift) return;
 
-        // ກວດສອບວ່າຄົນນີ້ມີຊື່ເຮັດວຽກໃນມື້ນີ້ບໍ່
         var currentShift = null;
         var currentIdx = -1;
         ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
@@ -114,7 +113,6 @@ function applyFixedShiftsToDayData(dayData) {
             }
         });
 
-        // ຖ້າມີຊື່ເຮັດວຽກ ແຕ່ຢູ່ຜິດກະ ➔ ຍ້າຍມາກະທີ່ລັອກໄວ້ທັນທີ!
         if (currentShift && currentShift !== targetShift) {
             dayData[currentShift].splice(currentIdx, 1);
             if (!dayData[targetShift]) dayData[targetShift] = [];
@@ -153,38 +151,49 @@ async function fetchScheduleSwapsFromCloud() {
     }
 }
 
-// 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD
+// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD 100% (ບໍ່ມີການສ້າງຕາຕະລາງຈຳລອງເອງ)
 async function fetchScheduleSheetsFromCloud() {
     if (!window.supabaseClient) return false;
     try {
         var res = await window.supabaseClient.from('schedule_sheets').select('*');
-        if (!res.error && res.data && res.data.length > 0) {
-            window.scheduleSheets = res.data.map(function(s) {
-                var rawData = s.data || {};
-                if (typeof rawData === 'string') {
-                    try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+        if (!res.error && Array.isArray(res.data)) {
+            if (res.data.length > 0) {
+                window.scheduleSheets = res.data.map(function(s) {
+                    var rawData = s.data || {};
+                    if (typeof rawData === 'string') {
+                        try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                    }
+                    var mKey = s.monthKey || s.month_key || '2026-10';
+                    return {
+                        id: String(s.id),
+                        monthKey: String(mKey),
+                        title: s.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                        notes: s.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
+                        status: s.status || 'PUBLISHED',
+                        isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet || (s.title && s.title.includes('ສັນຍາ'))),
+                        data: rawData
+                    };
+                });
+
+                if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
+                    window.activeSheetId = window.scheduleSheets[0].id;
                 }
-                var mKey = s.monthKey || s.month_key || '2026-10';
-                return {
-                    id: String(s.id),
-                    monthKey: String(mKey),
-                    title: s.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
-                    notes: s.notes || window.defaultNotesTemplate || '',
-                    status: s.status || 'PUBLISHED',
-                    isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet),
-                    data: rawData
-                };
-            });
 
-            if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
-                window.activeSheetId = window.scheduleSheets[0].id;
+                try {
+                    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+                    localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+                } catch(e) {}
+                return true;
+            } else {
+                // ✅ ຖ້າໃນ Supabase ບໍ່ມີຕາຕະລາງເລີຍ ໃຫ້ລ້າງຄ່າເກົ່າອອກ ບໍ່ສ້າງຕາຕະລາງຈຳລອງເດັດຂາດ!
+                window.scheduleSheets = [];
+                window.activeSheetId = null;
+                try {
+                    localStorage.removeItem('ot_schedule_sheets');
+                    localStorage.removeItem('ot_schedules_sheets');
+                } catch(e) {}
+                return false;
             }
-
-            try {
-                localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-                localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-            } catch(e) {}
-            return true;
         }
     } catch(err) {
         console.warn("Could not fetch schedule sheets from cloud:", err);
@@ -192,32 +201,10 @@ async function fetchScheduleSheetsFromCloud() {
     return false;
 }
 
-// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ
+// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (ຕັດການຈຳລອງຕາຕະລາງອອກ 100% - ດຶງສະເພາະຈາກ Supabase)
 function getActiveSheet() {
     if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
-        try {
-            var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
-            if (cached) window.scheduleSheets = JSON.parse(cached);
-        } catch(e) {}
-    }
-
-    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
-        var defaultSheet = {
-            id: 'sheet-2026-10-main',
-            monthKey: '2026-10',
-            title: 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການສົມບູນປະຈຳເດືອນ 10/2026',
-            notes: window.defaultNotesTemplate || '',
-            status: 'PUBLISHED',
-            data: generateMonthDataZigzag(2026, 10, null)
-        };
-        window.scheduleSheets = [defaultSheet];
-        window.activeSheetId = defaultSheet.id;
-        try {
-            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-        } catch(e) {}
-        syncScheduleToSupabase(defaultSheet);
-        return defaultSheet;
+        return null;
     }
 
     var select = document.getElementById('scheduleSheetSelect');
@@ -234,24 +221,18 @@ function getActiveSheet() {
         found = window.scheduleSheets[0];
     }
 
-    window.activeSheetId = found ? found.id : 'sheet-2026-10-main';
-
-    if (found && (!found.data || Object.keys(found.data).filter(function(k) { return !k.startsWith('_'); }).length === 0)) {
-        var parts = (found.monthKey || '2026-10').split('-').map(Number);
-        var y = parts[0] || 2026;
-        var m = parts[1] || 10;
-        var isContract = (found.title && found.title.includes('ສັນຍາ'));
-        found.data = generateMonthDataZigzag(y, m, isContract ? getContractStaffList() : getPermanentStaffList());
-        syncScheduleToSupabase(found);
+    if (found) {
+        window.activeSheetId = found.id;
+        if (!found.data) found.data = {};
     }
 
-    return found;
+    return found || null;
 }
 window.getActiveSheet = getActiveSheet;
 
 // 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE
 async function syncScheduleToSupabase(sheet) {
-    if (!window.supabaseClient || !sheet) return false;
+    if (!window.supabaseClient || !sheet || !sheet.id) return false;
 
     if (!sheet.data) sheet.data = {};
     sheet.data._meta = {
@@ -345,7 +326,7 @@ function getGlobalWeekendDayIndex(dateObj) {
     return weekendCount;
 }
 
-// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ຮອງຮັບ Fix Shift 100%)
+// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ໃຊ້ສະເພາະຕອນກົດປຸ່ມສ້າງ/ສຸ່ມຕາຕະລາງເທົ່ານັ້ນ)
 function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -410,7 +391,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
                 shift2: s2,
                 shift3: s3
             };
-            applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+            applyFixedShiftsToDayData(dayObj);
             data[dStr] = dayObj;
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
@@ -437,7 +418,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
                 shift2: [l_S2, ...staff_S2].filter(Boolean),
                 shift3: [l_S3, ...staff_S3].filter(Boolean)
             };
-            applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+            applyFixedShiftsToDayData(dayObj);
             data[dStr] = dayObj;
         }
     }
@@ -445,7 +426,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ຮອງຮັບ Fix Shift 100%)
+// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ໃຊ້ສະເພາະຕອນກົດປຸ່ມສ້າງ/ສຸ່ມຕາຕະລາງເທົ່ານັ້ນ)
 function generate7PersonFlexZigzag(year, month, staffList) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -491,7 +472,7 @@ function generate7PersonFlexZigzag(year, month, staffList) {
             shift2: s2.filter(Boolean),
             shift3: s3.filter(Boolean)
         };
-        applyFixedShiftsToDayData(dayObj); // ບັງຄັບ Fix Shift
+        applyFixedShiftsToDayData(dayObj);
         data[dStr] = dayObj;
     }
     return data;
@@ -542,7 +523,11 @@ function openRandomGroupSelectModal() {
 
 async function executeGroupRandomSchedule() {
     var sheet = getActiveSheet();
-    var [year, month] = (sheet?.monthKey || '2026-10').split('-').map(Number);
+    if (!sheet) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງທີ່ເລືອກ ກະລຸນາສ້າງ Sheet ກ່ອນ', 'error');
+        return;
+    }
+    var [year, month] = (sheet.monthKey || '2026-10').split('-').map(Number);
     var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'GRP_MAIN_17';
     
     var members = null;
@@ -607,7 +592,9 @@ async function executeBatchMonthGenerate() {
     var [startYear, startMonth] = startM.split('-').map(Number);
     var firstGeneratedSheetId = null;
     var activeSheet = getActiveSheet();
-    var currentNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate;
+    var currentNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
+
+    if (!window.scheduleSheets) window.scheduleSheets = [];
 
     for (var c = 0; c < count; c++) {
         var targetDate = new Date(startYear, startMonth - 1 + c, 1);
@@ -620,7 +607,7 @@ async function executeBatchMonthGenerate() {
 
         var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
 
-        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && s.monthKey === monthKey && s.title && s.title.includes(groupNameTag); });
+        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && (s.id === sheetId || (s.monthKey === monthKey && s.title && s.title.includes(groupNameTag))); });
         var currentSheetObj = null;
         if (existingIdx !== -1) {
             window.scheduleSheets[existingIdx].data = generatedData;
@@ -641,7 +628,7 @@ async function executeBatchMonthGenerate() {
             window.scheduleSheets.push(currentSheetObj);
         }
 
-        if (c === 0) firstGeneratedSheetId = sheetId;
+        if (c === 0) firstGeneratedSheetId = currentSheetObj.id;
         syncScheduleToSupabase(currentSheetObj);
     }
 
@@ -659,7 +646,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 6. FIXED SHIFT MODAL FUNCTIONS (ກູ້ຄືນປຸ່ມ Fix Shift 100%)
+// ⭐ 6. FIXED SHIFT MODAL FUNCTIONS
 function openFixedShiftModal() {
     var userSelect = document.getElementById('fixedShiftUserSelect');
     if (userSelect) {
@@ -699,7 +686,6 @@ async function handleAddFixedShift() {
     window.fixedShiftsConfig = window.fixedShiftsConfig.filter(function(f) { return f.nameLao !== name; });
     window.fixedShiftsConfig.push({ nameLao: name, fixedShift: shift });
     
-    // ນຳໃຊ້ Fix Shift ເຂົ້າຕາຕະລາງປັດຈຸບັນທັນທີ
     var sheet = getActiveSheet();
     if (sheet && sheet.data) {
         Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); }).forEach(function(dStr) {
@@ -835,15 +821,32 @@ async function handleSaveHolidayRange() {
     } catch (err) {}
 }
 
-// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່
+// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່ (ສະແດງສະເພາະຂໍ້ມູນຈາກ Supabase)
 async function renderScheduleTable(options) {
     var opts = options || {};
     
-    var sheet = getActiveSheet();
-    if (!sheet) return;
-
     renderSheetDropdown();
     if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
+
+    var sheet = getActiveSheet();
+    var tbody = document.getElementById('scheduleTableBody');
+    var titleEl = document.getElementById('scheduleTableTitle');
+    var notesEl = document.getElementById('scheduleNotesDisplay');
+    var banner = document.getElementById('scheduleStatusBanner');
+    var badge = document.getElementById('scheduleStatusBadge');
+
+    // ✅ ຖ້າບໍ່ມີຕາຕະລາງໃນ Supabase ໃຫ້ສະແດງຂໍ້ຄວາມວ່າງເປົ່າ ບໍ່ສ້າງຕາຕະລາງຈຳລອງຂຶ້ນເອງ!
+    if (!sheet) {
+        if (titleEl) titleEl.innerHTML = '<span class="text-slate-400">ຍັງບໍ່ມີຂໍ້ມູນຕາຕະລາງໃນລະບົບ Supabase</span>';
+        if (notesEl) notesEl.innerText = '';
+        if (badge) badge.innerHTML = '<span class="text-slate-500">ບໍ່ພົບຕາຕະລາງ</span>';
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-slate-400 font-lao text-sm">' +
+                'ຍັງບໍ່ມີຕາຕະລາງປະຈຳການໃນຖານຂໍ້ມູນ Supabase (ກະລຸນາກົດປຸ່ມ "ສ້າງຕາຕະລາງໃໝ່" ຫຼື "ສ້າງລ່ວງໜ້າ")' +
+                '</td></tr>';
+        }
+        return;
+    }
 
     await fetchScheduleSwapsFromCloud();
 
@@ -864,7 +867,6 @@ async function renderScheduleTable(options) {
     var currentTitle = sheet.title || sheet.data?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + month + '/' + year);
     var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
-    var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
         titleEl.innerHTML = '<span>' + currentTitle + '</span>' +
             '<span class="no-print ml-2 text-xs font-semibold ' + (isOfficial ? 'text-emerald-700' : 'text-amber-700') + '">' +
@@ -872,11 +874,8 @@ async function renderScheduleTable(options) {
             '</span>';
     }
     
-    var notesEl = document.getElementById('scheduleNotesDisplay');
     if (notesEl) notesEl.innerText = currentNotes;
 
-    var banner = document.getElementById('scheduleStatusBanner');
-    var badge = document.getElementById('scheduleStatusBadge');
     var modCountText = document.getElementById('modifiedCellCountText');
 
     if (banner && badge) {
@@ -897,7 +896,6 @@ async function renderScheduleTable(options) {
         modCountText.innerHTML = sheetLogs.length > 0 ? '<span class="material-symbols-outlined text-xs text-amber-700">history_edu</span> ມີການດັດແກ້: ' + sheetLogs.length + ' ຈຸດ' : '';
     }
 
-    var tbody = document.getElementById('scheduleTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
     var dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -1172,14 +1170,18 @@ async function confirmApplyPublishedCellUpdate() {
     await applyCellUpdate(sheet, act.date, act.shift, act.index, act.newName);
 }
 
-// 12. DROPDOWN & SHEET ACTIONS
+// ⭐ 12. DROPDOWN & SHEET ACTIONS (ບໍ່ສ້າງຕາຕະລາງຈຳລອງ)
 function renderSheetDropdown() {
     var select = document.getElementById('scheduleSheetSelect');
     if (!select) return;
     select.innerHTML = '';
-    
+
     if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
-        getActiveSheet();
+        var emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.innerText = '-- ບໍ່ມີຕາຕະລາງໃນ Supabase --';
+        select.appendChild(emptyOpt);
+        return;
     }
 
     (window.scheduleSheets || []).forEach(function(sheet) {
@@ -1204,6 +1206,10 @@ function changeActiveSheet() {
 
 async function handleCreateNewSheet() {
     var month = document.getElementById('newSheetMonthInput')?.value;
+    if (!month) {
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກເດືອນ', 'error');
+        return;
+    }
     var title = document.getElementById('newSheetTitleInput')?.value.trim() || ('ຕາຕະລາງປະຈຳການ ' + month);
     var [y, m] = month.split('-').map(Number);
     var newId = 'sheet-' + Date.now();
@@ -1213,7 +1219,7 @@ async function handleCreateNewSheet() {
     var generated = generateMonthDataZigzag(y, m, targetMembers);
 
     var activeSheet = getActiveSheet();
-    var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate;
+    var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
 
     var newSheet = {
         id: newId,
@@ -1248,7 +1254,7 @@ function openEditSheetInfoModal() {
     var sheet = getActiveSheet();
     if (!sheet) return;
     document.getElementById('editSheetTitleInput').value = sheet.title || sheet.data?._meta?.title || '';
-    document.getElementById('editSheetNotesInput').value = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate;
+    document.getElementById('editSheetNotesInput').value = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
     document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
 }
 
@@ -1279,15 +1285,14 @@ async function handleSaveSheetInfo() {
 
 // ⭐ 13. ຟັງຊັນ RESET ຕາຕະລາງ (ລ້າງຊື່ພະນັກງານທຸກຄົນອອກ 100% ໃຫ້ເປັນຕາຕະລາງວ່າງ)
 async function promptResetSchedule() {
-    if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
     var sheet = getActiveSheet();
     if (!sheet) return;
+    if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
 
     var parts = (sheet.monthKey || '2026-10').split('-').map(Number);
     var year = parts[0] || 2026;
     var month = parts[1] || 10;
 
-    // ✅ ລ້າງຊື່ທຸກຄົນອອກທັງໝົດ ໂດຍຍັງຮັກສາວັນທີ ແລະ ໂຄງສ້າງຕາຕະລາງໄວ້
     sheet.data = createBlankMonthData(year, month);
 
     try {
@@ -1302,34 +1307,33 @@ async function promptResetSchedule() {
     await syncScheduleToSupabase(sheet);
 }
 
-function promptDeleteCurrentSheet() {
-    if ((window.scheduleSheets || []).length <= 1) {
-        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ສາມາດລຶບໄດ້ ເພາະຕ້ອງມີຕາຕະລາງຢ່າງໜ້ອຍ 1 ອັນ', 'error');
-        return;
-    }
+async function promptDeleteCurrentSheet() {
     var sheet = getActiveSheet();
+    if (!sheet) return;
     if (!confirm('ທ່ານຕ້ອງການລຶບ "' + sheet.title + '" ອອກຈາກລະບົບແທ້ບໍ່?')) return;
 
     var delId = sheet.id;
-    window.scheduleSheets = window.scheduleSheets.filter(function(s) { return String(s.id) !== String(delId); });
-    window.activeSheetId = window.scheduleSheets[0].id;
+    window.scheduleSheets = (window.scheduleSheets || []).filter(function(s) { return String(s.id) !== String(delId); });
+    window.activeSheetId = window.scheduleSheets.length > 0 ? window.scheduleSheets[0].id : null;
 
     try {
         localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
         localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
     } catch(e) {}
 
-    renderSheetDropdown();
-    renderScheduleTable();
-    showToast('ສຳເລັດ', 'ລຶບຕາຕະລາງອອກແລ້ວ!', 'success');
-
     if (window.supabaseClient) {
-        window.supabaseClient.from('schedule_sheets').delete().eq('id', delId).then();
+        await window.supabaseClient.from('schedule_sheets').delete().eq('id', delId);
     }
+
+    renderSheetDropdown();
+    await renderScheduleTable();
+    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    showToast('ສຳເລັດ', 'ລຶບຕາຕະລາງອອກແລ້ວ!', 'success');
 }
 
 async function saveDraft() { 
     var sheet = getActiveSheet();
+    if (!sheet) return;
     sheet.status = 'DRAFT'; 
     renderSheetDropdown(); 
     await renderScheduleTable({ skipSwapSync: true }); 
@@ -1339,6 +1343,7 @@ async function saveDraft() {
 
 async function publishSchedule() {
     var sheet = getActiveSheet();
+    if (!sheet) return;
     sheet.status = 'PUBLISHED';
     renderSheetDropdown();
     await renderScheduleTable({ skipSwapSync: true });
@@ -1357,7 +1362,6 @@ async function rebalanceNightShifts() {
     }
 
     var leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
-    var leaderFixedCount = 0;
     dates.forEach(function(d) {
         var day = schedData[d];
         if (day && !day.isWeekend && !isDateInHolidayRange(d)) {
@@ -1374,7 +1378,6 @@ async function rebalanceNightShifts() {
                     var idx3 = s3.indexOf(extraLeader);
                     s3[idx3] = s2Staff;
                     s2[s2StaffIdx] = extraLeader;
-                    leaderFixedCount++;
                 }
             }
         }
@@ -1389,7 +1392,7 @@ async function rebalanceNightShifts() {
 function exportToA4PDF() {
     var sheet = getActiveSheet();
     var element = document.getElementById('pdfExportArea');
-    if (!element) return;
+    if (!element || !sheet) return;
 
     showToast('ກຳລັງ Export', 'ກຳລັງສ້າງໄຟລ໌ PDF A4...', 'info');
 
@@ -1453,7 +1456,7 @@ function filterCellStaffList() {
     renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim() || ''); 
 }
 
-// Auto-load
+// Auto-load ຈາກ Supabase ເທົ່ານັ້ນ
 var _origTabForSchedule = window.switchTab;
 window.switchTab = async function(tab) {
     if (typeof _origTabForSchedule === 'function') _origTabForSchedule(tab);
