@@ -40,6 +40,117 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col font-lao">
+    <!-- ⭐ INSTANT PWA SPLASH & LOADING SCREEN (ສະແດງທັນທີໃນ 0.01 ວິນາທີ ບໍ່ມີໜ້າຈໍມືດ) -->
+    <style>
+        #pwaSplashLoader {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: linear-gradient(135deg, #c01e2e 0%, #8a111d 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-family: 'Noto Sans Lao', 'Inter', sans-serif;
+            transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.45s ease;
+        }
+        #pwaSplashLoader.splash-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .splash-logo-wrap {
+            position: relative;
+            width: 84px;
+            height: 84px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .splash-logo-box {
+            width: 68px;
+            height: 68px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.16);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+            animation: splashPulse 1.6s infinite ease-in-out;
+        }
+        .splash-ring {
+            position: absolute;
+            inset: 0;
+            border-radius: 26px;
+            border: 2.5px solid transparent;
+            border-top-color: #ffffff;
+            border-right-color: rgba(255, 255, 255, 0.4);
+            animation: splashSpin 1s linear infinite;
+        }
+        .splash-progress-track {
+            width: 150px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 99px;
+            overflow: hidden;
+            margin-top: 18px;
+        }
+        .splash-progress-bar {
+            width: 45%;
+            height: 100%;
+            background: #ffffff;
+            border-radius: 99px;
+            animation: splashSlide 1.1s infinite ease-in-out;
+        }
+        @keyframes splashSpin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes splashPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.94); }
+        }
+        @keyframes splashSlide {
+            0% { transform: translateX(-110%); }
+            100% { transform: translateX(240%); }
+        }
+    </style>
+
+    <div id="pwaSplashLoader">
+        <div class="splash-logo-wrap">
+            <div class="splash-ring"></div>
+            <div class="splash-logo-box">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="#ffffff">
+                    <path d="M12 2a9 9 0 0 0-9 9v4a4 4 0 0 0 4 4h1v-7H5v-1a7 7 0 0 1 14 0v1h-3v7h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5v2h5a3 3 0 0 0 3-3v-1.17A3.99 3.99 0 0 0 21 15v-4a9 9 0 0 0-9-9z"/>
+                </svg>
+            </div>
+        </div>
+        <h1 style="font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin: 0;">Online Team</h1>
+        <p style="font-size: 11px; color: rgba(255,255,255,0.82); margin: 4px 0 0 0;">ກຳລັງເຊື່ອມຕໍ່ຂໍ້ມູນລະບົບປະຈຳການ...</p>
+        <div class="splash-progress-track">
+            <div class="splash-progress-bar"></div>
+        </div>
+    </div>
+
+    <script>
+        // ຟັງຊັນປິດໜ້າຈໍ Loading ແບບນຸ່ມນວນ (ເອີ້ນໃຊ້ທັນທີເມື່ອໂຫຼດຂໍ້ມູນແລ້ວ ຫຼື ກາຍ 1.2 ວິນາທີ)
+        window.hidePwaSplash = function() {
+            var loader = document.getElementById('pwaSplashLoader');
+            if (loader && !loader.classList.contains('splash-hidden')) {
+                loader.classList.add('splash-hidden');
+                setTimeout(function() {
+                    if (loader.parentNode) loader.parentNode.removeChild(loader);
+                }, 500);
+            }
+        };
+        window.addEventListener('load', function() {
+            setTimeout(window.hidePwaSplash, 700);
+        });
+        setTimeout(window.hidePwaSplash, 2200); // Safety fallback
+    </script>
 
     <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
