@@ -1669,6 +1669,224 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchScheduleSheetsFromCloud();
     setTimeout(renderScheduleTable, 100);
 });
+// ================= ⭐ 17. INTERACTIVE SCHEDULE IMAGE-STYLE ZOOM & PAN VIEWER =================
+window.schedZoomScale = 1;
+window.schedIsFullscreen = false;
+
+function initScheduleZoomViewer() {
+    var exportArea = document.getElementById('pdfExportArea');
+    if (!exportArea) return;
+    var scrollContainer = exportArea.parentElement;
+    if (!scrollContainer) return;
+
+    // 1. ປົດລັອກຂໍ້ຈຳກັດ user-scalable=no ໃນ meta viewport ເພື່ອໃຫ້ມືຖືຖ່າງຊູມໄດ້
+    var metaVp = document.querySelector('meta[name="viewport"]');
+    if (metaVp) {
+        metaVp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
+    }
+
+    // 2. ສ້າງແຖບປຸ່ມລອຍ Floating Zoom Controls (no-print ເພື່ອບໍ່ໃຫ້ຕິດຕອນ Export PDF)
+    if (!document.getElementById('schedFloatingZoomBar')) {
+        var bar = document.createElement('div');
+        bar.id = 'schedFloatingZoomBar';
+        bar.className = 'no-print fixed bottom-6 right-6 z-40 bg-slate-900/90 backdrop-blur-md text-white px-3 py-2 rounded-2xl shadow-2xl border border-white/15 flex items-center gap-1.5 font-lao select-none';
+        bar.innerHTML =
+            '<button type="button" onclick="adjustScheduleZoom(-0.15)" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer" title="ຊູມອອກ (Zoom Out)">' +
+                '<span class="material-symbols-outlined text-lg">zoom_out</span>' +
+            '</button>' +
+            '<button type="button" onclick="resetScheduleZoom()" id="schedZoomPercentLabel" class="px-2.5 h-8 rounded-xl bg-white/5 hover:bg-white/15 text-xs font-bold font-mono min-w-[54px] text-center transition cursor-pointer" title="ກົດເພື່ອຄືນຄ່າ 100%">100%</button>' +
+            '<button type="button" onclick="adjustScheduleZoom(0.15)" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer" title="ຊູມເຂົ້າ (Zoom In)">' +
+                '<span class="material-symbols-outlined text-lg">zoom_in</span>' +
+            '</button>' +
+            '<div class="w-px h-5 bg-white/20 mx-0.5"></div>' +
+            '<button type="button" onclick="fitScheduleToScreen()" class="px-2.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer" title="ປັບຂະໜາດພໍດີໜ້າຈໍ">' +
+                '<span class="material-symbols-outlined text-sm">fit_screen</span> <span class="hidden sm:inline">ພໍດີຈໍ</span>' +
+            '</button>' +
+            '<button type="button" onclick="toggleScheduleFullscreen()" class="w-8 h-8 rounded-xl bg-brand-red hover:bg-brand-red-dark flex items-center justify-center transition cursor-pointer shadow-md" title="ເບິ່ງເຕັມຈໍຄືຮູບພາບ">' +
+                '<span class="material-symbols-outlined text-lg" id="schedFullscreenIcon">fullscreen</span>' +
+            '</button>';
+        
+        var viewSched = document.getElementById('view-schedule');
+        if (viewSched) viewSched.appendChild(bar);
+    }
+
+    if (scrollContainer.dataset.zoomBound === '1') return;
+    scrollContainer.dataset.zoomBound = '1';
+
+    // 3. ຮອງຮັບ Ctrl + Mouse Wheel Zoom ໃນຄອມພິວເຕີ
+    scrollContainer.addEventListener('wheel', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            var delta = e.deltaY < 0 ? 0.12 : -0.12;
+            adjustScheduleZoom(delta);
+        }
+    }, { passive: false });
+
+    // 4. ຮອງຮັບໃຊ້ 2 ນິ້ວຖ່າງຊູມ (Pinch-to-Zoom) ໃນມືຖື Android / iOS
+    var initialPinchDist = null;
+    var initialScale = 1;
+
+    scrollContainer.addEventListener('touchstart', function(e) {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            initialPinchDist = Math.hypot(dx, dy);
+            initialScale = window.schedZoomScale || 1;
+        }
+    }, { passive: false });
+
+    scrollContainer.addEventListener('touchmove', function(e) {
+        if (e.touches.length === 2 && initialPinchDist) {
+            e.preventDefault();
+            var dx = e.touches[0].clientX - e.touches[1].clientX;
+            var dy = e.touches[0].clientY - e.touches[1].clientY;
+            var dist = Math.hypot(dx, dy);
+            var ratio = dist / initialPinchDist;
+            setScheduleZoom(initialScale * ratio);
+        }
+    }, { passive: false });
+
+    scrollContainer.addEventListener('touchend', function(e) {
+        if (e.touches.length < 2) {
+            initialPinchDist = null;
+        }
+    });
+
+    // 5. ຮອງຮັບ Double-Click / Double-Tap ເພື່ອຊູມເຂົ້າ-ອອກທັນທີ (ສະເພາະ User ທົ່ວໄປ)
+    var lastTapTime = 0;
+    scrollContainer.addEventListener('click', function(e) {
+        var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
+        if (isAdmin) return; // Admin ໃຊ້ກົດເພື່ອແກ້ໄຂຊື່
+        var now = Date.now();
+        if (now - lastTapTime < 300) {
+            if (Math.abs(window.schedZoomScale - 1) < 0.05) {
+                setScheduleZoom(1.45);
+            } else {
+                fitScheduleToScreen();
+            }
+            lastTapTime = 0;
+        } else {
+            lastTapTime = now;
+        }
+    });
+
+    // 6. ຮອງຮັບກົດຄ້າງແລ້ວລາກເລື່ອນຊ້າຍ-ຂວາ-ເທິງ-ລຸ່ມ (Click & Drag Pan ສຳລັບ User ທົ່ວໄປ)
+    var isPanning = false;
+    var startX = 0, startY = 0, scrollL = 0, scrollT = 0;
+
+    scrollContainer.addEventListener('mousedown', function(e) {
+        var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
+        if (isAdmin) return; // ບໍ່ລົບກວນລະບົບ Drag & Drop ຂອງ Admin
+        if (e.button !== 0) return;
+        isPanning = true;
+        scrollContainer.style.cursor = 'grabbing';
+        startX = e.pageX - scrollContainer.offsetLeft;
+        startY = e.pageY - scrollContainer.offsetTop;
+        scrollL = scrollContainer.scrollLeft;
+        scrollT = scrollContainer.scrollTop;
+    });
+
+    window.addEventListener('mouseup', function() {
+        if (isPanning) {
+            isPanning = false;
+            scrollContainer.style.cursor = '';
+        }
+    });
+
+    scrollContainer.addEventListener('mousemove', function(e) {
+        if (!isPanning) return;
+        e.preventDefault();
+        var x = e.pageX - scrollContainer.offsetLeft;
+        var y = e.pageY - scrollContainer.offsetTop;
+        scrollContainer.scrollLeft = scrollL - (x - startX) * 1.2;
+        scrollContainer.scrollTop = scrollT - (y - startY) * 1.2;
+    });
+
+    // ຖ້າເປີດໃນຈໍມືຖືນ້ອຍ ໃຫ້ປັບ Fit ພໍດີຈໍອັດຕະໂນມັດໃນຄັ້ງທຳອິດ
+    if (window.innerWidth < 768) {
+        setTimeout(fitScheduleToScreen, 250);
+    }
+}
+
+function setScheduleZoom(newScale) {
+    var clamped = Math.min(Math.max(newScale, 0.35), 2.5);
+    window.schedZoomScale = Math.round(clamped * 100) / 100;
+
+    var exportArea = document.getElementById('pdfExportArea');
+    if (exportArea) {
+        // ໃຊ້ CSS zoom (ຮອງຮັບການ Scroll ທຸກທິດທາງໃນ Chrome/Android/Safari ໂດຍບໍ່ຕັດຂອບ)
+        exportArea.style.zoom = window.schedZoomScale;
+        exportArea.style.transformOrigin = 'top left';
+    }
+
+    var label = document.getElementById('schedZoomPercentLabel');
+    if (label) {
+        label.innerText = Math.round(window.schedZoomScale * 100) + '%';
+    }
+}
+
+function adjustScheduleZoom(delta) {
+    setScheduleZoom((window.schedZoomScale || 1) + delta);
+}
+
+function resetScheduleZoom() {
+    setScheduleZoom(1);
+}
+
+function fitScheduleToScreen() {
+    var exportArea = document.getElementById('pdfExportArea');
+    if (!exportArea || !exportArea.parentElement) return;
+    var containerWidth = exportArea.parentElement.clientWidth - 24;
+    var tableNaturalWidth = 980; // ຄວາມກວ້າງມາດຕະຖານຂອງຕາຕະລາງ A4
+    if (containerWidth > 200 && containerWidth < tableNaturalWidth) {
+        setScheduleZoom(containerWidth / tableNaturalWidth);
+    } else {
+        setScheduleZoom(1);
+    }
+}
+
+function toggleScheduleFullscreen() {
+    var viewSched = document.getElementById('view-schedule');
+    var icon = document.getElementById('schedFullscreenIcon');
+    if (!viewSched) return;
+
+    window.schedIsFullscreen = !window.schedIsFullscreen;
+    if (window.schedIsFullscreen) {
+        viewSched.classList.add('fixed', 'inset-0', 'z-[95]', 'bg-slate-100');
+        if (icon) icon.innerText = 'fullscreen_exit';
+        showToast('ໂໝດເບິ່ງເຕັມຈໍ', 'ສາມາດຊູມເຂົ້າ-ອອກ ຫຼື ລາກເລື່ອນເບິ່ງຕາຕະລາງໄດ້ເລີຍ', 'info');
+    } else {
+        viewSched.classList.remove('fixed', 'inset-0', 'z-[95]', 'bg-slate-100');
+        if (icon) icon.innerText = 'fullscreen';
+    }
+}
+
+// ກ່ອນກົດ Export A4 PDF ໃຫ້ຄືນຄ່າ Zoom ເປັນ 100% ຊົ່ວຄາວ ເພື່ອບໍ່ໃຫ້ໄຟລ໌ PDF ຜິດຂະໜາດ
+var _origExportToA4PDF = window.exportToA4PDF;
+window.exportToA4PDF = function() {
+    var savedScale = window.schedZoomScale || 1;
+    setScheduleZoom(1);
+    if (typeof _origExportToA4PDF === 'function') {
+        _origExportToA4PDF();
+    }
+    setTimeout(function() {
+        setScheduleZoom(savedScale);
+    }, 1500);
+};
+
+// ເອີ້ນໃຊ້ລະບົບ Zoom ທຸກຄັ້ງທີ່ Render ຕາຕະລາງ
+var _origRenderSchedForZoom = window.renderScheduleTable;
+window.renderScheduleTable = async function(options) {
+    if (typeof _origRenderSchedForZoom === 'function') {
+        await _origRenderSchedForZoom(options);
+    }
+    initScheduleZoomViewer();
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initScheduleZoomViewer, 400);
+});
 
 // ⭐ ຜູກຄົບທຸກ Functions ຂອງປຸ່ມ Toolbar ເຂົ້າ Window 100%
 window.isDateInHolidayRange = isDateInHolidayRange;
@@ -1719,3 +1937,9 @@ window.openHolidayModal = openHolidayModal;
 window.handleSaveHolidayRange = handleSaveHolidayRange;
 window.createBlankMonthData = createBlankMonthData;
 window.applyFixedShiftsToDayData = applyFixedShiftsToDayData;
+window.initScheduleZoomViewer = initScheduleZoomViewer;
+window.setScheduleZoom = setScheduleZoom;
+window.adjustScheduleZoom = adjustScheduleZoom;
+window.resetScheduleZoom = resetScheduleZoom;
+window.fitScheduleToScreen = fitScheduleToScreen;
+window.toggleScheduleFullscreen = toggleScheduleFullscreen;
