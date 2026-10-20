@@ -1296,3 +1296,156 @@ document.addEventListener('DOMContentLoaded', function() {
         evaluateAndRenderSmartAlerts(false);
     }, 600);
 });
+// ⭐ 5. ຟັງຊັນສ້າງປຸ່ມ "ຕັ້ງຄ່າແຈ້ງເຕືອນ" ໃສ່ໃນກ່ອງກະດິ່ງ (notifDropdown) ແລະ ຫົວຂໍ້ໜ້າ Dashboard ອັດຕະໂນມັດ 100%
+function injectSmartAlertControlsUI() {
+    var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
+
+    // A. ຍັດແຖບປຸ່ມໃສ່ໃນກ່ອງກະດິ່ງແຈ້ງເຕືອນ (notifDropdown) ທາງເທິງລາຍການແຈ້ງເຕືອນ
+    var notifList = document.getElementById('notifDropdownList');
+    if (notifList && notifList.parentElement && !document.getElementById('smartNotifControlBar')) {
+        var bar = document.createElement('div');
+        bar.id = 'smartNotifControlBar';
+        bar.className = 'mb-3 p-2.5 bg-red-50/90 border border-red-200 rounded-xl flex items-center justify-between gap-2';
+        bar.innerHTML =
+            '<div class="text-[11px] text-slate-700 leading-tight">' +
+                '<p class="font-bold text-brand-red flex items-center gap-1">' +
+                    '<span class="material-symbols-outlined text-sm">notifications_active</span> ແຈ້ງເຕືອນມືຖື & ວັນສຳຄັນ' +
+                '</p>' +
+                '<p class="text-[10px] text-slate-500 mt-0.5">ວັນທີ 1/14, ວັນພັກທະນາຄານ, ກະບໍ່ສົມດຸນ</p>' +
+            '</div>' +
+            '<div class="flex items-center gap-1.5 shrink-0">' +
+                '<button type="button" onclick="openCustomRemindersModal()" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">' +
+                    '<span class="material-symbols-outlined text-xs text-brand-red">settings</span> ຕັ້ງຄ່າ' +
+                '</button>' +
+                '<button type="button" onclick="requestPhoneNotificationPermission()" class="px-2.5 py-1.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs">' +
+                    '<span class="material-symbols-outlined text-xs">send_to_mobile</span> ເປີດແຈ້ງເຕືອນ' +
+                '</button>' +
+            '</div>';
+        notifList.parentElement.insertBefore(bar, notifList);
+    }
+
+    // B. ຍັດປຸ່ມ "ຕັ້ງຄ່າແຈ້ງເຕືອນວັນສຳຄັນ" ໃສ່ຂ້າງປ້າຍ "ວັນທຳມະດາ (Weekday)" ຢູ່ຫົວຂໍ້ໜ້າ Dashboard
+    var dayBadge = document.getElementById('dayTypeBadge');
+    if (dayBadge && dayBadge.parentElement && !document.getElementById('dashTopSmartAlertBtn')) {
+        var btnWrap = document.createElement('div');
+        btnWrap.id = 'dashTopSmartAlertBtn';
+        btnWrap.className = 'flex flex-wrap items-center gap-2';
+
+        var settingBtn = document.createElement('button');
+        settingBtn.type = 'button';
+        settingBtn.onclick = function() { openCustomRemindersModal(); };
+        settingBtn.className = (isAdmin ? '' : 'hidden ') + 'px-3.5 py-1.5 rounded-full text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white flex items-center gap-1.5 shadow-2xs cursor-pointer transition';
+        settingBtn.innerHTML = '<span class="material-symbols-outlined text-sm text-amber-400">edit_notifications</span> ຕັ້ງຄ່າແຈ້ງເຕືອນວັນສຳຄັນ';
+
+        dayBadge.parentElement.insertBefore(btnWrap, dayBadge);
+        btnWrap.appendChild(settingBtn);
+        btnWrap.appendChild(dayBadge);
+    } else if (document.getElementById('dashTopSmartAlertBtn')) {
+        var existingBtn = document.querySelector('#dashTopSmartAlertBtn > button');
+        if (existingBtn) {
+            if (isAdmin) existingBtn.classList.remove('hidden');
+            else existingBtn.classList.add('hidden');
+        }
+    }
+}
+window.injectSmartAlertControlsUI = injectSmartAlertControlsUI;
+
+// ສະແດງປ້າຍ Smart Alerts ຢູ່ເທິງໜ້າ Dashboard
+async function evaluateAndRenderSmartAlerts(forcePush) {
+    injectSmartAlertControlsUI();
+
+    var alerts = collectAllActiveSmartAlerts();
+    window.currentActiveDashboardAlerts = alerts;
+
+    var dashContainer = document.querySelector('#view-dashboard > div');
+    var wrapper = document.getElementById('smartAlertsBannerContainer');
+
+    if (dashContainer && !wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.id = 'smartAlertsBannerContainer';
+        wrapper.className = 'space-y-3';
+        dashContainer.insertBefore(wrapper, dashContainer.firstChild);
+    }
+
+    if (!wrapper) return;
+    var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
+
+    if (alerts.length === 0) {
+        wrapper.innerHTML = '';
+        return;
+    }
+
+    var themeClasses = {
+        BLUE: 'bg-gradient-to-r from-blue-900 to-indigo-800 text-white border-blue-700',
+        SKY: 'bg-gradient-to-r from-sky-600 to-blue-700 text-white border-sky-500',
+        RED: 'bg-gradient-to-r from-brand-red to-rose-800 text-white border-red-700',
+        ALERT_RED: 'bg-red-50 text-red-900 border-2 border-brand-red',
+        AMBER: 'bg-amber-50 text-amber-900 border-2 border-amber-300'
+    };
+
+    var html = '';
+    for (var i = 0; i < alerts.length; i++) {
+        var al = alerts[i];
+        var cls = themeClasses[al.theme] || themeClasses.BLUE;
+        var isDark = cls.includes('text-white');
+
+        html +=
+            '<div class="p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition ' + cls + '">' +
+                '<div class="flex items-start sm:items-center gap-3">' +
+                    '<div class="w-11 h-11 rounded-2xl ' + (isDark ? 'bg-white/20 text-white' : 'bg-brand-red text-white') + ' flex items-center justify-center shrink-0 shadow-2xs">' +
+                        '<span class="material-symbols-outlined text-2xl">' + (al.icon || 'notifications_active') + '</span>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ' + (isDark ? 'bg-white/20 text-white' : 'bg-red-200/80 text-brand-red') + '">' +
+                            '<span class="material-symbols-outlined text-[13px]">' + (al.badgeIcon || 'info') + '</span>' +
+                            '<span>' + al.badge + '</span>' +
+                        '</span>' +
+                        '<h3 class="text-sm font-bold mt-1 flex items-center gap-1.5">' + al.title + '</h3>' +
+                        '<p class="text-xs ' + (isDark ? 'opacity-90' : 'text-slate-700 font-medium') + ' mt-0.5 leading-relaxed">' + al.message + '</p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2 shrink-0 self-end sm:self-center">' +
+                    (isAdmin ? '<button type="button" onclick="openCustomRemindersModal()" class="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer ' + (isDark ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200') + ' flex items-center gap-1"><span class="material-symbols-outlined text-sm">settings</span> ຕັ້ງຄ່າ</button>' : '') +
+                    '<button type="button" onclick="triggerActiveBannerAlertByIdx(' + i + ')" class="px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer ' + (isDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-brand-red text-white hover:bg-brand-red-dark') + ' flex items-center gap-1.5 shadow-2xs">' +
+                        '<span class="material-symbols-outlined text-sm">send_to_mobile</span> ຍິງແຈ້ງເຕືອນທັນທີ' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+
+        var sentFlag = localStorage.getItem('ot_sent_' + al.key);
+        if (!sentFlag || forcePush) {
+            var ok = await sendPhoneScreenNotification(al.title, al.message, al.key, false);
+            if (ok) {
+                try { localStorage.setItem('ot_sent_' + al.key, '1'); } catch(e) {}
+            }
+        }
+    }
+
+    wrapper.innerHTML = html;
+}
+window.evaluateAndRenderSmartAlerts = evaluateAndRenderSmartAlerts;
+
+// ດັກຈັບທຸກຄັ້ງທີ່ກົດຮູບກະດິ່ງ ຫຼື Render Dashboard ເພື່ອໃຫ້ປຸ່ມສະແດງຂຶ້ນ 100%
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.closest && e.target.closest('[onclick*="toggleNotificationDropdown"]')) {
+        setTimeout(injectSmartAlertControlsUI, 20);
+    }
+});
+
+var _origRenderDashForAlerts = window.renderDashboard;
+window.renderDashboard = function() {
+    if (typeof _origRenderDashForAlerts === 'function') {
+        _origRenderDashForAlerts();
+    }
+    injectSmartAlertControlsUI();
+    evaluateAndRenderSmartAlerts(false);
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    injectSmartAlertControlsUI();
+    setTimeout(function() {
+        injectSmartAlertControlsUI();
+        initSupabaseRealtimePushChannel();
+        evaluateAndRenderSmartAlerts(false);
+    }, 500);
+});
