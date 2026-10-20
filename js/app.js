@@ -689,7 +689,37 @@ function saveCustomRemindersList() {
     } catch(e) {}
 }
 
-// 2. ຟັງຊັນຍິງແຈ້ງເຕືອນມືຖື & ຄອມ ແບບບໍ່ຈຳກັດຄັ້ງ (ຮອງຮັບຕອນປິດໜ້າຈໍ Lock Screen)
+// ⭐ 2. ລະບົບ BACKGROUND KEEP-ALIVE ສຳລັບ iOS & ANDROID (ປ້ອງກັນ OS ຕັດສາຍ WebSocket ຕອນປິດຈໍ/ອອກຈາກແອັບ)
+window._bgKeepAliveAudioCtx = null;
+
+function enableMobileBackgroundKeepAlive() {
+    // 1) Web Locks API (ຮັກສາ Process ໃນ Android Chrome)
+    if (navigator.locks && typeof navigator.locks.request === 'function' && !window._otWebLockHeld) {
+        window._otWebLockHeld = true;
+        navigator.locks.request('ot_bg_push_lock', { mode: 'shared' }, function() {
+            return new Promise(function() {});
+        }).catch(function() {});
+    }
+
+    // 2) Silent Sub-Audible Keep-Alive (ປ້ອງກັນ iOS & Android Kill WebSocket ຕອນລັອກໜ້າຈໍ)
+    try {
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx && !window._bgKeepAliveAudioCtx) {
+            var ctx = new AudioCtx();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            gain.gain.value = 0.00001; // ງຽບสนิท 100% ບໍ່ມີສຽງອອກລຳໂພງ
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            window._bgKeepAliveAudioCtx = ctx;
+        } else if (window._bgKeepAliveAudioCtx && window._bgKeepAliveAudioCtx.state === 'suspended') {
+            window._bgKeepAliveAudioCtx.resume();
+        }
+    } catch (e) {}
+}
+
+// ⭐ 2.1 ຟັງຊັນຍິງແຈ້ງເຕືອນມືຖື & ຄອມ (ຜ່ານ Service Worker postMessage + showNotification ປຸກໜ້າຈໍມືຖື)
 async function sendPhoneScreenNotification(title, bodyText, tagId, showFeedbackToast) {
     var cleanTitle = stripEmojisFromText(title) || 'Online Team - ແຈ້ງເຕືອນ';
     var cleanBody = stripEmojisFromText(bodyText) || 'ມີການແຈ້ງເຕືອນໃໝ່';
@@ -709,7 +739,7 @@ async function sendPhoneScreenNotification(title, bodyText, tagId, showFeedbackT
     }
     if (Notification.permission !== 'granted') {
         if (showFeedbackToast) {
-            showToast('ຍັງບໍ່ໄດ້ເປີດສິດແຈ້ງເຕືອນ', 'ກະລຸນາກົດປຸ່ມ "ເປີດຮັບແຈ້ງເຕືອນ" ກ່ອນ 1 ຄັ້ງ', 'warning');
+            showToast('ຍັງບໍ່ໄດ້ເປີດສິດແຈ້ງເຕືອນ', 'ກະລຸນາກົດປຸ່ມ "ເປີດຮັບແຈ້ງເຕືອນ" ຢູ່ໃນມືຖືເຄື່ອງນີ້ກ່ອນ 1 ຄັ້ງ', 'warning');
         }
         return false;
     }
@@ -730,10 +760,16 @@ async function sendPhoneScreenNotification(title, bodyText, tagId, showFeedbackT
 
     if ('serviceWorker' in navigator) {
         try {
-            var reg = await navigator.serviceWorker.getRegistration();
-            if (!reg) {
-                reg = await navigator.serviceWorker.ready;
+            // ສົ່ງຄຳສັ່ງໃຫ້ Service Worker ໂດຍກົງ ເພື່ອປຸກໜ້າຈໍຕອນພັບແອັບ/ປິດຈໍ
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_OS_NOTIFICATION',
+                    payload: { title: cleanTitle, body: cleanBody, tag: uniqueTag }
+                });
+                return true;
             }
+            var reg = await navigator.serviceWorker.getRegistration();
+            if (!reg) reg = await navigator.serviceWorker.ready;
             if (reg && typeof reg.showNotification === 'function') {
                 await reg.showNotification(cleanTitle, options);
                 return true;
@@ -753,7 +789,7 @@ async function sendPhoneScreenNotification(title, bodyText, tagId, showFeedbackT
 }
 window.sendPhoneScreenNotification = sendPhoneScreenNotification;
 
-// 2.1 ຟັງຊັນກົດຍິງທົດສອບ (ສະເພາະ Admin ເທົ່ານັ້ນ)
+// 2.2 ຟັງຊັນກົດຍິງທົດສອບ (ສະເພາະ Admin)
 async function triggerTestReminderByIdx(idx) {
     if (!isCurrentUserSuperAdmin()) return;
     var list = getCustomRemindersList();
@@ -784,20 +820,37 @@ async function triggerActiveBannerAlertByIdx(idx) {
 }
 window.triggerActiveBannerAlertByIdx = triggerActiveBannerAlertByIdx;
 
-// 2.2 ລະບົບ SUPABASE REALTIME WEBSOCKET + BACKGROUND KEEP-ALIVE
+// ⭐ 2.3 ລະບົບ SUPABASE REALTIME + DATABASE ALERT QUEUE (ຮອງຮັບທັງຕອນເປີດຈໍ ແລະ ຕອນປິດຈໍ)
 window.otRealtimeChannel = null;
 window.otRealtimeReady = false;
+
+async function checkMissedCloudBroadcastAlerts() {
+    if (!window.supabaseClient) return;
+    try {
+        var res = await window.supabaseClient
+            .from('system_broadcast_alerts')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(1);
+
+        if (!res.error && res.data && res.data.length > 0) {
+            var latest = res.data[0];
+            var lastSeenId = parseInt(localStorage.getItem('ot_last_cloud_alert_id') || '0', 10);
+            if (latest.id > lastSeenId) {
+                localStorage.setItem('ot_last_cloud_alert_id', String(latest.id));
+                // ຖ້າຫາກໍ່ຍິງມາບໍ່ເກີນ 10 ນາທີ ໃຫ້ເດັ້ງແຈ້ງເຕືອນຂຶ້ນໜ້າຈໍມືຖືທັນທີ!
+                var ageMs = Date.now() - new Date(latest.created_at).getTime();
+                if (ageMs < 600000) {
+                    await sendPhoneScreenNotification(latest.title, latest.message, 'cloud-alert-' + latest.id, true);
+                }
+            }
+        }
+    } catch (e) {}
+}
 
 function initSupabaseRealtimePushChannel() {
     if (!window.supabaseClient) return;
     if (window.otRealtimeChannel && window.otRealtimeReady) return;
-
-    if (navigator.locks && typeof navigator.locks.request === 'function' && !window._otWebLockHeld) {
-        window._otWebLockHeld = true;
-        navigator.locks.request('online_team_realtime_keepalive', { mode: 'shared' }, function() {
-            return new Promise(function() {});
-        }).catch(function() {});
-    }
 
     try {
         window.otRealtimeChannel = window.supabaseClient
@@ -806,10 +859,18 @@ function initSupabaseRealtimePushChannel() {
                     broadcast: { self: false, ack: false }
                 }
             })
+            // ຊ່ອງທາງທີ 1: Instant WebSocket Broadcast
             .on('broadcast', { event: 'instant-alert' }, function(payload) {
                 var data = payload && payload.payload ? payload.payload : null;
                 if (!data) return;
                 sendPhoneScreenNotification(data.title, data.message, 'remote-' + Date.now(), true);
+            })
+            // ຊ່ອງທາງທີ 2: Database Table Trigger (system_broadcast_alerts)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'system_broadcast_alerts' }, function(payload) {
+                var row = payload && payload.new ? payload.new : null;
+                if (!row) return;
+                localStorage.setItem('ot_last_cloud_alert_id', String(row.id));
+                sendPhoneScreenNotification(row.title, row.message, 'db-alert-' + row.id, true);
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_swaps' }, function() {
                 if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
@@ -834,28 +895,44 @@ function initSupabaseRealtimePushChannel() {
     }
 }
 
+// Background Polling ທຸກໆ 6 ວິນາທີ (ເຮັດວຽກຄູ່ກັບ Keep-Alive ຕອນພັບຈໍ/ປິດຈໍມືຖື)
 setInterval(function() {
-    if (window.otRealtimeChannel && window.otRealtimeReady) {
-        try {
-            window.otRealtimeChannel.send({
-                type: 'broadcast',
-                event: 'keepalive-ping',
-                payload: { t: Date.now() }
-            });
-        } catch (e) {}
-    } else {
+    checkMissedCloudBroadcastAlerts();
+    if (!window.otRealtimeChannel || !window.otRealtimeReady) {
         initSupabaseRealtimePushChannel();
     }
-}, 15000);
+}, 6000);
 
 document.addEventListener('visibilitychange', function() {
     if (document.visibilityState === 'visible') {
+        enableMobileBackgroundKeepAlive();
         initSupabaseRealtimePushChannel();
+        checkMissedCloudBroadcastAlerts();
     }
 });
 
 async function broadcastInstantAlertToAllUsers(title, message, tag) {
     if (!window.supabaseClient) return;
+    var cleanTitle = stripEmojisFromText(title);
+    var cleanMsg = stripEmojisFromText(message);
+
+    // 1) ບັນທຶກລົງຕາຕະລາງ system_broadcast_alerts ໃນ Supabase (ເພື່ອໃຫ້ມືຖືທີ່ພັບຈໍ/ປິດຈໍດຶງໄປເດັ້ງໄດ້ 100%)
+    try {
+        var ins = await window.supabaseClient
+            .from('system_broadcast_alerts')
+            .insert([{
+                title: cleanTitle,
+                message: cleanMsg,
+                tag: tag || ('bc-' + Date.now()),
+                created_by: (window.currentUser && window.currentUser.nameLao) ? window.currentUser.nameLao : 'Admin'
+            }])
+            .select();
+        if (!ins.error && ins.data && ins.data[0]) {
+            localStorage.setItem('ot_last_cloud_alert_id', String(ins.data[0].id));
+        }
+    } catch (dbErr) {}
+
+    // 2) ຍິງ WebSocket Broadcast ຄູ່ກັນທັນທີ
     if (!window.otRealtimeChannel || !window.otRealtimeReady) {
         initSupabaseRealtimePushChannel();
     }
@@ -865,8 +942,8 @@ async function broadcastInstantAlertToAllUsers(title, message, tag) {
                 type: 'broadcast',
                 event: 'instant-alert',
                 payload: {
-                    title: stripEmojisFromText(title),
-                    message: stripEmojisFromText(message),
+                    title: cleanTitle,
+                    message: cleanMsg,
                     tag: tag || ('bc-' + Date.now()),
                     ts: Date.now()
                 }
@@ -878,26 +955,26 @@ window.broadcastInstantAlertToAllUsers = broadcastInstantAlertToAllUsers;
 
 async function requestPhoneNotificationPermission() {
     if (!('Notification' in window)) {
-        showToast('ບໍ່ຮອງຮັບ', 'ອຸປະກອນນີ້ບໍ່ຮອງຮັບລະບົບແຈ້ງເຕືອນເທິງໜ້າຈໍ', 'warning');
+        showToast('ບໍ່ຮອງຮັບ', 'ອຸປະກອນນີ້ບໍ່ຮອງຮັບລະບົບແຈ້ງເຕືອນເທິງໜ້າຈໍ (ສຳລັບ iPhone ຕ້ອງກົດ Add to Home Screen ກ່ອນ)', 'warning');
         return;
     }
 
     var perm = await Notification.requestPermission();
     if (perm === 'granted') {
+        enableMobileBackgroundKeepAlive();
         initSupabaseRealtimePushChannel();
         injectSmartAlertControlsUI();
         await sendPhoneScreenNotification(
             'Online Team - ເປີດຮັບແຈ້ງເຕືອນສຳເລັດ',
-            'ອຸປະກອນຂອງທ່ານພ້ອມຮັບການແຈ້ງເຕືອນປະຈຳການ ແລະ ວັນສຳຄັນແລ້ວ!',
+            'ອຸປະກອນຂອງທ່ານເປີດໂໝດຮັບແຈ້ງເຕືອນເບື້ອງຫຼັງ (Background Push) ຮຽບຮ້ອຍແລ້ວ!',
             'ot-welcome-' + Date.now(),
             true
         );
     } else {
-        showToast('ຖືກປິດກັ້ນ', 'ກະລຸນາອະນຸຍາດ Notification ໃນຕັ້ງຄ່າ Browser ຂອງມືຖື', 'error');
+        showToast('ຖືກປິດກັ້ນ', 'ກະລຸນາອະນຸຍາດ Notification ໃນຕັ້ງຄ່າຂອງມືຖື', 'error');
     }
 }
 window.requestPhoneNotificationPermission = requestPhoneNotificationPermission;
-
 // 3. ENGINE ກວດຈັບ "ກະບໍ່ສົມດຸນ (Shift Imbalance / ລາພັກເກີນ 1 ຄົນຕໍ່ກະ)"
 function detectShiftImbalanceAlertsForDate(dStr) {
     var alerts = [];
