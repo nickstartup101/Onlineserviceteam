@@ -1,5 +1,5 @@
-// ================= ⭐ SERVICE WORKER ສຳລັບ PWA & PHONE PUSH NOTIFICATIONS =================
-const CACHE_NAME = 'online-team-v3';
+// ================= SERVICE WORKER ສຳລັບ PWA & PHONE PUSH NOTIFICATIONS =================
+const CACHE_NAME = 'online-team-v4';
 
 self.addEventListener('install', function(event) {
     self.skipWaiting();
@@ -10,15 +10,20 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(event) {
+    // ຂ້າມການດັກຈັບ Request ທີ່ບໍ່ແມ່ນ GET ຫຼື ເປັນ External CDN/Supabase ເພື່ອບໍ່ໃຫ້ເກີດ Response Error
     if (event.request.method !== 'GET') return;
+    var url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) return;
+
     event.respondWith(
         fetch(event.request).catch(function() {
-            return caches.match(event.request);
+            return caches.match(event.request).then(function(cachedRes) {
+                return cachedRes || new Response('Offline', { status: 503, statusText: 'Offline' });
+            });
         })
     );
 });
 
-// ⭐ ຮັບສັນຍານ Background Web Push ຈາກ Server (ເວລາປິດແອັບຢູ່)
 self.addEventListener('push', function(event) {
     var data = {
         title: 'Online Team - ແຈ້ງເຕືອນ',
@@ -50,7 +55,6 @@ self.addEventListener('push', function(event) {
     );
 });
 
-// ⭐ ເມື່ອ User ແຕະໃສ່ແຈ້ງເຕືອນຢູ່ໜ້າຈໍໂທລະສັບ ໃຫ້ເປີດແອັບຂຶ້ນມາທັນທີ
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
     event.waitUntil(
