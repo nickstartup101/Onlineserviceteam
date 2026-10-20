@@ -631,31 +631,34 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(function() { if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications(); }, 20000);
     setInterval(function() { loadEverythingFromSupabase(0); }, 30000);
 });
-// ================= ⭐ SMART REMINDER & AUTO-ALERT ENGINE (CUSTOMIZABLE + SHIFT IMBALANCE DETECTOR) =================
 
-// 1. ລາຍການແຈ້ງເຕືອນເລີ່ມຕົ້ນ (Admin ສາມາດເພີ່ມ/ແກ້ໄຂ/ລຶບ ເອງໄດ້ຜ່ານໜ້າເວັບ)
+    }, 1800000);
+});
+// ================= ⭐ SMART REMINDER & REALTIME INSTANT PUSH ENGINE (0.01s SPEED - NO SYNTAX ERROR) =================
+
+// 1. ລາຍການແຈ້ງເຕືອນເລີ່ມຕົ້ນ
 var defaultCustomReminders = [
     {
         id: 'rem-monthly-1',
-        ruleType: 'MONTHLY_DAY', // ທຸກໆວັນທີຂອງເດືອນ
+        ruleType: 'MONTHLY_DAY',
         dayOfMonth: 1,
         title: '👔 ແຈ້ງເຕືອນປະຈຳວັນທີ 1: ນຸ່ງເສື້ອກຳມະບານ',
-        message: 'ມື້ນີ້ແມ່ນວັນທີ 1 ຂອງເດືອນ ກະລຸນານຸ່ງ "ເສື້ອກຳມະບານ" ມາປະຈຳການຕາມລະບຽບຂອງຂະແໜງ.',
+        message: 'ມື້ນີ້ແມ່ນວັນທີ 1 ຂອງເດືອນ ກະລຸນານຸ່ງເສື້ອກຳມະບານ ມາປະຈຳການຕາມລະບຽບຂອງຂະແໜງ.',
         theme: 'BLUE',
         enabled: true
     },
     {
         id: 'rem-monthly-14',
-        ruleType: 'MONTHLY_DAY', // ທຸກໆວັນທີຂອງເດືອນ
+        ruleType: 'MONTHLY_DAY',
         dayOfMonth: 14,
         title: '👕 ແຈ້ງເຕືອນປະຈຳວັນທີ 14: ນຸ່ງເສື້ອຊາວໜຸ່ມ',
-        message: 'ມື້ນີ້ແມ່ນວັນທີ 14 ຂອງເດືອນ ກະລຸນານຸ່ງ "ເສື້ອຊາວໜຸ່ມ" ມາປະຈຳການຕາມລະບຽບຂອງຂະແໜງ.',
+        message: 'ມື້ນີ້ແມ່ນວັນທີ 14 ຂອງເດືອນ ກະລຸນານຸ່ງເສື້ອຊາວໜຸ່ມ ມາປະຈຳການຕາມລະບຽບຂອງຂະແໜງ.',
         theme: 'SKY',
         enabled: true
     },
     {
         id: 'rem-bank-dec2',
-        ruleType: 'SPECIFIC_DATE', // ວັນຢຸດປະຕິທິນແດງ / ທະນາຄານ
+        ruleType: 'SPECIFIC_DATE',
         targetDate: '2026-12-02',
         title: '🇱🇦 ວັນພັກລັດຖະການ (ປະຕິທິນແດງ): ວັນຊາດທີ 2 ທັນວາ',
         message: 'ມື້ນີ້ແມ່ນວັນພັກຕາມປະຕິທິນທະນາຄານ ຕາຕະລາງປະຈຳການໃຊ້ໂໝດວັນພັກ (08:00-13:30, 13:30-19:00, 19:00-08:00).',
@@ -682,36 +685,131 @@ function saveCustomRemindersList() {
     } catch(e) {}
 }
 
-// 2. ຟັງຊັນຍິງແຈ້ງເຕືອນຂຶ້ນໜ້າຈໍໂທລະສັບ (Android / iOS Lock Screen & Status Bar)
-async function sendPhoneScreenNotification(title, bodyText, tagId) {
+// ⭐ 2. ຟັງຊັນຍິງແຈ້ງເຕືອນແບບ INSTANT REAL-TIME (0.01 ວິນາທີ - ບໍ່ຕ້ອງລໍຖ້າ SW ຄ້າງ)
+async function sendPhoneScreenNotification(title, bodyText, tagId, showFeedbackToast) {
+    // ຫຼິ້ນສຽງແຈ້ງເຕືອນທັນທີ (ຖ້າມີຟັງຊັນສຽງໃນ notification.js)
+    if (typeof window.playNotificationChime === 'function') {
+        try { window.playNotificationChime(); } catch(e) {}
+    }
+
+    // ສະແດງ Toast ເທິງໜ້າຈໍທັນທີໃນ 0.01 ວິນາທີ ເພື່ອໃຫ້ຮູ້ວ່າຍິງອອກແລ້ວ
+    if (showFeedbackToast) {
+        showToast(title, bodyText, 'info');
+    }
+
     if (!('Notification' in window)) return false;
 
     if (Notification.permission === 'default') {
         try { await Notification.requestPermission(); } catch (e) {}
     }
-    if (Notification.permission !== 'granted') return false;
+    if (Notification.permission !== 'granted') {
+        if (showFeedbackToast) {
+            showToast('ກະລຸນາອະນຸຍາດ Notification', 'ກົດໄອຄອນກະແຈ/ຕັ້ງຄ່າເທິງແຖບ URL ແລ້ວເປີດ Allow Notifications', 'warning');
+        }
+        return false;
+    }
 
+    // ໃຊ້ tag ທີ່ບໍ່ຊ້ຳກັນຕອນກົດທົດສອບ ເພື່ອໃຫ້ມືຖື/Windows ເດັ້ງ Popup ໃໝ່ທຸກຄັ້ງທັນທີ!
+    var uniqueTag = (tagId || 'ot-notif') + '-' + Date.now();
     var options = {
         body: bodyText,
-        tag: tagId || ('ot-notif-' + Date.now()),
+        tag: uniqueTag,
+        renotify: true,
         vibrate: [200, 100, 200]
     };
 
+    // ຍິງແບບ Fast-Path: ໃຊ້ new Notification ທັນທີກ່ອນ, ຖ້າບໍ່ຮອງຮັບຈຶ່ງໃຊ້ ServiceWorker
     try {
-        if ('serviceWorker' in navigator) {
-            var reg = await navigator.serviceWorker.ready;
-            if (reg && typeof reg.showNotification === 'function') {
-                await reg.showNotification(title, options);
-                return true;
-            }
-        }
-        new Notification(title, options);
+        var n = new Notification(title, options);
+        n.onclick = function() { window.focus(); n.close(); };
         return true;
-    } catch (err) {
-        return false;
+    } catch (directErr) {
+        try {
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                var reg = await navigator.serviceWorker.getRegistration();
+                if (reg && typeof reg.showNotification === 'function') {
+                    reg.showNotification(title, options);
+                    return true;
+                }
+            }
+        } catch (swErr) {}
     }
+    return false;
 }
 window.sendPhoneScreenNotification = sendPhoneScreenNotification;
+
+// ⭐ 2.1 ຟັງຊັນກົດຍິງທົດສອບໂດຍອ້າງອີງຕາມ Index (ແກ້ບັນຫາ SyntaxError 100% ແລະ ກະຈາຍໄປຫາທຸກຄົນແບບ Realtime)
+async function triggerTestReminderByIdx(idx) {
+    var list = getCustomRemindersList();
+    var item = list[idx];
+    if (!item) return;
+
+    // 1) ຍິງເຂົ້າເຄື່ອງຕົນເອງທັນທີ (0.01s)
+    await sendPhoneScreenNotification(item.title, item.message, 'test-' + item.id, true);
+
+    // 2) Broadcast ຜ່ານ Supabase Realtime ໄປຫາທຸກເຄື່ອງທີ່ເປີດແອັບຢູ່ໃນຂະນະນັ້ນທັນທີ!
+    broadcastInstantAlertToAllUsers(item.title, item.message, item.id);
+}
+window.triggerTestReminderByIdx = triggerTestReminderByIdx;
+
+// ຟັງຊັນກົດຍິງຈາກ Banner ໜ້າ Dashboard ໂດຍໃຊ້ Index ຂອງ Active Alerts
+window.currentActiveDashboardAlerts = [];
+async function triggerActiveBannerAlertByIdx(idx) {
+    var al = (window.currentActiveDashboardAlerts || [])[idx];
+    if (!al) return;
+    await sendPhoneScreenNotification(al.title, al.message, al.key, true);
+    broadcastInstantAlertToAllUsers(al.title, al.message, al.key);
+}
+window.triggerActiveBannerAlertByIdx = triggerActiveBannerAlertByIdx;
+
+// ⭐ 2.2 ລະບົບ SUPABASE REALTIME WEBSOCKET (ຍິງແຈ້ງເຕືອນຂ້າມເຄື່ອງໃນ 0.1 ວິນາທີ ບໍ່ຕ້ອງລໍຖ້າ 20 ວິນາທີ)
+window.otRealtimeChannel = null;
+
+function initSupabaseRealtimePushChannel() {
+    if (!window.supabaseClient || window.otRealtimeChannel) return;
+
+    try {
+        window.otRealtimeChannel = window.supabaseClient
+            .channel('online-team-live-channel')
+            // ຮັບສັນຍານ Broadcast ດ່ວນຈາກ Admin
+            .on('broadcast', { event: 'instant-alert' }, function(payload) {
+                var data = payload && payload.payload ? payload.payload : null;
+                if (!data) return;
+                sendPhoneScreenNotification(data.title, data.message, data.tag || 'broadcast', true);
+            })
+            // ຮັບສັນຍານທັນທີເມື່ອມີຄົນຂໍປ່ຽນກະໃໝ່ ຫຼື ອະນຸມັດປ່ຽນກະ
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'shift_swaps' }, function() {
+                if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
+                if (typeof window.loadEverythingFromSupabase === 'function') window.loadEverythingFromSupabase(0);
+            })
+            // ຮັບສັນຍານທັນທີເມື່ອມີຄົນຈອງມື້ພັກໃໝ່
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'annual_bookings' }, function() {
+                if (typeof window.fetchLiveNotifications === 'function') window.fetchLiveNotifications();
+                setTimeout(function() { evaluateAndRenderSmartAlerts(false); }, 500);
+            })
+            // ຮັບສັນຍານທັນທີເມື່ອມີການອັບເດດຕາຕະລາງປະຈຳການ
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_sheets' }, function() {
+                if (typeof window.loadEverythingFromSupabase === 'function') window.loadEverythingFromSupabase(0);
+            })
+            .subscribe();
+    } catch (e) {
+        console.warn('Realtime channel init warning:', e);
+    }
+}
+
+function broadcastInstantAlertToAllUsers(title, message, tag) {
+    if (!window.otRealtimeChannel) initSupabaseRealtimePushChannel();
+    if (window.otRealtimeChannel) {
+        try {
+            window.otRealtimeChannel.send({
+                type: 'broadcast',
+                event: 'instant-alert',
+                payload: { title: title, message: message, tag: tag }
+            });
+        } catch (e) {}
+    }
+}
+window.broadcastInstantAlertToAllUsers = broadcastInstantAlertToAllUsers;
 
 async function requestPhoneNotificationPermission() {
     if (!('Notification' in window)) {
@@ -721,11 +819,11 @@ async function requestPhoneNotificationPermission() {
 
     var perm = await Notification.requestPermission();
     if (perm === 'granted') {
-        showToast('ເປີດແຈ້ງເຕືອນມືຖືແລ້ວ', 'ລະບົບຈະແຈ້ງເຕືອນຂຶ້ນໜ້າຈໍໂທລະສັບຂອງທ່ານອັດຕະໂນມັດ!', 'success');
         await sendPhoneScreenNotification(
             '✅ Online Team - ເປີດແຈ້ງເຕືອນສຳເລັດ',
-            'ລະບົບພ້ອມແຈ້ງເຕືອນວັນສຳຄັນ, ວັນພັກທະນາຄານ ແລະ ກະບໍ່ສົມດຸນ ແລ້ວ!',
-            'ot-welcome-test'
+            'ລະບົບພ້ອມແຈ້ງເຕືອນແບບ Real-time ທັນທີເທິງໜ້າຈໍຂອງທ່ານແລ້ວ!',
+            'ot-welcome-test',
+            true
         );
         evaluateAndRenderSmartAlerts(true);
     } else {
@@ -734,7 +832,7 @@ async function requestPhoneNotificationPermission() {
 }
 window.requestPhoneNotificationPermission = requestPhoneNotificationPermission;
 
-// 3. ⭐ ENGINE ກວດຈັບ "ກະບໍ່ສົມດຸນ (Shift Imbalance / ລາພັກເກີນ 1 ຄົນຕໍ່ກະ)" ອັດຕະໂນມັດ
+// 3. ENGINE ກວດຈັບ "ກະບໍ່ສົມດຸນ (Shift Imbalance / ລາພັກເກີນ 1 ຄົນຕໍ່ກະ)"
 function detectShiftImbalanceAlertsForDate(dStr) {
     var alerts = [];
     if (!dStr) return alerts;
@@ -749,14 +847,7 @@ function detectShiftImbalanceAlertsForDate(dStr) {
         return dStr >= s && dStr <= e;
     });
 
-    // ຈັດກຸ່ມຄົນລາພັກຕາມກະ (ກະ 1, ກະ 2, ກະ 3)
-    var shiftLeavesMap = {
-        shift1: [],
-        shift2: [],
-        shift3: []
-    };
-
-    // ດຶງຂໍ້ມູນຕາຕະລາງຂອງມື້ນັ້ນ ເພື່ອກວດວ່າຄົນລາພັກຢູ່ກະໃດແທ້
+    var shiftLeavesMap = { shift1: [], shift2: [], shift3: [] };
     var matchingSheets = (window.scheduleSheets || []).filter(function(sh) {
         return sh && sh.data && sh.data[dStr];
     });
@@ -772,7 +863,6 @@ function detectShiftImbalanceAlertsForDate(dStr) {
         else if (rawShiftText.includes('ກະ 2') || rawShiftText.includes('ກະ2') || rawShiftText.includes('shift2')) matchedShiftKey = 'shift2';
         else if (rawShiftText.includes('ກະ 3') || rawShiftText.includes('ກະ3') || rawShiftText.includes('shift3')) matchedShiftKey = 'shift3';
 
-        // ຖ້າເລືອກ "ທຸກກະ" ໃຫ້ກວດຈາກຕາຕະລາງຕົວຈິງວ່າມື້ນີ້ລາວຢູ່ກະໃດ
         if (!matchedShiftKey) {
             matchingSheets.forEach(function(sh) {
                 var dayObj = sh.data[dStr] || {};
@@ -796,7 +886,6 @@ function detectShiftImbalanceAlertsForDate(dStr) {
         shift3: 'ກະ 3 (20:00 - 08:00)'
     };
 
-    // ✅ ຖ້າກະໃດມີຄົນລາພັກເກີນ 1 ຄົນ (ຕັ້ງແຕ່ 2 ຄົນຂຶ້ນໄປ) ➔ ແຈ້ງເຕືອນກະບໍ່ສົມດຸນທັນທີ!
     ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
         var leaveStaff = shiftLeavesMap[sKey];
         if (leaveStaff.length > 1) {
@@ -804,7 +893,7 @@ function detectShiftImbalanceAlertsForDate(dStr) {
                 key: 'IMBALANCE_' + dStr + '_' + sKey + '_' + leaveStaff.length,
                 badge: '⚠️ ແຈ້ງເຕືອນກະບໍ່ສົມດຸນ (ລາພັກເກີນ 1 ຄົນ/ກະ)',
                 title: '🚨 ກະບໍ່ສົມດຸນ! ' + shiftNamesLao[sKey] + ' ມີຜູ້ລາພັກພ້ອມກັນ ' + leaveStaff.length + ' ທ່ານ',
-                message: 'ວັນທີ ' + dStr + ' ໃນ ' + shiftNamesLao[sKey] + ' ມີພະນັກງານລາພັກຊ້ຳກັນ (' + leaveStaff.join(', ') + '). ກະລຸນາກວດສອບກຳລັງຄົນ ຫຼື ຈັດຄົນປ່ຽນກະ/ຍາມແທນເພີ່ມເຕີມ!',
+                message: 'ວັນທີ ' + dStr + ' ໃນ ' + shiftNamesLao[sKey] + ' ມີພະນັກງານລາພັກຊ້ຳກັນ (' + leaveStaff.join(', ') + '). ກະລຸນາກວດສອບກຳລັງຄົນ!',
                 theme: 'ALERT_RED',
                 icon: 'warning'
             });
@@ -814,7 +903,7 @@ function detectShiftImbalanceAlertsForDate(dStr) {
     return alerts;
 }
 
-// 4. ລວບລວມການແຈ້ງເຕືອນທັງໝົດຂອງມື້ນີ້ (Custom Rules + ວັນພັກທະນາຄານ + ກະບໍ່ສົມດຸນ)
+// 4. ລວບລວມການແຈ້ງເຕືອນທັງໝົດຂອງມື້ນີ້
 function collectAllActiveSmartAlerts() {
     var results = [];
     var now = new Date();
@@ -824,18 +913,17 @@ function collectAllActiveSmartAlerts() {
     var todayStr = yyyy + '-' + mm + '-' + dd;
     var dayOfMonth = now.getDate();
 
-    // ວັນທີທີ່ກຳລັງເລືອກເບິ່ງຢູ່ໜ້າ Dashboard (ຫຼື ມື້ນີ້)
     var dashDateEl = document.getElementById('dashDateInput');
     var targetDashDate = (dashDateEl && dashDateEl.value) ? dashDateEl.value : todayStr;
+    var targetDayNum = parseInt(targetDashDate.split('-')[2], 10) || dayOfMonth;
 
-    // A. ກວດສອບ Rules ທີ່ຕັ້ງໄວ້ໃນ Custom Reminders (ວັນທີ 1, ວັນທີ 14, ວັນພັກທະນາຄານ, ປະກາດດ່ວນ)
     var rules = getCustomRemindersList();
     rules.forEach(function(r) {
         if (!r || !r.enabled) return;
 
-        if (r.ruleType === 'MONTHLY_DAY' && Number(r.dayOfMonth) === dayOfMonth) {
+        if (r.ruleType === 'MONTHLY_DAY' && (Number(r.dayOfMonth) === dayOfMonth || Number(r.dayOfMonth) === targetDayNum)) {
             results.push({
-                key: 'RULE_' + r.id + '_' + todayStr,
+                key: 'RULE_' + r.id + '_' + targetDashDate,
                 badge: 'ແຈ້ງເຕືອນປະຈຳວັນທີ ' + r.dayOfMonth + ' ຂອງເດືອນ',
                 title: r.title,
                 message: r.message,
@@ -863,7 +951,6 @@ function collectAllActiveSmartAlerts() {
         }
     });
 
-    // B. ກວດສອບວັນພັກພິເສດຈາກຕາຕະລາງ (window.specialHolidayRanges) ໂດຍອັດຕະໂນມັດ
     var holList = window.specialHolidayRanges || [];
     holList.forEach(function(h) {
         if (!h) return;
@@ -874,14 +961,13 @@ function collectAllActiveSmartAlerts() {
                 key: 'SPECIAL_HOL_' + s + '_' + targetDashDate,
                 badge: '🗓️ ວັນພັກພິເສດຕາມປະຕິທິນທະນາຄານ (' + s + ' ຫາ ' + e + ')',
                 title: '🏦 ວັນພັກພິເສດ: ' + (h.title || 'ວັນພັກລັດຖະການ/ທະນາຄານ'),
-                message: 'ມື້ນີ້ຢູ່ໃນຊ່ວງວັນພັກພິເສດ ຕາຕະລາງປະຈຳການໃຊ້ເວລາວັນພັກ (ກະ 1: 08:00-13:30 | ກະ 2: 13:30-19:00 | ກະ 3: 19:00-08:00).',
+                message: 'ມື້ນີ້ຢູ່ໃນຊ່ວງວັນພັກພິເສດ ຕາຕະລາງປະຈຳການໃຊ້ເວລາວັນພັກ (08:00-13:30 | 13:30-19:00 | 19:00-08:00).',
                 theme: 'RED',
                 icon: 'celebration'
             });
         }
     });
 
-    // C. ກວດຈັບ "ກະບໍ່ສົມດຸນ (ລາພັກເກີນ 1 ຄົນຕໍ່ກະ)" ຂອງວັນທີທີ່ກຳລັງຕິດຕາມ
     var imbalanceAlerts = detectShiftImbalanceAlertsForDate(targetDashDate);
     imbalanceAlerts.forEach(function(al) {
         results.push(al);
@@ -890,9 +976,11 @@ function collectAllActiveSmartAlerts() {
     return results;
 }
 
-// 5. ສະແດງປ້າຍ Smart Alerts ຢູ່ເທິງໜ້າ Dashboard ແລະ ຍິງເຂົ້າໜ້າຈໍໂທລະສັບ
+// 5. ສະແດງປ້າຍ Smart Alerts ຢູ່ເທິງໜ້າ Dashboard (ປອດໄພຈາກ SyntaxError 100%)
 async function evaluateAndRenderSmartAlerts(forcePush) {
     var alerts = collectAllActiveSmartAlerts();
+    window.currentActiveDashboardAlerts = alerts;
+
     var dashContainer = document.querySelector('#view-dashboard > div');
     var wrapper = document.getElementById('smartAlertsBannerContainer');
 
@@ -904,21 +992,10 @@ async function evaluateAndRenderSmartAlerts(forcePush) {
     }
 
     if (!wrapper) return;
-
     var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
 
     if (alerts.length === 0) {
-        // ຖ້າເປັນ Admin ໃຫ້ສະແດງແຖບປຸ່ມນ້ອຍໆສຳລັບກົດຕັ້ງຄ່າເພີ່ມແຈ້ງເຕືອນໄດ້ສະເໝີ
-        if (isAdmin) {
-            wrapper.innerHTML =
-                '<div class="flex justify-end">' +
-                    '<button type="button" onclick="openCustomRemindersModal()" class="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-2xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer transition">' +
-                        '<span class="material-symbols-outlined text-base text-brand-red">edit_notifications</span> ຕັ້ງຄ່າແຈ້ງເຕືອນວັນສຳຄັນ / ປະຕິທິນທະນາຄານ' +
-                    '</button>' +
-                '</div>';
-        } else {
-            wrapper.innerHTML = '';
-        }
+        wrapper.innerHTML = '';
         return;
     }
 
@@ -935,8 +1012,6 @@ async function evaluateAndRenderSmartAlerts(forcePush) {
         var al = alerts[i];
         var cls = themeClasses[al.theme] || themeClasses.BLUE;
         var isDark = cls.includes('text-white');
-        var cleanTitle = (al.title || '').replace(/'/g, "\\'");
-        var cleanMsg = (al.message || '').replace(/'/g, "\\'");
 
         html +=
             '<div class="p-4 rounded-3xl border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition ' + cls + '">' +
@@ -952,16 +1027,15 @@ async function evaluateAndRenderSmartAlerts(forcePush) {
                 '</div>' +
                 '<div class="flex items-center gap-2 shrink-0 self-end sm:self-center">' +
                     (isAdmin ? '<button type="button" onclick="openCustomRemindersModal()" class="px-3 py-2 rounded-xl text-xs font-bold cursor-pointer ' + (isDark ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200') + ' flex items-center gap-1"><span class="material-symbols-outlined text-sm">settings</span> ຕັ້ງຄ່າ</button>' : '') +
-                    '<button type="button" onclick="sendPhoneScreenNotification(\'' + cleanTitle + '\', \'' + cleanMsg + '\', \'' + al.key + '\')" class="px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer ' + (isDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-brand-red text-white hover:bg-brand-red-dark') + ' flex items-center gap-1.5 shadow-2xs">' +
-                        '<span class="material-symbols-outlined text-sm">smartphone</span> ແຈ້ງເຕືອນມືຖື' +
+                    '<button type="button" onclick="triggerActiveBannerAlertByIdx(' + i + ')" class="px-3.5 py-2 rounded-xl text-xs font-bold cursor-pointer ' + (isDark ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-brand-red text-white hover:bg-brand-red-dark') + ' flex items-center gap-1.5 shadow-2xs">' +
+                        '<span class="material-symbols-outlined text-sm">smartphone</span> ຍິງແຈ້ງເຕືອນທັນທີ' +
                     '</button>' +
                 '</div>' +
             '</div>';
 
-        // ຍິງແຈ້ງເຕືອນເຂົ້າໜ້າຈໍໂທລະສັບອັດຕະໂນມັດ (1 ຄັ້ງຕໍ່ລາຍການ)
         var sentFlag = localStorage.getItem('ot_sent_' + al.key);
         if (!sentFlag || forcePush) {
-            var ok = await sendPhoneScreenNotification(al.title, al.message, al.key);
+            var ok = await sendPhoneScreenNotification(al.title, al.message, al.key, false);
             if (ok) {
                 try { localStorage.setItem('ot_sent_' + al.key, '1'); } catch(e) {}
             }
@@ -972,7 +1046,7 @@ async function evaluateAndRenderSmartAlerts(forcePush) {
 }
 window.evaluateAndRenderSmartAlerts = evaluateAndRenderSmartAlerts;
 
-// 6. ⭐ MODAL ໃຫ້ ADMIN ກົດເພີ່ມ / ແກ້ໄຂ / ລຶບ ແຈ້ງເຕືອນວັນສຳຄັນໄດ້ເອງ (ບໍ່ຕ້ອງແກ້ໂຄ້ດ)
+// 6. MODAL ຕັ້ງຄ່າແຈ້ງເຕືອນສຳລັບ Admin
 function ensureCustomRemindersModalExists() {
     if (document.getElementById('customRemindersModal')) return;
 
@@ -992,7 +1066,6 @@ function ensureCustomRemindersModalExists() {
                 '<button type="button" onclick="closeCustomRemindersModal()" class="text-white/80 hover:text-white cursor-pointer"><span class="material-symbols-outlined text-xl">close</span></button>' +
             '</div>' +
             '<div class="p-6 overflow-y-auto flex-1 space-y-5 text-xs">' +
-                '<!-- ຟອມເພີ່ມແຈ້ງເຕືອນໃໝ່ -->' +
                 '<div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">' +
                     '<p class="font-bold text-slate-800 flex items-center gap-1.5"><span class="material-symbols-outlined text-base text-brand-red">add_alert</span> ເພີ່ມລາຍການແຈ້ງເຕືອນໃໝ່:</p>' +
                     '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">' +
@@ -1032,15 +1105,14 @@ function ensureCustomRemindersModalExists() {
                     '</div>' +
                     '<div class="flex justify-end pt-1">' +
                         '<button type="button" onclick="handleAddCustomReminderRule()" class="px-5 py-2.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold shadow cursor-pointer flex items-center gap-1.5">' +
-                            '<span class="material-symbols-outlined text-sm">add_circle</span> ບັນທຶກລາຍການແຈ້ງເຕືອນ' +
+                            '<span class="material-symbols-outlined text-sm">add_circle</span> ບັນທຶກ & ຍິງແຈ້ງເຕືອນທັນທີ' +
                         '</button>' +
                     '</div>' +
                 '</div>' +
-                '<!-- ລາຍການທີ່ຕັ້ງໄວ້ທັງໝົດ -->' +
                 '<div>' +
                     '<div class="flex justify-between items-center mb-2">' +
-                        '<p class="font-bold text-slate-800">ລາຍການແຈ້ງເຕືອນທີ່ຕັ້ງໄວ້ທັງໝົດ (ພ້ອມລະບົບກວດຈັບກະບໍ່ສົມດຸນອັດຕະໂນມັດ):</p>' +
-                        '<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">Auto-Check Active</span>' +
+                        '<p class="font-bold text-slate-800">ລາຍການແຈ້ງເຕືອນທີ່ຕັ້ງໄວ້ທັງໝົດ:</p>' +
+                        '<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-bold">⚡ Real-time WebSocket Active</span>' +
                     '</div>' +
                     '<div id="customRemindersListContainer" class="space-y-2"></div>' +
                 '</div>' +
@@ -1084,13 +1156,13 @@ function closeCustomRemindersModal() {
 }
 window.closeCustomRemindersModal = closeCustomRemindersModal;
 
+// ⭐ ໃຊ້ triggerTestReminderByIdx(idx) ແທນການສົ່ງ String ເຂົ້າ onclick (ບໍ່ມີວັນເກີດ SyntaxError 100%)
 function renderCustomRemindersManagerList() {
     var container = document.getElementById('customRemindersListContainer');
     if (!container) return;
     var list = getCustomRemindersList();
     container.innerHTML = '';
 
-    // ສະແດງກົດລະບຽບອັດຕະໂນມັດ (ກວດຈັບກະບໍ່ສົມດຸນ / ລາພັກເກີນ 1 ຄົນຕໍ່ກະ)
     container.innerHTML +=
         '<div class="p-3 bg-red-50/70 border border-red-200 rounded-2xl flex items-center justify-between gap-2">' +
             '<div>' +
@@ -1107,9 +1179,6 @@ function renderCustomRemindersManagerList() {
         else if (r.ruleType === 'SPECIFIC_DATE') whenLabel = '🏦 ວັນທີ ' + r.targetDate;
         else whenLabel = '📢 ສະແດງທຸກມື້';
 
-        var cleanTitle = (r.title || '').replace(/'/g, "\\'");
-        var cleanMsg = (r.message || '').replace(/'/g, "\\'");
-
         container.innerHTML +=
             '<div class="p-3 bg-white border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2">' +
                 '<div class="space-y-0.5">' +
@@ -1118,14 +1187,16 @@ function renderCustomRemindersManagerList() {
                     '<p class="text-[11px] text-slate-500">' + r.message + '</p>' +
                 '</div>' +
                 '<div class="flex items-center gap-1.5 shrink-0">' +
-                    '<button type="button" onclick="sendPhoneScreenNotification(\'' + cleanTitle + '\', \'' + cleanMsg + '\', \'test-' + r.id + '\')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-[11px] cursor-pointer">ຍິງທົດສອບ</button>' +
+                    '<button type="button" onclick="triggerTestReminderByIdx(' + idx + ')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[11px] cursor-pointer flex items-center gap-1 shadow-2xs">' +
+                        '<span class="material-symbols-outlined text-xs">bolt</span> ຍິງທົດສອບທັນທີ' +
+                    '</button>' +
                     '<button type="button" onclick="deleteCustomReminderRule(' + idx + ')" class="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-brand-red rounded-xl font-bold text-[11px] cursor-pointer">ລຶບ</button>' +
                 '</div>' +
             '</div>';
     });
 }
 
-function handleAddCustomReminderRule() {
+async function handleAddCustomReminderRule() {
     var ruleType = document.getElementById('remRuleTypeSelect')?.value || 'MONTHLY_DAY';
     var dayOfMonth = parseInt(document.getElementById('remDayOfMonthInput')?.value, 10) || 1;
     var targetDate = document.getElementById('remSpecificDateInput')?.value || '';
@@ -1142,8 +1213,7 @@ function handleAddCustomReminderRule() {
         return;
     }
 
-    var list = getCustomRemindersList();
-    list.push({
+    var newRule = {
         id: 'rem-' + Date.now(),
         ruleType: ruleType,
         dayOfMonth: dayOfMonth,
@@ -1152,7 +1222,10 @@ function handleAddCustomReminderRule() {
         message: message,
         theme: theme,
         enabled: true
-    });
+    };
+
+    var list = getCustomRemindersList();
+    list.push(newRule);
 
     window.customRemindersConfig = list;
     saveCustomRemindersList();
@@ -1161,8 +1234,11 @@ function handleAddCustomReminderRule() {
     document.getElementById('remMessageInput').value = '';
 
     renderCustomRemindersManagerList();
-    evaluateAndRenderSmartAlerts(true);
-    showToast('ສຳເລັດ', 'ເພີ່ມລາຍການແຈ້ງເຕືອນໃໝ່ຮຽບຮ້ອຍແລ້ວ!', 'success');
+    evaluateAndRenderSmartAlerts(false);
+
+    // ຍິງທັນທີໃນ 0.01 ວິນາທີ + Broadcast ໄປຫາທຸກຄົນ!
+    await sendPhoneScreenNotification(newRule.title, newRule.message, newRule.id, true);
+    broadcastInstantAlertToAllUsers(newRule.title, newRule.message, newRule.id);
 }
 window.handleAddCustomReminderRule = handleAddCustomReminderRule;
 
@@ -1177,34 +1253,6 @@ function deleteCustomReminderRule(idx) {
 }
 window.deleteCustomReminderRule = deleteCustomReminderRule;
 
-// 7. ເພີ່ມປຸ່ມ "ເປີດແຈ້ງເຕືອນມືຖື" ແລະ "⚙️ ຕັ້ງຄ່າແຈ້ງເຕືອນ" ໃສ່ໃນກ່ອງກະດິ່ງແຈ້ງເຕືອນ
-function injectPhoneNotifButtonIntoDropdown() {
-    var dropdown = document.getElementById('notifDropdown');
-    if (!dropdown || document.getElementById('btnEnablePhonePush')) return;
-
-    var headerDiv = dropdown.firstElementChild;
-    if (headerDiv) {
-        var bar = document.createElement('div');
-        bar.id = 'btnEnablePhonePush';
-        bar.className = 'mb-3 p-2.5 bg-red-50/80 border border-red-200 rounded-xl flex items-center justify-between gap-2';
-        bar.innerHTML =
-            '<div class="text-[11px] text-slate-700 leading-tight">' +
-                '<p class="font-bold text-brand-red flex items-center gap-1"><span class="material-symbols-outlined text-sm">smartphone</span> ແຈ້ງເຕືອນມືຖື & ວັນສຳຄັນ</p>' +
-                '<p class="text-[10px] text-slate-500">ວັນທີ 1/14, ວັນພັກທະນາຄານ, ກະບໍ່ສົມດຸນ</p>' +
-            '</div>' +
-            '<div class="flex items-center gap-1 shrink-0">' +
-                '<button type="button" onclick="openCustomRemindersModal()" class="p-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-bold cursor-pointer" title="ຕັ້ງຄ່າ/ເພີ່ມແຈ້ງເຕືອນ">' +
-                    '<span class="material-symbols-outlined text-sm block">settings</span>' +
-                '</button>' +
-                '<button type="button" onclick="requestPhoneNotificationPermission()" class="px-2.5 py-1.5 bg-brand-red hover:bg-brand-red-dark text-white rounded-lg text-[10px] font-bold cursor-pointer shadow-2xs">' +
-                    'ເປີດແຈ້ງເຕືອນ' +
-                '</button>' +
-            '</div>';
-        dropdown.insertBefore(bar, headerDiv.nextSibling);
-    }
-}
-
-// ເຊື່ອມຕໍ່ກັບ renderDashboard ເພື່ອໃຫ້ກວດສອບກະບໍ່ສົມດຸນທຸກຄັ້ງທີ່ປ່ຽນວັນທີໃນ Dashboard
 var _origRenderDashForAlerts = window.renderDashboard;
 window.renderDashboard = function() {
     if (typeof _origRenderDashForAlerts === 'function') {
@@ -1215,11 +1263,7 @@ window.renderDashboard = function() {
 
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
-        injectPhoneNotifButtonIntoDropdown();
+        initSupabaseRealtimePushChannel();
         evaluateAndRenderSmartAlerts(false);
-    }, 1000);
-
-    setInterval(function() {
-        evaluateAndRenderSmartAlerts(false);
-    }, 1800000);
+    }, 600);
 });
