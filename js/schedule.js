@@ -1157,7 +1157,7 @@ async function renderScheduleTable(options) {
     }
 }
 
-// 10. RENDER PIXEL EXCEL GRID
+// ⭐ 10. RENDER PIXEL EXCEL GRID (ພ້ອມລະບົບ Dual Drag & Drop: ລາກຈາກແຖບຊ້າຍມາໃສ່ຊ່ອງ + ລາກສະຫຼັບຊ່ອງຕໍ່ຊ່ອງ 100%)
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 1); rows = Math.max(rows, 1);
     var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
@@ -1168,6 +1168,13 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var isLeader = (window.users || []).find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, name) && u.isLeader; });
         var cleanName = (name || '').replace(/'/g, "\\'");
         var clickHandler = isAdmin ? 'onclick="openCellModal(\'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
+        var dragHandlers = isAdmin
+            ? 'draggable="true" ' +
+              'ondragstart="handleSchedCellDragStart(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')" ' +
+              'ondragover="handleSchedCellDragOver(event)" ' +
+              'ondragleave="handleSchedCellDragLeave(event)" ' +
+              'ondrop="handleSchedCellDrop(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"'
+            : '';
 
         var isSwapped = (window.swapHistory || []).some(function(sw) {
             if (!sw) return false;
@@ -1210,8 +1217,8 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
             badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline">ພັກ</span>';
         }
 
-        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-pointer' : '') + '" ' + clickHandler + '>' +
-            '<span class="inline-flex items-center justify-center ' + textClass + '">' +
+        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-grab active:cursor-grabbing select-none' : '') + '" ' + clickHandler + ' ' + dragHandlers + '>' +
+            '<span class="inline-flex items-center justify-center pointer-events-none ' + textClass + '">' +
                 '<span>' + name + '</span>' +
                 badgesHtml +
             '</span>' +
@@ -1219,6 +1226,100 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     }
     html += '</div>';
     return html;
+}
+
+// ⭐ 10.5 ENGINE ຮອງຮັບ DRAG & DROP ທັງ 2 ຮູບແບບ (ລາກຈາກແຖບຊ້າຍມາວາງ + ລາກສະຫຼັບລະຫວ່າງຊ່ອງໃນຕາຕະລາງ)
+window.draggedSchedCell = null;
+
+function handleSchedCellDragStart(e, date, shift, index, currentName) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    window.draggedStaffName = null; // ລ້າງຄ່າຈາກແຖບຊ້າຍ ເພື່ອບອກວ່າລາກມາຈາກຊ່ອງໃນຕາຕະລາງ
+    window.draggedSchedCell = {
+        date: date,
+        shift: shift,
+        index: parseInt(index, 10) || 0,
+        name: (currentName || '').replace(/\\'/g, "'")
+    };
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'copyMove';
+        e.dataTransfer.setData('text/plain', window.draggedSchedCell.name);
+    }
+}
+
+function handleSchedCellDragOver(e) {
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
+}
+
+function handleSchedCellDragLeave(e) {
+    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
+}
+
+async function handleSchedCellDrop(e, targetDate, targetShift, targetIndex, targetName) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
+
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+    if (!sheet.data) sheet.data = {};
+
+    var tIdx = parseInt(targetIndex, 10) || 0;
+    var tName = (targetName || '').replace(/\\'/g, "'");
+    var srcCell = window.draggedSchedCell;
+    var rosterStaffName = window.draggedStaffName || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
+
+    window.draggedSchedCell = null;
+    window.draggedStaffName = null;
+
+    // ກໍລະນີທີ 1: ລາກສະຫຼັບລະຫວ່າງຊ່ອງຕໍ່ຊ່ອງໃນຕາຕະລາງ (Cell-to-Cell Swap)
+    if (srcCell) {
+        if (srcCell.date === targetDate && srcCell.shift === targetShift && srcCell.index === tIdx) return;
+
+        if (!sheet.data[srcCell.date]) sheet.data[srcCell.date] = { shift1: [], shift2: [], shift3: [] };
+        if (!sheet.data[targetDate]) sheet.data[targetDate] = { shift1: [], shift2: [], shift3: [] };
+        if (!sheet.data[srcCell.date][srcCell.shift]) sheet.data[srcCell.date][srcCell.shift] = [];
+        if (!sheet.data[targetDate][targetShift]) sheet.data[targetDate][targetShift] = [];
+
+        var srcList = sheet.data[srcCell.date][srcCell.shift];
+        var tgtList = sheet.data[targetDate][targetShift];
+
+        while (srcList.length <= srcCell.index) srcList.push('');
+        while (tgtList.length <= tIdx) tgtList.push('');
+
+        srcList[srcCell.index] = tName;
+        tgtList[tIdx] = srcCell.name;
+
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        } catch(err) {}
+
+        await renderScheduleTable({ skipSwapSync: true });
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        await syncScheduleToSupabase(sheet);
+        showToast('ສະຫຼັບຊື່ສຳເລັດ', 'ສະຫຼັບຕຳແໜ່ງ ແລະ ບັນທຶກລົງ Supabase ແລ້ວ!', 'success');
+        return;
+    }
+
+    // ກໍລະນີທີ 2: ລາກຊື່ພະນັກງານຈາກແຖບລາຍຊື່ທາງຊ້າຍ (Roster Sidebar) ມາວາງໃສ່ຊ່ອງໃນຕາຕະລາງ
+    if (rosterStaffName) {
+        if (sheet.status === 'PUBLISHED' && tName !== rosterStaffName) {
+            openEditPublishedRemarkModal({
+                date: targetDate,
+                shift: targetShift,
+                index: tIdx,
+                currentName: tName,
+                newName: rosterStaffName
+            });
+            return;
+        }
+        await applyCellUpdate(sheet, targetDate, targetShift, tIdx, rosterStaffName);
+    }
 }
 
 // 11. CELL MODAL & UPDATES
@@ -1943,3 +2044,8 @@ window.adjustScheduleZoom = adjustScheduleZoom;
 window.resetScheduleZoom = resetScheduleZoom;
 window.fitScheduleToScreen = fitScheduleToScreen;
 window.toggleScheduleFullscreen = toggleScheduleFullscreen;
+window.handleSchedCellDragStart = handleSchedCellDragStart;
+window.handleSchedCellDragOver = handleSchedCellDragOver;
+window.handleSchedCellDragLeave = handleSchedCellDragLeave;
+window.handleSchedCellDrop = handleSchedCellDrop;
+
