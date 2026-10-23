@@ -1,4 +1,4 @@
-// ================= ⭐ DAILY OPERATIONAL MONITOR (UNIVERSAL ENGINE SYNC - 100% FIXED) =================
+// ================= DAILY OPERATIONAL MONITOR (UNIVERSAL ENGINE SYNC - 100% CLEAN & VERIFIED) =================
 
 function isDashNameMatch(a, b) {
     if (!a || !b) return false;
@@ -10,7 +10,7 @@ function isDashNameMatch(a, b) {
     return clean(a) === clean(b);
 }
 
-// ⭐ Helper ກວດສອບວ່າເປັນຊື່ພະນັກງານແທ້ບໍ່ (ຕັດຊ່ອງວ່າງ "", "(ວ່າງ)", "-" ອອກ 100%)
+// Helper ກວດສອບວ່າເປັນຊື່ພະນັກງານແທ້ບໍ່ (ຕັດຊ່ອງວ່າງ "", "(ວ່າງ)", "-" ອອກ 100%)
 function isValidDashStaffName(name) {
     if (!name || typeof name !== 'string') return false;
     var s = name.trim();
@@ -208,11 +208,10 @@ async function fetchDashboardDataFromCloud() {
     }
 }
 
-// ⭐ 1. RENDER DASHBOARD (ແກ້ບັນຫາຕ້ອງກົດເລືອກວັນທີ 2 ເທື່ອ 100% — ຖ້າຊ່ອງວັນທີມີຄ່າຢູ່ແລ້ວ ຈະບໍ່ຂຽນທັບເດັດຂາດ!)
+// 1. RENDER DASHBOARD
 async function renderDashboard() {
     var dateInput = document.getElementById('dashDateInput');
     
-    // ຕັ້ງຄ່າເປັນວັນທີມື້ນີ້ສະເພາະຕອນທີ່ຊ່ອງວັນທີຍັງວ່າງເປົ່າເທົ່ານັ້ນ!
     if (dateInput && !dateInput.value) {
         dateInput.value = getTodayLocalDateStr();
     }
@@ -224,7 +223,6 @@ async function renderDashboard() {
 
     await fetchDashboardDataFromCloud();
 
-    // ອ່ານຄ່າວັນທີຫຼ້າສຸດອີກຄັ້ງຫຼັງຈາກໂຫຼດ Cloud ແລ້ວ (ເຜື່ອຜູ້ໃຊ້ຫາກໍ່ປ່ຽນວັນທີໃນລະຫວ່າງໂຫຼດ)
     if (dateInput && dateInput.value) {
         targetDate = dateInput.value;
     }
@@ -300,7 +298,7 @@ function updateDayTypeBadge(dateStr) {
     }
 }
 
-// ⭐ 2. RENDER SHIFT CARDS (ກັ່ນຕອງຊ່ອງວ່າງ "" ອອກ 100% ກ່ອນນັບຈຳນວນຄົນ ແລະ ກ່ອນສ້າງປ້າຍຊື່)
+// 2. RENDER SHIFT CARDS (ຕັດຊ່ອງວ່າງ "" ອອກ 100% ກ່ອນນັບຈຳນວນຄົນ ແລະ ກ່ອນສ້າງປ້າຍຊື່)
 function renderShiftCards(targetDate, sheets, swappedStaffSet) {
     var shifts = [
         { key: 'shift1', containerId: 'shift1Names', badgeId: 'shift1CountBadge', timeTextId: 'shift1TimeText', defaultTime: '08:00 - 16:00', weekendTime: '08:00 - 13:30' },
@@ -336,7 +334,7 @@ function renderShiftCards(targetDate, sheets, swappedStaffSet) {
             var dayData = (sheet.data && sheet.data[targetDate]) ? sheet.data[targetDate] : null;
             var rawSlot = dayData ? (dayData[s.key] || []) : [];
 
-            // ✅ ກັ່ນຕອງເອົາສະເພາະຊື່ຄົນທີ່ມີຕົວໜັງສືແທ້ເທົ່ານັ້ນ (ຕັດຊ່ອງວ່າງ "", "(ວ່າງ)", "-" ອອກ 100%)
+            // ກັ່ນຕອງເອົາສະເພາະຊື່ຄົນແທ້ເທົ່ານັ້ນ (ບໍ່ເອົາຊ່ອງວ່າງ "", "(ວ່າງ)", "-")
             var staffInSlot = rawSlot.filter(isValidDashStaffName);
 
             var sheetActiveCount = 0;
@@ -523,7 +521,7 @@ function openSwapChainInspectorModal(dateStr) {
         var sStart = s.startDate || s.start_date;
         var sEnd = s.endDate || s.end_date;
         var sStatus = String(s.status || '').toUpperCase();
-        return sStatus === 'COMPLETED' && (dateStr >= sStart && targetDate <= sEnd);
+        return sStatus === 'COMPLETED' && (dateStr >= sStart && dateStr <= sEnd);
     }).sort(function(a, b) { return (a.id || 0) - (b.id || 0); });
 
     if (swapsToday.length === 0) {
@@ -600,7 +598,7 @@ function openSwapChainInspectorModal(dateStr) {
                                 '<div>' +
                                     '<h5 class="font-bold text-slate-800 text-xs flex items-center gap-1">' + getStaffPhotoHtml(name) + '<span>' + name + '</span></h5>' +
                                     '<p class="text-[10px] text-slate-400 mt-0.5">ເວລາເຂົ້າວຽກ: ' + slotTime + '</p>' +
-                                </div>' +
+                                '</div>' +
                                 '<span class="px-2.5 py-1 rounded-xl text-[11px] font-bold border ' + slotBadgeClass + '">' + currentSlot + '</span>' +
                              '</div>';
     });
@@ -639,7 +637,6 @@ function closeSwapChainInspectorModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-// ⭐ ເຮັດໃຫ້ກົດບ່ອນໃດໃນກ່ອງວັນທີກໍເປີດປະຕິທິນທັນທີ ແລະ ເລືອກເທື່ອດຽວປ່ຽນທັນທີ 100%
 document.addEventListener('DOMContentLoaded', function() {
     var dateInput = document.getElementById('dashDateInput');
     if (dateInput) {
