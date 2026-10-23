@@ -1618,120 +1618,180 @@ document.addEventListener('DOMContentLoaded', function() {
         evaluateAndRenderSmartAlerts(false);
     }, 900000);
 });
-// ================= ⭐ AUTO-CLEAN DASHBOARD EMPTY PILLS & RECALCULATE EXACT STAFF COUNT (100% REALTIME DOM OBSERVER) =================
-function cleanDashboardEmptyPillsAndRecount() {
-    var configs = [
+// ================= ⭐ ແກ້ໄຂ 100%: ຕັດຊ່ອງວ່າງອອກຈາກຂໍ້ມູນກະ + ແກ້ປຸ່ມເລືອກວັນທີ DASHBOARD ໃຫ້ກົດເທື່ອດຽວຕິດ =================
+
+// 1. ຟັງຊັນລ້າງຊ່ອງວ່າງ "" ອອກຈາກ Array ຂອງທຸກຕາຕະລາງ (ເພື່ອບໍ່ໃຫ້ Dashboard ນັບຊ່ອງວ່າງເປັນຄົນເຮັດວຽກເດັດຂາດ)
+function sanitizeAllScheduleSheetsEmptySlots() {
+    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets)) return;
+
+    window.scheduleSheets.forEach(function(sheet) {
+        if (!sheet || !sheet.data) return;
+        Object.keys(sheet.data).forEach(function(dStr) {
+            if (dStr.startsWith('_')) return;
+            var dayObj = sheet.data[dStr];
+            if (!dayObj || typeof dayObj !== 'object') return;
+
+            ['shift1', 'shift2', 'shift3'].forEach(function(sKey) {
+                if (Array.isArray(dayObj[sKey])) {
+                    // ກັ່ນຕອງເອົາສະເພາະຊື່ຄົນທີ່ມີຕົວໜັງສືແທ້ເທົ່ານັ້ນ (ຕັດ "", null, "(ວ່າງ)" ອອກ 100%)
+                    dayObj[sKey] = dayObj[sKey].filter(function(name) {
+                        if (!name || typeof name !== 'string') return false;
+                        var clean = name.trim();
+                        return clean !== '' && clean !== '(ວ່າງ)' && clean !== '-';
+                    });
+                }
+            });
+        });
+    });
+}
+window.sanitizeAllScheduleSheetsEmptySlots = sanitizeAllScheduleSheetsEmptySlots;
+
+// 2. ດັກຈັບກ່ອນ Render Dashboard ທຸກຄັ້ງ ໃຫ້ລ້າງຊ່ອງວ່າງກ່ອນສະເໝີ
+function bindDashboardSanitizerAndDatePickerFix() {
+    // A. ແກ້ບັນຫາປຸ່ມເລືອກວັນທີ dashDateInput ຕ້ອງກົດ 2 ເທື່ອ
+    var dateInput = document.getElementById('dashDateInput');
+    if (dateInput && !dateInput._pickerFixed) {
+        dateInput._pickerFixed = true;
+
+        // ລຶບ inline onchange ເກົ່າອອກ ເພື່ອບໍ່ໃຫ້ມັນຍິງຊ້ຳຊ້ອນກັບ addEventListener
+        dateInput.removeAttribute('onchange');
+
+        // ເມື່ອກົດໃສ່ຊ່ອງວັນທີ ໃຫ້ບັນທຶກສະຖານະວ່າກຳລັງເລືອກວັນທີຢູ່ (ຫ້າມ Background Sync ມາຣີເຟຣຊກວນ)
+        dateInput.addEventListener('focus', function() {
+            window._isPickingDashDate = true;
+        });
+        dateInput.addEventListener('blur', function() {
+            window._isPickingDashDate = false;
+        });
+
+        // ກົດບ່ອນໃດໃນກ່ອງວັນທີ ກໍໃຫ້ເປີດປະຕິທິນຂຶ້ນມາທັນທີໃນຄັ້ງດຽວ
+        dateInput.addEventListener('click', function() {
+            window._isPickingDashDate = true;
+            if (typeof this.showPicker === 'function') {
+                try { this.showPicker(); } catch (e) {}
+            }
+        });
+
+        // ເມື່ອເລືອກວັນທີໃໝ່ແລ້ວ ໃຫ້ລັອກຄ່າວັນທີນັ້ນໄວ້ ແລະ Render ທັນທີໃນ 1 ຄລິກ!
+        dateInput.addEventListener('change', function() {
+            var selectedVal = this.value;
+            if (!selectedVal) return;
+            window._lockedDashDateValue = selectedVal;
+            window._isPickingDashDate = false;
+            sanitizeAllScheduleSheetsEmptySlots();
+            if (typeof window.renderDashboard === 'function') {
+                window.renderDashboard();
+            }
+            // ຮັບປະກັນວ່າຄ່າວັນທີບໍ່ຖືກຂຽນທັບກັບໄປເປັນວັນທີເກົ່າ
+            if (this.value !== selectedVal) {
+                this.value = selectedVal;
+            }
+        });
+    }
+
+    // B. ຫໍ່ຫຸ້ມ window.renderDashboard ເພື່ອລ້າງຊ່ອງວ່າງກ່ອນວາດ ແລະ ຮັກສາວັນທີທີ່ຜູ້ໃຊ້ເລືອກ
+    if (typeof window.renderDashboard === 'function' && !window.renderDashboard._isSanitizedWrapped) {
+        var origRender = window.renderDashboard;
+        var wrapped = async function() {
+            sanitizeAllScheduleSheetsEmptySlots();
+
+            var dInput = document.getElementById('dashDateInput');
+            if (dInput && window._lockedDashDateValue && dInput.value !== window._lockedDashDateValue) {
+                dInput.value = window._lockedDashDateValue;
+            }
+
+            var result = await origRender.apply(this, arguments);
+
+            // ຫຼັງຈາກວາດແລ້ວ ລຶບກ່ອງຊື່ທີ່ບໍ່ມີຕົວໜັງສືຊື່ຄົນອອກ ແລະ ນັບຈຳນວນຄົນໃໝ່ທັນທີ
+            cleanDashboardDOMAfterRender();
+            return result;
+        };
+        wrapped._isSanitizedWrapped = true;
+        window.renderDashboard = wrapped;
+    }
+}
+
+// 3. ຟັງຊັນກວດລ້າງ DOM ຫຼັງວາດ Dashboard (ລຶບກ່ອງວ່າງເປົ່າ ແລະ ອັບເດດຕົວເລກຄົນໃຫ້ກົງ 100%)
+function cleanDashboardDOMAfterRender() {
+    var shiftConfigs = [
         { namesId: 'shift1Names', badgeId: 'shift1CountBadge' },
         { namesId: 'shift2Names', badgeId: 'shift2CountBadge' },
         { namesId: 'shift3Names', badgeId: 'shift3CountBadge' }
     ];
 
-    configs.forEach(function(cfg) {
+    shiftConfigs.forEach(function(cfg) {
         var container = document.getElementById(cfg.namesId);
-        var totalBadge = document.getElementById(cfg.badgeId);
+        var topBadge = document.getElementById(cfg.badgeId);
         if (!container) return;
 
-        // ປ້ອງກັນ Observer ວົນລູບຊ້ຳຕອນເຮົາແກ້ໄຂຕົວເລກ
-        if (container._isCleaning) return;
-        container._isCleaning = true;
+        var totalWorkingInShift = 0;
+        var totalLeaveInShift = 0;
 
-        try {
-            // 1. ຊອກຫາປ້າຍວົງມົນທັງໝົດທີ່ບໍ່ມີຊື່ຄົນ (ລວມທັງກໍລະນີມີ <span></span> ວ່າງຢູ່ທາງໃນ) ແລ້ວລຶບຖິ້ມທັນທີ
-            var allEls = container.querySelectorAll('div, span, button');
-            allEls.forEach(function(el) {
-                var cls = (el.className || '').toString();
-                var txt = (el.textContent || '').replace(/\u200B/g, '').trim();
-                // ຖ້າເປັນປ້າຍຊື່ (ມີຂອບມົນ rounded ແລະ border/bg) ແຕ່ບໍ່ມີຕົວໜັງສືຊື່ຄົນເລີຍ
-                if ((txt === '' || txt === '(ວ່າງ)' || txt === '-') && (cls.includes('rounded-full') || cls.includes('rounded-xl') || cls.includes('rounded-2xl') || cls.includes('border'))) {
-                    // ຢ່າລຶບຖ້າເປັນຈຸດສີແດງຫົວໜ້າກະ (w-1.5 / w-2)
-                    if (!cls.includes('w-1.5') && !cls.includes('w-2') && !cls.includes('h-1.5') && !cls.includes('h-2')) {
-                        el.remove();
+        // ກວດສອບທຸກກ່ອງລາຍຊື່ (flex-wrap) ໃນກະນັ້ນ
+        var flexWraps = container.querySelectorAll('.flex-wrap');
+        if (flexWraps.length > 0) {
+            flexWraps.forEach(function(wrap) {
+                var validCount = 0;
+                var leaveCount = 0;
+
+                Array.from(wrap.children).forEach(function(pill) {
+                    var text = (pill.textContent || '').replace(/\s+/g, '').trim();
+                    if (!text || text === '(ວ່າງ)' || text === '-') {
+                        // ລຶບປ້າຍວົງມົນວ່າງເປົ່າທັນທີ!
+                        pill.remove();
+                    } else {
+                        validCount++;
+                        var htmlStr = (pill.className || '') + ' ' + (pill.innerHTML || '');
+                        if (htmlStr.includes('line-through') || text.includes('ພັກ')) {
+                            leaveCount++;
+                        }
+                    }
+                });
+
+                var workingInGroup = Math.max(0, validCount - leaveCount);
+                totalWorkingInShift += workingInGroup;
+                totalLeaveInShift += leaveCount;
+
+                // ອັບເດດຕົວເລກຄົນຂອງກຸ່ມຍ່ອຍ (ເຊັ່ນ "6 ຄົນ" ແທນ "7 ຄົນ")
+                var groupBlock = wrap.parentElement;
+                if (groupBlock && groupBlock !== container) {
+                    var headerEl = groupBlock.firstElementChild;
+                    if (headerEl && headerEl !== wrap) {
+                        var rightSpan = headerEl.lastElementChild;
+                        if (rightSpan) {
+                            var lvHtml = leaveCount > 0 ? ' <span class="text-rose-500 font-bold">(-' + leaveCount + ' ພັກ)</span>' : '';
+                            rightSpan.innerHTML = workingInGroup + ' ຄົນ' + lvHtml;
+                        }
                     }
                 }
             });
 
-            // 2. ນັບຈຳນວນຄົນຕົວຈິງໃໝ່ໃນແຕ່ລະກຸ່ມຍ່ອຍ (ວິຊາການສົມບູນ & ວິຊາການສັນຍາ)
-            var activeShiftTotal = 0;
-            var leaveShiftTotal = 0;
-
-            // ກວດສອບແຕ່ລະກ່ອງກຸ່ມຍ່ອຍໃນ container
-            var groupBlocks = container.children;
-            for (var i = 0; i < groupBlocks.length; i++) {
-                var block = groupBlocks[i];
-                // ຊອກຫາກ່ອງທີ່ບັນຈຸປ້າຍຊື່ຄົນ (flex-wrap)
-                var pillsWrap = block.querySelector('.flex-wrap') || block;
-                var validPills = [];
-                var leavePillsCount = 0;
-
-                var children = pillsWrap.children;
-                for (var j = 0; j < children.length; j++) {
-                    var pill = children[j];
-                    var pText = (pill.textContent || '').trim();
-                    if (pText !== '' && pText !== '(ວ່າງ)') {
-                        validPills.push(pill);
-                        // ກວດວ່າຄົນນີ້ລາພັກບໍ່ (ມີຄຳວ່າ "ພັກ" ຫຼື line-through)
-                        var pClass = (pill.className || '') + ' ' + (pill.innerHTML || '');
-                        if (pClass.includes('line-through') || pText.includes('ພັກ')) {
-                            leavePillsCount++;
-                        }
-                    }
-                }
-
-                // ຖ້າ block ນີ້ມີຫົວຂໍ້ບອກຈຳນວນຄົນຂອງຕາຕະລາງຍ່ອຍ (ເຊັ່ນ "7 ຄົນ" ຫຼື "5 ຄົນ (-1 ພັກ)")
-                if (pillsWrap !== block) {
-                    var activeInGroup = validPills.length - leavePillsCount;
-                    activeShiftTotal += activeInGroup;
-                    leaveShiftTotal += leavePillsCount;
-
-                    // ອັບເດດຕົວເລກຄົນຂອງກຸ່ມຍ່ອຍທາງຂວາມື
-                    var headerRow = block.firstElementChild;
-                    if (headerRow) {
-                        var countSpan = headerRow.lastElementChild;
-                        if (countSpan && countSpan !== headerRow.firstElementChild) {
-                            var leaveSuffix = leavePillsCount > 0
-                                ? ' <span class="text-rose-500 font-bold">(-' + leavePillsCount + ' ພັກ)</span>'
-                                : '';
-                            countSpan.innerHTML = activeInGroup + ' ຄົນ' + leaveSuffix;
-                        }
-                    }
-                }
+            // ອັບເດດປ້າຍຈຳນວນລວມທາງເທິງສຸດຂອງກະ (ເຊັ່ນ "7 ຄົນ" ແທນ "8 ຄົນ")
+            if (topBadge) {
+                var lvText = totalLeaveInShift > 0 ? ' (-' + totalLeaveInShift + ' ພັກ)' : '';
+                topBadge.innerText = totalWorkingInShift + ' ຄົນ' + lvText;
             }
-
-            // 3. ອັບເດດປ້າຍຈຳນວນຄົນລວມທາງເທິງສຸດຂອງກະ (ເຊັ່ນ "8 ຄົນ" -> "7 ຄົນ")
-            if (totalBadge && (activeShiftTotal > 0 || leaveShiftTotal > 0)) {
-                var totalLeaveSuffix = leaveShiftTotal > 0
-                    ? ' (-' + leaveShiftTotal + ' ພັກ)'
-                    : '';
-                totalBadge.innerText = activeShiftTotal + ' ຄົນ' + totalLeaveSuffix;
-            }
-        } catch (err) {
-            console.warn('Dashboard clean recount error:', err);
-        } finally {
-            setTimeout(function() { container._isCleaning = false; }, 50);
         }
     });
 }
-window.cleanDashboardEmptyPillsAndRecount = cleanDashboardEmptyPillsAndRecount;
+window.cleanDashboardDOMAfterRender = cleanDashboardDOMAfterRender;
 
-// ຕິດຕັ້ງ MutationObserver ເຝົ້າເບິ່ງກ່ອງ shift1Names, shift2Names, shift3Names ຕະຫຼອດເວລາ
-function initDashboardCleanObserver() {
-    ['shift1Names', 'shift2Names', 'shift3Names'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (!el || el._hasCleanObserver) return;
-        el._hasCleanObserver = true;
+// ປ້ອງກັນ Background Sync ໄປຣີເຟຣຊໜ້າ Dashboard ຕອນທີ່ຜູ້ໃຊ້ກຳລັງເປີດປະຕິທິນເລືອກວັນທີຢູ່
+var _origLoadCloud = window.loadEverythingFromSupabase;
+window.loadEverythingFromSupabase = async function(retryCount) {
+    if (window._isPickingDashDate) return;
+    if (typeof _origLoadCloud === 'function') {
+        await _origLoadCloud(retryCount);
+    }
+    sanitizeAllScheduleSheetsEmptySlots();
+    cleanDashboardDOMAfterRender();
+};
 
-        var obs = new MutationObserver(function() {
-            if (!el._isCleaning) {
-                cleanDashboardEmptyPillsAndRecount();
-            }
-        });
-        obs.observe(el, { childList: true, subtree: true });
-    });
-    cleanDashboardEmptyPillsAndRecount();
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    initDashboardCleanObserver();
-    setTimeout(initDashboardCleanObserver, 300);
-    setTimeout(cleanDashboardEmptyPillsAndRecount, 800);
+window.addEventListener('load', function() {
+    sanitizeAllScheduleSheetsEmptySlots();
+    bindDashboardSanitizerAndDatePickerFix();
+    if (typeof window.renderDashboard === 'function') {
+        window.renderDashboard();
+    }
+    setTimeout(cleanDashboardDOMAfterRender, 400);
 });
