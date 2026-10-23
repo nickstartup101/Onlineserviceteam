@@ -1618,3 +1618,120 @@ document.addEventListener('DOMContentLoaded', function() {
         evaluateAndRenderSmartAlerts(false);
     }, 900000);
 });
+// ================= ⭐ AUTO-CLEAN DASHBOARD EMPTY PILLS & RECALCULATE EXACT STAFF COUNT (100% REALTIME DOM OBSERVER) =================
+function cleanDashboardEmptyPillsAndRecount() {
+    var configs = [
+        { namesId: 'shift1Names', badgeId: 'shift1CountBadge' },
+        { namesId: 'shift2Names', badgeId: 'shift2CountBadge' },
+        { namesId: 'shift3Names', badgeId: 'shift3CountBadge' }
+    ];
+
+    configs.forEach(function(cfg) {
+        var container = document.getElementById(cfg.namesId);
+        var totalBadge = document.getElementById(cfg.badgeId);
+        if (!container) return;
+
+        // ປ້ອງກັນ Observer ວົນລູບຊ້ຳຕອນເຮົາແກ້ໄຂຕົວເລກ
+        if (container._isCleaning) return;
+        container._isCleaning = true;
+
+        try {
+            // 1. ຊອກຫາປ້າຍວົງມົນທັງໝົດທີ່ບໍ່ມີຊື່ຄົນ (ລວມທັງກໍລະນີມີ <span></span> ວ່າງຢູ່ທາງໃນ) ແລ້ວລຶບຖິ້ມທັນທີ
+            var allEls = container.querySelectorAll('div, span, button');
+            allEls.forEach(function(el) {
+                var cls = (el.className || '').toString();
+                var txt = (el.textContent || '').replace(/\u200B/g, '').trim();
+                // ຖ້າເປັນປ້າຍຊື່ (ມີຂອບມົນ rounded ແລະ border/bg) ແຕ່ບໍ່ມີຕົວໜັງສືຊື່ຄົນເລີຍ
+                if ((txt === '' || txt === '(ວ່າງ)' || txt === '-') && (cls.includes('rounded-full') || cls.includes('rounded-xl') || cls.includes('rounded-2xl') || cls.includes('border'))) {
+                    // ຢ່າລຶບຖ້າເປັນຈຸດສີແດງຫົວໜ້າກະ (w-1.5 / w-2)
+                    if (!cls.includes('w-1.5') && !cls.includes('w-2') && !cls.includes('h-1.5') && !cls.includes('h-2')) {
+                        el.remove();
+                    }
+                }
+            });
+
+            // 2. ນັບຈຳນວນຄົນຕົວຈິງໃໝ່ໃນແຕ່ລະກຸ່ມຍ່ອຍ (ວິຊາການສົມບູນ & ວິຊາການສັນຍາ)
+            var activeShiftTotal = 0;
+            var leaveShiftTotal = 0;
+
+            // ກວດສອບແຕ່ລະກ່ອງກຸ່ມຍ່ອຍໃນ container
+            var groupBlocks = container.children;
+            for (var i = 0; i < groupBlocks.length; i++) {
+                var block = groupBlocks[i];
+                // ຊອກຫາກ່ອງທີ່ບັນຈຸປ້າຍຊື່ຄົນ (flex-wrap)
+                var pillsWrap = block.querySelector('.flex-wrap') || block;
+                var validPills = [];
+                var leavePillsCount = 0;
+
+                var children = pillsWrap.children;
+                for (var j = 0; j < children.length; j++) {
+                    var pill = children[j];
+                    var pText = (pill.textContent || '').trim();
+                    if (pText !== '' && pText !== '(ວ່າງ)') {
+                        validPills.push(pill);
+                        // ກວດວ່າຄົນນີ້ລາພັກບໍ່ (ມີຄຳວ່າ "ພັກ" ຫຼື line-through)
+                        var pClass = (pill.className || '') + ' ' + (pill.innerHTML || '');
+                        if (pClass.includes('line-through') || pText.includes('ພັກ')) {
+                            leavePillsCount++;
+                        }
+                    }
+                }
+
+                // ຖ້າ block ນີ້ມີຫົວຂໍ້ບອກຈຳນວນຄົນຂອງຕາຕະລາງຍ່ອຍ (ເຊັ່ນ "7 ຄົນ" ຫຼື "5 ຄົນ (-1 ພັກ)")
+                if (pillsWrap !== block) {
+                    var activeInGroup = validPills.length - leavePillsCount;
+                    activeShiftTotal += activeInGroup;
+                    leaveShiftTotal += leavePillsCount;
+
+                    // ອັບເດດຕົວເລກຄົນຂອງກຸ່ມຍ່ອຍທາງຂວາມື
+                    var headerRow = block.firstElementChild;
+                    if (headerRow) {
+                        var countSpan = headerRow.lastElementChild;
+                        if (countSpan && countSpan !== headerRow.firstElementChild) {
+                            var leaveSuffix = leavePillsCount > 0
+                                ? ' <span class="text-rose-500 font-bold">(-' + leavePillsCount + ' ພັກ)</span>'
+                                : '';
+                            countSpan.innerHTML = activeInGroup + ' ຄົນ' + leaveSuffix;
+                        }
+                    }
+                }
+            }
+
+            // 3. ອັບເດດປ້າຍຈຳນວນຄົນລວມທາງເທິງສຸດຂອງກະ (ເຊັ່ນ "8 ຄົນ" -> "7 ຄົນ")
+            if (totalBadge && (activeShiftTotal > 0 || leaveShiftTotal > 0)) {
+                var totalLeaveSuffix = leaveShiftTotal > 0
+                    ? ' (-' + leaveShiftTotal + ' ພັກ)'
+                    : '';
+                totalBadge.innerText = activeShiftTotal + ' ຄົນ' + totalLeaveSuffix;
+            }
+        } catch (err) {
+            console.warn('Dashboard clean recount error:', err);
+        } finally {
+            setTimeout(function() { container._isCleaning = false; }, 50);
+        }
+    });
+}
+window.cleanDashboardEmptyPillsAndRecount = cleanDashboardEmptyPillsAndRecount;
+
+// ຕິດຕັ້ງ MutationObserver ເຝົ້າເບິ່ງກ່ອງ shift1Names, shift2Names, shift3Names ຕະຫຼອດເວລາ
+function initDashboardCleanObserver() {
+    ['shift1Names', 'shift2Names', 'shift3Names'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el || el._hasCleanObserver) return;
+        el._hasCleanObserver = true;
+
+        var obs = new MutationObserver(function() {
+            if (!el._isCleaning) {
+                cleanDashboardEmptyPillsAndRecount();
+            }
+        });
+        obs.observe(el, { childList: true, subtree: true });
+    });
+    cleanDashboardEmptyPillsAndRecount();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initDashboardCleanObserver();
+    setTimeout(initDashboardCleanObserver, 300);
+    setTimeout(cleanDashboardEmptyPillsAndRecount, 800);
+});
