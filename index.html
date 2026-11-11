@@ -40,117 +40,6 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col font-lao">
-    <!-- ⭐ INSTANT PWA SPLASH & LOADING SCREEN (ສະແດງທັນທີໃນ 0.01 ວິນາທີ ບໍ່ມີໜ້າຈໍມືດ) -->
-    <style>
-        #pwaSplashLoader {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            background: linear-gradient(135deg, #c01e2e 0%, #8a111d 100%);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            font-family: 'Noto Sans Lao', 'Inter', sans-serif;
-            transition: opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.45s ease;
-        }
-        #pwaSplashLoader.splash-hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-        }
-        .splash-logo-wrap {
-            position: relative;
-            width: 84px;
-            height: 84px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        .splash-logo-box {
-            width: 68px;
-            height: 68px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.16);
-            backdrop-filter: blur(8px);
-            border: 1.5px solid rgba(255, 255, 255, 0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-            animation: splashPulse 1.6s infinite ease-in-out;
-        }
-        .splash-ring {
-            position: absolute;
-            inset: 0;
-            border-radius: 26px;
-            border: 2.5px solid transparent;
-            border-top-color: #ffffff;
-            border-right-color: rgba(255, 255, 255, 0.4);
-            animation: splashSpin 1s linear infinite;
-        }
-        .splash-progress-track {
-            width: 150px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 99px;
-            overflow: hidden;
-            margin-top: 18px;
-        }
-        .splash-progress-bar {
-            width: 45%;
-            height: 100%;
-            background: #ffffff;
-            border-radius: 99px;
-            animation: splashSlide 1.1s infinite ease-in-out;
-        }
-        @keyframes splashSpin {
-            to { transform: rotate(360deg); }
-        }
-        @keyframes splashPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(0.94); }
-        }
-        @keyframes splashSlide {
-            0% { transform: translateX(-110%); }
-            100% { transform: translateX(240%); }
-        }
-    </style>
-
-    <div id="pwaSplashLoader">
-        <div class="splash-logo-wrap">
-            <div class="splash-ring"></div>
-            <div class="splash-logo-box">
-                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="#ffffff">
-                    <path d="M12 2a9 9 0 0 0-9 9v4a4 4 0 0 0 4 4h1v-7H5v-1a7 7 0 0 1 14 0v1h-3v7h2a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-5v2h5a3 3 0 0 0 3-3v-1.17A3.99 3.99 0 0 0 21 15v-4a9 9 0 0 0-9-9z"/>
-                </svg>
-            </div>
-        </div>
-        <h1 style="font-size: 20px; font-weight: 800; letter-spacing: -0.3px; margin: 0;">Online Team</h1>
-        <p style="font-size: 11px; color: rgba(255,255,255,0.82); margin: 4px 0 0 0;">ກຳລັງເຊື່ອມຕໍ່ຂໍ້ມູນລະບົບປະຈຳການ...</p>
-        <div class="splash-progress-track">
-            <div class="splash-progress-bar"></div>
-        </div>
-    </div>
-
-    <script>
-        // ຟັງຊັນປິດໜ້າຈໍ Loading ແບບນຸ່ມນວນ (ເອີ້ນໃຊ້ທັນທີເມື່ອໂຫຼດຂໍ້ມູນແລ້ວ ຫຼື ກາຍ 1.2 ວິນາທີ)
-        window.hidePwaSplash = function() {
-            var loader = document.getElementById('pwaSplashLoader');
-            if (loader && !loader.classList.contains('splash-hidden')) {
-                loader.classList.add('splash-hidden');
-                setTimeout(function() {
-                    if (loader.parentNode) loader.parentNode.removeChild(loader);
-                }, 500);
-            }
-        };
-        window.addEventListener('load', function() {
-            setTimeout(window.hidePwaSplash, 700);
-        });
-        setTimeout(window.hidePwaSplash, 2200); // Safety fallback
-    </script>
 
     <!-- Toast Popup -->
     <div id="appToast" class="fixed top-6 right-6 z-[120] transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
@@ -190,7 +79,7 @@
         </div>
     </div>
 
-    <!-- Login Modal -->
+    <!-- Login Modal (ພ້ອມ Visible Eye Toggle ລະຫັດຜ່ານ) -->
     <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
             <div class="bg-red-gradient p-6 text-white text-center relative">
@@ -208,7 +97,12 @@
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານ (Password)</label>
-                    <input type="text" id="loginPassword" onkeydown="if(event.key==='Enter') doLogin()" class="password-mask w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
+                    <div class="relative flex items-center">
+                        <input type="password" id="loginPassword" onkeydown="if(event.key==='Enter') doLogin()" class="w-full border border-slate-200 rounded-xl p-3 pr-11 text-sm focus:ring-2 focus:ring-brand-red outline-none bg-slate-50 focus:bg-white transition" placeholder="••••••••"/>
+                        <button type="button" onclick="togglePasswordVisibility('loginPassword', 'loginPasswordEyeIcon')" class="absolute right-3 p-1 text-slate-400 hover:text-brand-red flex items-center justify-center cursor-pointer transition select-none" title="ເປີດ/ປິດ ເບິ່ງລະຫັດຜ່ານ">
+                            <span class="material-symbols-outlined text-[20px]" id="loginPasswordEyeIcon">visibility_off</span>
+                        </button>
+                    </div>
                 </div>
                 <button type="button" onclick="doLogin()" id="btnLogin" class="w-full bg-brand-red hover:bg-brand-red-dark text-white py-3.5 rounded-xl text-sm font-bold transition shadow-lg shadow-red-900/20 cursor-pointer">ເຂົ້າສູ່ລະບົບ (Log In)</button>
             </div>
@@ -262,7 +156,6 @@
             </nav>
         </div>
         <div class="flex items-center gap-2 md:gap-3">
-            <!-- ປຸ່ມຕິດຕັ້ງແອັບສຳລັບ Android / Chrome (ຢູ່ໃນ div ຝັ່ງຂວາ ຄູ່ກັບກະດິ່ງແຈ້ງເຕືອນ) -->
             <button type="button" id="pwaInstallTopBtn" onclick="triggerPwaInstall()" class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-brand-red text-brand-red hover:text-white border border-red-200 transition text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs" title="ຕິດຕັ້ງແອັບລົງອຸປະກອນ">
                 <span class="material-symbols-outlined text-[18px]">install_mobile</span>
                 <span class="hidden sm:inline">ຕິດຕັ້ງແອັບ</span>
@@ -274,7 +167,7 @@
                     <span id="notifBadge" class="hidden absolute -top-1.5 -right-1.5 bg-brand-red text-white text-[10px] min-w-[18px] h-[18px] px-1 rounded-full items-center justify-center font-bold shadow-md border-2 border-white animate-bounce">0</span>
                 </button>
                 <div id="notifDropdown" class="hidden absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-4 font-lao">
-                    <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-3">
+                    <div class="flex justify-between items-center pb-2.5 border-b border-slate-100 mb-2.5">
                         <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5"><span class="material-symbols-outlined text-brand-red text-base">notifications_active</span> ການແຈ້ງເຕືອນ</span>
                         <button type="button" onclick="markAllNotificationsAsRead()" class="text-[10px] text-brand-red hover:underline font-bold cursor-pointer">ໝາຍວ່າອ່ານແລ້ວ</button>
                     </div>
@@ -316,7 +209,7 @@
                         <div class="flex items-center gap-2 text-xs font-semibold mb-1 text-slate-500">
                             <span class="material-symbols-outlined text-base text-brand-red">today</span>
                             <span>ເລືອກວັນທີຕິດຕາມ:</span>
-                            <input type="date" id="dashDateInput" onchange="renderDashboard()" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-brand-red cursor-pointer"/>
+                            <input type="date" id="dashDateInput" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-brand-red cursor-pointer"/>
                         </div>
                         <h2 class="text-lg md:text-xl font-bold text-slate-800">Daily Operational Monitor (ລວມທຸກທີມປະຈຳການ)</h2>
                     </div>
@@ -399,11 +292,7 @@
 
         <!-- VIEW 2: MONTHLY SCHEDULE BUILDER -->
         <main id="view-schedule" class="tab-view flex-1 overflow-hidden flex-col bg-slate-100 pb-20 md:pb-0">
-            
-            <!-- Toolbar -->
             <div class="px-4 md:px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap justify-between items-center gap-2.5 shrink-0 shadow-sm">
-                
-                <!-- ຝັ່ງຊ້າຍ -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <div class="flex items-center border border-slate-300 rounded-xl bg-slate-50 p-0.5">
                         <span class="material-symbols-outlined text-slate-500 text-lg px-2">calendar_today</span>
@@ -431,17 +320,12 @@
                     </button>
                 </div>
 
-                <!-- ຝັ່ງຂວາ -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <button type="button" onclick="openRandomGroupSelectModal()" class="admin-only px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer">
                         <span class="material-symbols-outlined text-base">autorenew</span> Random Zigzag
                     </button>
-                    
-                    <button type="button" onclick="executeZigzagFromWeek1()" class="admin-only px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer" title="ເອົາອາທິດທີ 1 ທີ່ຈັດໄວ້ເປັນແມ່ແບບ ແລ້ວແລ່ນສູດ Zigzag ຕໍ່ໃຫ້ຄົບທຸກອາທິດ">
-                        <span class="material-symbols-outlined text-base">auto_fix_high</span> Zigzag ຈາກອາທິດ 1
-                    </button>
 
-                    <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer">
+                    <button type="button" onclick="rebalanceNightShifts()" class="admin-only px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer" title="ດຶງກະດຶກເສົາ-ອາທິດ ໄປສະເລ່ຍໃຫ້ຄົນທີ່ໄດ້ໜ້ອຍ">
                         <span class="material-symbols-outlined text-base text-slate-700">balance</span> Rebalance ກະ 3
                     </button>
 
@@ -471,7 +355,6 @@
                 </div>
             </div>
 
-            <!-- Status Banner -->
             <div id="scheduleStatusBanner" class="px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex justify-between items-center text-xs">
                 <span id="scheduleStatusBadge" class="font-bold text-emerald-800 flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm text-emerald-600">verified</span> ຕາຕະລາງທາງການ (Published Official)
@@ -479,9 +362,7 @@
                 <span id="modifiedCellCountText" class="text-[11px] text-slate-600 font-semibold flex items-center gap-1"></span>
             </div>
 
-            <!-- Schedule Content Wrapper -->
             <div class="flex flex-1 overflow-hidden" id="scheduleTableWrapper">
-                <!-- Roster Sidebar -->
                 <div class="admin-only w-64 bg-white border-r border-slate-200 p-4 overflow-y-auto space-y-3 shrink-0 flex flex-col shadow-sm">
                     <div>
                         <p class="text-xs font-bold text-slate-700">ລາຍຊື່ພະນັກງານທັງໝົດ (<span id="rosterCountText">0</span> ທ່ານ)</p>
@@ -494,7 +375,6 @@
                     <div id="scheduleStaffRoster" class="space-y-1.5 flex-1 overflow-y-auto pr-1"></div>
                 </div>
 
-                <!-- ຕາຕະລາງໃຫຍ່ -->
                 <div class="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col">
                     <div id="pdfExportArea" class="bg-white border-2 border-black p-5 shadow-sm max-w-[1100px] mx-auto text-black">
                         <div class="text-center font-bold text-sm py-1.5 border-b-2 border-black bg-slate-50" id="scheduleTableTitle">
@@ -511,7 +391,8 @@
                 </div>
             </div>
         </main>
-         <!-- VIEW 3: GROUPS -->
+
+        <!-- VIEW 3: GROUPS -->
         <main id="view-groups" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50">
             <div class="max-w-7xl mx-auto w-full space-y-6">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-3">
@@ -553,7 +434,6 @@
                     </div>
                 </div>
 
-                <!-- Admin Central Reports -->
                 <div id="adminReportsSection" class="hidden space-y-6">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="bg-white border border-slate-200 p-5 rounded-3xl shadow-sm flex items-center justify-between">
@@ -574,7 +454,6 @@
                         </div>
                     </div>
 
-                    <!-- Matrix Report -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-4 border-b pb-3">
                             <div><h4 class="font-bold text-slate-800 text-sm flex items-center gap-2"><span class="material-symbols-outlined text-brand-red text-base">summarize</span> ລາຍງານສະຫຼຸບການປະຈຳການ & ການລາພັກຂອງພະນັກງານທຸກຄົນ</h4><p class="text-xs text-slate-500 mt-0.5">ສະແດງຈຳນວນກະ 1, 2, 3, ວຽກທັງໝົດ, ການນຳໃຊ້ມື້ພັກ 15 ມື້ ແລະ ວັນພັກທັງໝົດ</p></div>
@@ -590,7 +469,6 @@
                         </div>
                     </div>
 
-                    <!-- Post-Publish Modification Audit Trail -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h4 class="font-bold text-slate-800 text-sm mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-slate-700 text-base">history_edu</span>
@@ -613,7 +491,6 @@
                         </div>
                     </div>
 
-                    <!-- Shift & Swap Analytics Table -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b pb-3 gap-2">
                             <div>
@@ -643,7 +520,6 @@
                     </div>
                 </div>
 
-                <!-- Staff Personal Workspace -->
                 <div id="userStaffWorkspaceSection" class="space-y-6">
                     <div id="userCurrentWeekCard" class="bg-white border-2 border-brand-red/30 rounded-3xl p-6 shadow-sm relative overflow-hidden">
                         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -660,7 +536,6 @@
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        <!-- Profile Card -->
                         <div class="lg:col-span-4 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex flex-col items-center text-center">
                             <div class="relative mb-3">
                                 <img id="profPhotoPreview" class="w-24 h-24 rounded-full object-cover border-4 border-red-50 shadow-md bg-slate-50" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c01e2e'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E" alt="Profile"/>
@@ -674,7 +549,15 @@
                                 <div><label class="block font-semibold text-slate-600 mb-1">ຊື່ເຕັມ (Full Name)</label><input type="text" id="profNameInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red"/></div>
                                 <div><label class="block font-semibold text-slate-600 mb-1">ພາກສ່ວນ / ຂະແໜງເຮັດວຽກ (Department)</label><input type="text" id="profDeptInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ເຊັ່ນ: ຂະແໜງບໍລິການອອນລາຍ"/></div>
                                 <div><label class="block font-semibold text-slate-600 mb-1">ເບີໂທຕິດຕໍ່ (Phone Number)</label><input type="text" id="profPhoneInput" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ເຊັ່ນ: 020 55XX XXXX"/></div>
-                                <div><label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label><input type="text" id="profPassInput" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ໃສ່ລະຫັດໃໝ່..."/></div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">ລະຫັດຜ່ານໃໝ່ (New Password)</label>
+                                    <div class="relative flex items-center">
+                                        <input type="password" id="profPassInput" class="w-full border border-slate-200 rounded-xl p-2.5 pr-10 text-xs outline-none focus:ring-1 focus:ring-brand-red" placeholder="ໃສ່ລະຫັດໃໝ່..."/>
+                                        <button type="button" onclick="togglePasswordVisibility('profPassInput', 'profPassEyeIcon')" class="absolute right-2.5 p-1 text-slate-400 hover:text-brand-red flex items-center justify-center cursor-pointer select-none">
+                                            <span class="material-symbols-outlined text-[18px]" id="profPassEyeIcon">visibility_off</span>
+                                        </button>
+                                    </div>
+                                </div>
                                 <button type="button" onclick="handleUpdateProfile()" class="w-full bg-brand-red hover:bg-brand-red-dark text-white py-2.5 rounded-xl font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5">
                                     <span class="material-symbols-outlined text-sm">save</span> ບັນທຶກໂປຣໄຟລ໌
                                 </button>
@@ -682,7 +565,6 @@
                         </div>
 
                         <div id="staffBookingFormsContainer" class="lg:col-span-8 space-y-6">
-                            <!-- Book Annual Leave Form -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-brand-red mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-lg">flight_takeoff</span> ຈອງມື້ພັກປະຈຳປີລ່ວງໜ້າ (15 ມື້/ປີ)
@@ -708,7 +590,6 @@
                                 </div>
                             </div>
 
-                            <!-- P2P Shift Swap Form -->
                             <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                                 <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2 border-b pb-2">
                                     <span class="material-symbols-outlined text-[18px] text-brand-red">swap_horiz</span> ຟອມຮ້ອງຂໍປ່ຽນກະ (P2P Shift Swap)
@@ -753,7 +634,6 @@
                         </div>
                     </div>
 
-                    <!-- Team Annual Leave Calendar -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-brand-red text-lg">calendar_month</span> ປະຕິທິນການຈອງມື້ພັກຂອງທີມງານ (Team Annual Leave Calendar)
@@ -775,7 +655,6 @@
                         </div>
                     </div>
 
-                    <!-- Swap History Timeline -->
                     <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
                             <span class="material-symbols-outlined text-amber-700 text-[18px]">history</span> ປະຫວັດ ແລະ ລາຍການຂໍປ່ຽນກະ (P2P Swap Requests & Timeline)
@@ -789,8 +668,6 @@
         <!-- VIEW 6: PRODUCT & KNOWLEDGE LIBRARY -->
         <main id="view-library" class="tab-view flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 flex-col gap-6 bg-slate-50 font-lao">
             <div class="max-w-7xl mx-auto w-full space-y-5">
-                
-                <!-- Header Banner -->
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                     <div>
                         <h2 class="text-lg md:text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -804,7 +681,6 @@
                     </button>
                 </div>
 
-                <!-- Filters & Search Bar -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between text-xs">
                     <div class="flex-1 relative" id="searchWrapper">
                         <span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-lg">search</span>
@@ -840,7 +716,6 @@
                     </div>
                 </div>
 
-                <!-- Library Grid Container -->
                 <div id="libraryGridContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
         </main>
@@ -1085,7 +960,7 @@
         </div>
     </div>
 
-    <!-- Employee Modal -->
+    <!-- Employee Modal (ພ້ອມ Visible Eye) -->
     <div id="empModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden">
             <div class="p-5 bg-slate-800 text-white flex justify-between items-center"><h3 class="font-bold text-sm" id="empModalTitle">ເພີ່ມພະນັກງານໃໝ່</h3><button type="button" onclick="closeEmpModal()" class="text-white/80 hover:text-white flex items-center justify-center cursor-pointer"><span class="material-symbols-outlined text-xl">close</span></button></div>
@@ -1098,7 +973,15 @@
                     <div><label class="block font-semibold mb-1">ພາກສ່ວນ / ຝ່າຍ</label><input type="text" id="modalEmpDept" value="ຂະແໜງບໍລິການອອນລາຍ" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                     <div><label class="block font-semibold mb-1">ເບີໂທຕິດຕໍ່</label><input type="text" id="modalEmpPhone" placeholder="020 55XX XXXX" class="w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
                 </div>
-                <div><label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label><input type="text" id="modalEmpPass" class="password-mask w-full border border-slate-200 rounded-xl p-2.5 outline-none"/></div>
+                <div>
+                    <label class="block font-semibold mb-1">ລະຫັດຜ່ານ</label>
+                    <div class="relative flex items-center">
+                        <input type="password" id="modalEmpPass" class="w-full border border-slate-200 rounded-xl p-2.5 pr-10 outline-none" placeholder="••••••••"/>
+                        <button type="button" onclick="togglePasswordVisibility('modalEmpPass', 'empPassEyeIcon')" class="absolute right-2.5 p-1 text-slate-400 hover:text-brand-red flex items-center justify-center cursor-pointer select-none">
+                            <span class="material-symbols-outlined text-[18px]" id="empPassEyeIcon">visibility_off</span>
+                        </button>
+                    </div>
+                </div>
                 <div class="flex items-center gap-2 pt-1"><input type="checkbox" id="modalEmpIsLeader" class="rounded text-brand-red focus:ring-brand-red h-4 w-4"/><label for="modalEmpIsLeader" class="font-bold text-brand-red">ກຳນົດເປັນຫົວໜ້າກະ (ສີແດງ)</label></div>
                 <div class="flex justify-end gap-2 pt-3 border-t"><button type="button" onclick="closeEmpModal()" class="px-4 py-2 border rounded-xl cursor-pointer">ຍົກເລີກ</button><button type="button" onclick="handleSaveEmployee()" class="px-5 py-2 bg-brand-red hover:bg-brand-red-dark text-white rounded-xl font-bold cursor-pointer flex items-center gap-1"><span class="material-symbols-outlined text-sm">save</span> ບັນທຶກ</button></div>
             </div>
@@ -1171,7 +1054,7 @@
         </div>
     </div>
 
-   <!-- Library Item Modal -->
+    <!-- Library Item Modal -->
     <div id="libraryItemModal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden font-lao max-h-[92vh] flex flex-col">
             <div class="p-4 md:p-5 bg-slate-800 text-white flex justify-between items-center shrink-0">
@@ -1324,6 +1207,35 @@
             </div>
         </div>
     </div>
+
+    <!-- ⭐ ຟັງຊັນ VISIBLE EYE TOGGLE (ເຮັດວຽກທັນທີ 100% ບໍ່ມີວັນ Error) -->
+    <script>
+        function togglePasswordVisibility(inputId, iconId) {
+            var input = document.getElementById(inputId);
+            var icon = document.getElementById(iconId);
+            if (!input) return;
+
+            var isHidden = input.type === 'password' || input.classList.contains('password-mask');
+            if (isHidden) {
+                input.type = 'text';
+                input.classList.remove('password-mask');
+                if (icon) {
+                    icon.innerText = 'visibility';
+                    icon.classList.add('text-brand-red');
+                    icon.classList.remove('text-slate-400');
+                }
+            } else {
+                input.type = 'password';
+                input.classList.add('password-mask');
+                if (icon) {
+                    icon.innerText = 'visibility_off';
+                    icon.classList.remove('text-brand-red');
+                    icon.classList.add('text-slate-400');
+                }
+            }
+        }
+        window.togglePasswordVisibility = togglePasswordVisibility;
+    </script>
 
     <!-- JS MODULES -->
     <script src="js/app.js"></script>
