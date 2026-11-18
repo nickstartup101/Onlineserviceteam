@@ -104,8 +104,8 @@ function createBlankMonthData(year, month) {
     return data;
 }
 
-// 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ (ແບບ SWAP ຄົນແທນກັນ ເພື່ອຮັກສາຈຳນວນ 5-5-3 ໃຫ້ຖືກຕ້ອງສະເໝີ)
-function applyFixedShiftsToDayData(dayData) {
+// 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ (ແບບ SWAP + ຢາຍກະ 3 ແລະ ກະ 2 ຂອງຄົນທີ່ຖືກ Fix Shift ໃຫ້ທຸກຄົນສະເລ່ຍ 1-2 ມື້)
+function applyFixedShiftsToDayData(dayData, fixedTracker) {
     if (!dayData || !window.fixedShiftsConfig || window.fixedShiftsConfig.length === 0) return;
 
     var allUsers = window.users || [];
@@ -144,14 +144,26 @@ function applyFixedShiftsToDayData(dayData) {
             var targetArr = dayData[targetShift];
             var movingIsLeader = isLeaderUser(name);
 
-            // ຫາຄົນທີ່ປະເພດດຽວກັນໃນກະປາຍທາງທີ່ບໍ່ໄດ້ຖືກລັອກ ເພື່ອສັບປ່ຽນແທນກັນ (ຮັກສາ ກະ1=5, ກະ2=5, ກະ3=3)
+            // ເລືອກຄົນປະເພດດຽວກັນໃນກະປາຍທາງທີ່ບໍ່ໄດ້ຖືກລັອກ ແລະ ຊ່ວຍແທນກະນີ້ໜ້ອຍສຸດ (ກະຈາຍຄົນລະ 1-2 ມື້)
             var swapIdx = -1;
-            for (var j = targetArr.length - 1; j >= 0; j--) {
+            var bestScore = Infinity;
+
+            for (var j = 0; j < targetArr.length; j++) {
                 var candidate = targetArr[j];
                 if (!candidate) continue;
                 if (isLeaderUser(candidate) === movingIsLeader && !isLockedToShift(candidate, targetShift)) {
-                    swapIdx = j;
-                    break;
+                    if (fixedTracker) {
+                        var shiftMap = (fixedTracker.coverByShift && fixedTracker.coverByShift[currentShift]) || {};
+                        var cCover = shiftMap[candidate] || 0;
+                        var cS3 = (fixedTracker.s3Count && fixedTracker.s3Count[candidate]) || 0;
+                        var score = cCover * 100 + (currentShift === 'shift3' ? cS3 : 0);
+                        if (score < bestScore) {
+                            bestScore = score;
+                            swapIdx = j;
+                        }
+                    } else {
+                        swapIdx = j;
+                    }
                 }
             }
 
@@ -159,8 +171,13 @@ function applyFixedShiftsToDayData(dayData) {
                 var swappedOut = targetArr[swapIdx];
                 targetArr[swapIdx] = dayData[currentShift][currentIdx];
                 dayData[currentShift][currentIdx] = swappedOut;
+
+                if (fixedTracker) {
+                    if (!fixedTracker.coverByShift) fixedTracker.coverByShift = {};
+                    if (!fixedTracker.coverByShift[currentShift]) fixedTracker.coverByShift[currentShift] = {};
+                    fixedTracker.coverByShift[currentShift][swappedOut] = (fixedTracker.coverByShift[currentShift][swappedOut] || 0) + 1;
+                }
             } else {
-                // ວັນພັກ ກະ 1 ບໍ່ມີຫົວໜ້າກະ
                 if (dayData.isWeekend && movingIsLeader && targetShift === 'shift1') {
                     return;
                 }
@@ -169,6 +186,13 @@ function applyFixedShiftsToDayData(dayData) {
             }
         }
     });
+
+    if (fixedTracker) {
+        if (!fixedTracker.s3Count) fixedTracker.s3Count = {};
+        (dayData.shift3 || []).forEach(function(nm) {
+            if (nm) fixedTracker.s3Count[nm] = (fixedTracker.s3Count[nm] || 0) + 1;
+        });
+    }
 }
 
 // 0.3 ດຶງຂໍ້ມູນ SHIFT_SWAPS ຈາກ SUPABASE
@@ -396,7 +420,6 @@ function findPreviousMonthSheet(year, month, isContract) {
     });
     if (candidates.length === 0) return null;
 
-    // ບູລິມະສິດ: ກົງປະເພດກຸ່ມ + ສະບັບທາງການ (PUBLISHED) ກ່ອນ
     var exactPub = candidates.find(function(s) {
         return Boolean(s.isG7GroupSheet) === Boolean(isContract) && s.status === 'PUBLISHED';
     });
@@ -524,9 +547,9 @@ function extractZigzagConfigFromSheet(prevSheet) {
     var lastDateObj = new Date(Date.UTC(lp[0], lp[1] - 1, lp[2]));
     var W = getMondayBasedWeekIndex(lastDateObj);
 
-    // ດຶງຂໍ້ມູນອາທິດກ່ອນໜ້າ (W - 1) ເພື່ອກວດວ່າໃຜຢູ່ກະເດີມມາແລ້ວ (ໃຫ້ໄດ້ເລື່ອນອອກກ່ອນໃນອາທິດຖັດໄປ: ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3)
-    var prevCopyDay = null;
-    for (var j = dates.length - 1; j >= 0; j--) {
+    // ນັບກະຫຼັກຈາກທຸກມື້ຈັນ-ສຸກໃນອາທິດກ່ອນໜ້າ (W - 1) ດ້ວຍສຽງສ່ວນຫຼາຍ
+    var prevWeekCounts = {};
+    for (var j = 0; j < dates.length; j++) {
         var pdStr = dates[j];
         var pdp = pdStr.split('-').map(Number);
         var pdObj = new Date(Date.UTC(pdp[0], pdp[1] - 1, pdp[2]));
@@ -534,16 +557,27 @@ function extractZigzagConfigFromSheet(prevSheet) {
         var pData = prevSheet.data[pdStr];
         if (pdow !== 0 && pdow !== 6 && !isDateInHolidayRange(pdStr) && pData && !pData.isWeekend) {
             if (getMondayBasedWeekIndex(pdObj) === W - 1) {
-                var pTotal = (pData.shift1 || []).filter(Boolean).length +
-                             (pData.shift2 || []).filter(Boolean).length +
-                             (pData.shift3 || []).filter(Boolean).length;
-                if (pTotal >= 10) {
-                    prevCopyDay = getUnswappedDayCopy(pData, pdStr);
-                    break;
-                }
+                var pCopy = getUnswappedDayCopy(pData, pdStr);
+                ['shift1', 'shift2', 'shift3'].forEach(function(sk) {
+                    (pCopy[sk] || []).forEach(function(nm) {
+                        if (!nm) return;
+                        var key = nm.toString().trim();
+                        if (!prevWeekCounts[key]) prevWeekCounts[key] = { shift1: 0, shift2: 0, shift3: 0 };
+                        prevWeekCounts[key][sk]++;
+                    });
+                });
             }
         }
     }
+    var getPrevMainShift = function(name) {
+        var matchedKey = Object.keys(prevWeekCounts).find(function(k) { return isSchedNameMatch(k, name); });
+        if (!matchedKey) return null;
+        var c = prevWeekCounts[matchedKey];
+        if (c.shift1 >= c.shift2 && c.shift1 >= c.shift3 && c.shift1 > 0) return 'shift1';
+        if (c.shift2 >= c.shift1 && c.shift2 >= c.shift3 && c.shift2 > 0) return 'shift2';
+        if (c.shift3 > 0) return 'shift3';
+        return null;
+    };
 
     var allUsers = window.users || [];
     var permList = getPermanentStaffList();
@@ -569,7 +603,6 @@ function extractZigzagConfigFromSheet(prevSheet) {
     (copyDay.shift3 || []).forEach(function(n) { if (n && isLeaderFn(n)) pushUnique(extractedLeaders, n); });
     knownLeaders.forEach(function(ln) { pushUnique(extractedLeaders, ln); });
 
-    // ດຶງວິຊາການຕາມກະ [S3, S2, S1]
     var s3Staff = [];
     var s2Staff = [];
     var s1Staff = [];
@@ -577,13 +610,9 @@ function extractZigzagConfigFromSheet(prevSheet) {
     (copyDay.shift2 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s2Staff, n); });
     (copyDay.shift1 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s1Staff, n); });
 
-    if (prevCopyDay) {
-        var wasInS2 = function(name) {
-            return (prevCopyDay.shift2 || []).some(function(p) { return isSchedNameMatch(p, name); });
-        };
-        var wasInS1 = function(name) {
-            return (prevCopyDay.shift1 || []).some(function(p) { return isSchedNameMatch(p, name); });
-        };
+    if (Object.keys(prevWeekCounts).length > 0) {
+        var wasInS2 = function(name) { return getPrevMainShift(name) === 'shift2'; };
+        var wasInS1 = function(name) { return getPrevMainShift(name) === 'shift1'; };
         s2Staff = s2Staff.filter(function(n) { return !wasInS2(n); })
             .concat(s2Staff.filter(function(n) { return wasInS2(n); }));
         s1Staff = s1Staff.filter(function(n) { return !wasInS1(n); })
@@ -645,6 +674,8 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuff
         randomLeaderShiftOffset = carryConfig.randomLeaderShiftOffset || 0;
     }
 
+    var fixedTracker = { coverByShift: { shift2: {}, shift3: {} }, s3Count: {} };
+
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
@@ -655,38 +686,31 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuff
 
         if (isWeekend) {
             var gWeekend = getGlobalWeekendDayIndex(dateObj);
-            var isSunday = (dayOfWeek === 0);
+            if (dayOfWeek !== 6 && dayOfWeek !== 0) {
+                gWeekend += i;
+            }
 
-            var wLeaderSat = leaderNames[((gWeekend + randomLeaderShiftOffset) % 4 + 4) % 4];
-            var wLeaderSun = leaderNames[((gWeekend + randomLeaderShiftOffset + 1) % 4 + 4) % 4];
+            // ໝູນວຽນຫົວໜ້າທັງ 4 ຄົນໃຫ້ໄດ້ກະ 2 ແລະ ກະ 3 ວັນພັກເທົ່າກັນທຸກຄົນ
+            var lPairIdx = ((gWeekend + randomLeaderShiftOffset) % 4 + 4) % 4;
+            var wLeaderS2, wLeaderS3;
+            if (lPairIdx === 0)      { wLeaderS2 = leaderNames[0]; wLeaderS3 = leaderNames[1]; }
+            else if (lPairIdx === 1) { wLeaderS2 = leaderNames[2]; wLeaderS3 = leaderNames[3]; }
+            else if (lPairIdx === 2) { wLeaderS2 = leaderNames[1]; wLeaderS3 = leaderNames[0]; }
+            else                     { wLeaderS2 = leaderNames[3]; wLeaderS3 = leaderNames[2]; }
 
             var wStaff = [];
             for (var k = 0; k < 5; k++) {
                 wStaff.push(regularStaff[((gWeekend * 5 + k + randomStaffShiftOffset) % numRegular + numRegular) % numRegular]);
             }
 
-            var s1 = [];
-            var s2 = [];
-            var s3 = [];
-
-            if (isSunday) {
-                s1 = ['', wStaff[0], ''];
-                s2 = [wLeaderSun, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[((gWeekend + randomLeaderShiftOffset) % 4 + 4) % 4], wStaff[3], wStaff[4]];
-            } else {
-                s1 = ['', wStaff[0], ''];
-                s2 = [wLeaderSat, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[((gWeekend + randomLeaderShiftOffset + 2) % 4 + 4) % 4], wStaff[3], wStaff[4]];
-            }
-
             var dayObj = {
                 isWeekend: true,
                 isG7Team: false,
-                shift1: s1,
-                shift2: s2,
-                shift3: s3
+                shift1: ['', wStaff[0], ''],
+                shift2: [wLeaderS2, wStaff[1], wStaff[2]],
+                shift3: [wLeaderS3, wStaff[3], wStaff[4]]
             };
-            applyFixedShiftsToDayData(dayObj);
+            applyFixedShiftsToDayData(dayObj, fixedTracker);
             data[dStr] = dayObj;
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
@@ -715,7 +739,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuff
                 shift2: [l_S2, ...staff_S2].filter(Boolean),
                 shift3: [l_S3, ...staff_S3].filter(Boolean)
             };
-            applyFixedShiftsToDayData(dayObj);
+            applyFixedShiftsToDayData(dayObj, fixedTracker);
             data[dStr] = dayObj;
         }
     }
@@ -747,6 +771,8 @@ function generate7PersonFlexZigzag(year, month, staffList, isReshuffle, carryCon
         list = (carryConfig.list || list).slice();
         randomOffset = carryConfig.randomOffset || 0;
     }
+
+    var fixedTracker = { coverByShift: { shift2: {}, shift3: {} }, s3Count: {} };
 
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
@@ -786,7 +812,7 @@ function generate7PersonFlexZigzag(year, month, staffList, isReshuffle, carryCon
             shift2: s2.filter(Boolean),
             shift3: s3.filter(Boolean)
         };
-        applyFixedShiftsToDayData(dayObj);
+        applyFixedShiftsToDayData(dayObj, fixedTracker);
         data[dStr] = dayObj;
     }
 
@@ -888,7 +914,7 @@ async function executeGroupRandomSchedule() {
         localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
     } catch(e) {}
 
-    await renderScheduleTable({ skipSwapSync: true });
+    await renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
 
@@ -991,7 +1017,7 @@ async function executeBatchMonthGenerate() {
 
     document.getElementById('batchMonthModal')?.classList.add('hidden');
     renderSheetDropdown();
-    await renderScheduleTable({ skipSwapSync: true });
+    await renderScheduleTable();
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
@@ -1038,8 +1064,9 @@ async function handleAddFixedShift() {
 
     var sheet = getActiveSheet();
     if (sheet && sheet.data) {
-        Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); }).forEach(function(dStr) {
-            applyFixedShiftsToDayData(sheet.data[dStr]);
+        var fixedTracker = { coverByShift: { shift2: {}, shift3: {} }, s3Count: {} };
+        Object.keys(sheet.data).filter(function(k) { return !k.startsWith('_'); }).sort().forEach(function(dStr) {
+            applyFixedShiftsToDayData(sheet.data[dStr], fixedTracker);
         });
         await renderScheduleTable({ skipSwapSync: true });
         await syncScheduleToSupabase(sheet);
@@ -1711,7 +1738,6 @@ async function handleCreateNewSheet() {
     var isContract = title.includes('ສັນຍາ');
     var targetMembers = isContract ? getContractStaffList() : getPermanentStaffList();
 
-    // ດຶງລຳດັບການໝູນວຽນຕໍ່ເນື່ອງຈາກເດືອນກ່ອນໜ້າ (ຖ້າມີ)
     var prevSheet = findPreviousMonthSheet(y, m, isContract);
     var carryConfig = extractZigzagConfigFromSheet(prevSheet);
     var generated = generateMonthDataZigzag(y, m, targetMembers, false, carryConfig);
@@ -1740,7 +1766,7 @@ async function handleCreateNewSheet() {
 
     document.getElementById('newSheetModal')?.classList.add('hidden');
     renderSheetDropdown();
-    await renderScheduleTable({ skipSwapSync: true });
+    await renderScheduleTable();
     showToast('ສຳເລັດ', 'ສ້າງ "' + title + '"' + (carryConfig ? ' (ຕໍ່ເນື່ອງຈາກເດືອນກ່ອນ)' : '') + ' ສຳເລັດ!', 'success');
 
     await syncScheduleToSupabase(newSheet);
@@ -1889,49 +1915,233 @@ async function publishSchedule() {
     if (!sheet) return;
     sheet.status = 'PUBLISHED';
     renderSheetDropdown();
-    await renderScheduleTable({ skipSwapSync: true });
+    await renderScheduleTable();
     showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ!', 'success');
     await syncScheduleToSupabase(sheet);
 }
 
-// 14. REBALANCE SHIFT 3
+// 14. REBALANCE SHIFT 3 (ປັບສົມດຸນກະ 3 ແບບບໍ່ກະທົບກະຫຼັກ — ຖ້າປັບບໍ່ໄດ້ຈະແຈ້ງບອກຊັດເຈນ)
 async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
     if (!sheet) return;
     var schedData = sheet.data || {};
-    var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); });
+    var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); }).sort();
     if (dates.length === 0) {
         showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງຍັງວ່າງເປົ່າ', 'info');
         return;
     }
 
-    var leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
-    var leaderFixedCount = 0;
+    await fetchScheduleSwapsFromCloud();
+
+    var allUsers = window.users || [];
+    var isLeaderUser = function(name) {
+        if (!name) return false;
+        var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
+        return Boolean(u && u.isLeader) || ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].some(function(ln) {
+            return isSchedNameMatch(ln, name);
+        });
+    };
+
+    var isLockedUser = function(name) {
+        return (window.fixedShiftsConfig || []).some(function(cfg) {
+            return cfg && isSchedNameMatch(cfg.nameLao, name);
+        });
+    };
+
+    var hasSwapOrLeaveOnDate = function(name, dStr) {
+        var swapped = (window.swapHistory || []).some(function(sw) {
+            if (!sw) return false;
+            var st = String(sw.status || '').toUpperCase();
+            var sStart = sw.startDate || sw.start_date;
+            var sEnd = sw.endDate || sw.end_date || sStart;
+            return st === 'COMPLETED' && dStr >= sStart && dStr <= sEnd &&
+                   (isSchedNameMatch(sw.fromName || sw.from_name, name) || isSchedNameMatch(sw.toName || sw.to_name, name));
+        });
+        if (swapped) return true;
+        if (typeof getStaffLeaveInfo === 'function') {
+            if (getStaffLeaveInfo(name, 'shift1', dStr) || getStaffLeaveInfo(name, 'shift2', dStr) || getStaffLeaveInfo(name, 'shift3', dStr)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    var firstDateParts = dates[0].split('-').map(Number);
+    var firstWeekIdx = getMondayBasedWeekIndex(new Date(Date.UTC(firstDateParts[0], firstDateParts[1] - 1, firstDateParts[2])));
+
+    // 1. ແກ້ໄຂຖ້າວັນທຳມະດາມີຫົວໜ້າກະຊ້ຳກັນ 2 ຄົນໃນກະ 3
     dates.forEach(function(d) {
         var day = schedData[d];
         if (day && !day.isWeekend && !isDateInHolidayRange(d)) {
             var s3 = day.shift3 || [];
             var s2 = day.shift2 || [];
-            var lInS3 = s3.filter(function(n) { return leaderNames.includes(n); });
-            var lInS2 = s2.filter(function(n) { return leaderNames.includes(n); });
+            var lInS3 = s3.filter(function(n) { return isLeaderUser(n); });
+            var lInS2 = s2.filter(function(n) { return isLeaderUser(n); });
 
             if (lInS3.length > 1 && lInS2.length === 0) {
                 var extraLeader = lInS3[1];
-                var s2StaffIdx = s2.findIndex(function(n) { return !leaderNames.includes(n); });
+                var s2StaffIdx = s2.findIndex(function(n) { return n && !isLeaderUser(n) && !isLockedUser(n); });
                 if (s2StaffIdx !== -1) {
                     var s2Staff = s2[s2StaffIdx];
                     var idx3 = s3.indexOf(extraLeader);
                     s3[idx3] = s2Staff;
                     s2[s2StaffIdx] = extraLeader;
-                    leaderFixedCount++;
                 }
             }
         }
     });
 
-    await renderScheduleTable({ skipSwapSync: true });
-    await syncScheduleToSupabase(sheet);
-    showToast('Rebalance ສຳເລັດ', 'ປັບສົມດຸນຮຽບຮ້ອຍ!', 'success');
+    var getStats = function(isLeaderGroup) {
+        var s3Counts = {};
+        var s2Counts = {};
+        var s1Counts = {};
+        var totalCounts = {};
+        var pool = [];
+
+        dates.forEach(function(d) {
+            var day = schedData[d] || {};
+            ['shift1', 'shift2', 'shift3'].forEach(function(sk) {
+                (day[sk] || []).forEach(function(nm) {
+                    if (!nm) return;
+                    if (isLeaderUser(nm) !== isLeaderGroup) return;
+                    if (isLockedUser(nm)) return;
+                    if (!pool.some(function(p) { return isSchedNameMatch(p, nm); })) {
+                        pool.push(nm);
+                        s1Counts[nm] = 0;
+                        s2Counts[nm] = 0;
+                        s3Counts[nm] = 0;
+                        totalCounts[nm] = 0;
+                    }
+                    var key = pool.find(function(p) { return isSchedNameMatch(p, nm); });
+                    totalCounts[key]++;
+                    if (sk === 'shift1') s1Counts[key]++;
+                    if (sk === 'shift2') s2Counts[key]++;
+                    if (sk === 'shift3') s3Counts[key]++;
+                });
+            });
+        });
+        return { pool: pool, s1Counts: s1Counts, s2Counts: s2Counts, s3Counts: s3Counts, totalCounts: totalCounts };
+    };
+
+    var swapCount = 0;
+
+    var runSafeSameDayBalance = function(isLeaderGroup, maxIter) {
+        for (var iter = 0; iter < maxIter; iter++) {
+            var st = getStats(isLeaderGroup);
+            if (st.pool.length < 2) break;
+
+            var sorted = st.pool.slice().sort(function(a, b) {
+                return st.s3Counts[b] - st.s3Counts[a];
+            });
+            var over = sorted[0];
+            var under = sorted[sorted.length - 1];
+
+            if (st.s3Counts[over] - st.s3Counts[under] <= 1) break;
+
+            var bestMove = null;
+            var bestScore = -999999;
+
+            for (var di = 0; di < dates.length; di++) {
+                var dStr = dates[di];
+                var day = schedData[dStr];
+                if (!day) continue;
+
+                // ກົດເຫຼັກ 1: ຫ້າມແຕະອາທິດທີ 1 ເພື່ອຮັກສາຄວາມຕໍ່ເນື່ອງຈາກເດືອນກ່ອນໜ້າ
+                var dp = dStr.split('-').map(Number);
+                var wIdx = getMondayBasedWeekIndex(new Date(Date.UTC(dp[0], dp[1] - 1, dp[2])));
+                if (dates.length > 10 && wIdx === firstWeekIdx) continue;
+
+                var idxOver = (day.shift3 || []).findIndex(function(n) { return isSchedNameMatch(n, over); });
+                if (idxOver === -1) continue;
+                if (hasSwapOrLeaveOnDate(over, dStr)) continue;
+
+                var prevDay = di > 0 ? schedData[dates[di - 1]] : null;
+                var nextDay = di < dates.length - 1 ? schedData[dates[di + 1]] : null;
+
+                var overWorkedS3Yesterday = prevDay && (prevDay.shift3 || []).some(function(n) { return isSchedNameMatch(n, over); });
+                var underWorksS1Tomorrow = nextDay && (nextDay.shift1 || []).some(function(n) { return isSchedNameMatch(n, under); });
+                var underWorksS2Tomorrow = nextDay && (nextDay.shift2 || []).some(function(n) { return isSchedNameMatch(n, under); });
+
+                // ກົດເຫຼັກ 2: ຫ້າມໃຫ້ under ລົງກະ 3 ມື້ນີ້ ຖ້າມື້ອື່ນມີກະ 1
+                if (underWorksS1Tomorrow) continue;
+
+                ['shift2', 'shift1'].forEach(function(targetSk) {
+                    // ກົດເຫຼັກ 3: ຫ້າມໃຫ້ over ຍ້າຍຈາກກະ 3 ມື້ນີ້ໄປກະ 1 ຖ້າມື້ວານລົງກະ 3
+                    if (targetSk === 'shift1' && overWorkedS3Yesterday) return;
+
+                    var tArr = day[targetSk] || [];
+                    for (var ti = 0; ti < tArr.length; ti++) {
+                        if (!isSchedNameMatch(tArr[ti], under)) continue;
+                        if (hasSwapOrLeaveOnDate(under, dStr)) continue;
+
+                        // ກົດເຫຼັກ 4: ບໍ່ສັບຈົນກະ 1 ຫຼື ກະ 2 ຂອງ under ຫຼຸດຜິດປົກກະຕິ
+                        if (!isLeaderGroup) {
+                            if (targetSk === 'shift1' && st.s1Counts[under] <= 3) continue;
+                            if (targetSk === 'shift2' && st.s2Counts[under] <= 3) continue;
+                        }
+
+                        var score = 0;
+                        if (targetSk === 'shift2') score += 50;
+                        if (!overWorkedS3Yesterday) score += 40;
+                        if (!underWorksS2Tomorrow) score += 40;
+                        if (day.isWeekend || isDateInHolidayRange(dStr)) score += 20;
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = { dStr: dStr, targetSk: targetSk, idxOver: idxOver, idxUnder: ti };
+                        }
+                    }
+                });
+            }
+
+            if (!bestMove) break;
+
+            var mDay = schedData[bestMove.dStr];
+            var tmpName = mDay.shift3[bestMove.idxOver];
+            mDay.shift3[bestMove.idxOver] = mDay[bestMove.targetSk][bestMove.idxUnder];
+            mDay[bestMove.targetSk][bestMove.idxUnder] = tmpName;
+            swapCount++;
+        }
+    };
+
+    if (!sheet.isG7GroupSheet) {
+        runSafeSameDayBalance(true, 20);
+    }
+    runSafeSameDayBalance(false, 100);
+
+    var finalStaffStats = getStats(false);
+    var vals = finalStaffStats.pool.map(function(p) { return finalStaffStats.s3Counts[p]; });
+    var minV = vals.length ? Math.min.apply(null, vals) : 0;
+    var maxV = vals.length ? Math.max.apply(null, vals) : 0;
+    var isBalanced = (maxV - minV <= 1);
+
+    if (swapCount > 0) {
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        } catch(e) {}
+
+        await renderScheduleTable({ skipSwapSync: true });
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof renderFairnessSummaryData === 'function' && !document.getElementById('fairnessModal')?.classList.contains('hidden')) {
+            renderFairnessSummaryData();
+        }
+        await syncScheduleToSupabase(sheet);
+    }
+
+    if (isBalanced) {
+        showToast(
+            'Rebalance ກະ 3 ສຳເລັດ!',
+            'ວິຊາການກະ 3 ສົມດຸນແລ້ວ (' + minV + '–' + maxV + ' ກະ' + (swapCount > 0 ? ', ສັບ ' + swapCount + ' ຈຸດ' : '') + ') ໂດຍບໍ່ກະທົບກະຫຼັກ!',
+            'success'
+        );
+    } else {
+        var msg = (swapCount > 0
+            ? 'ປັບໄດ້ບາງສ່ວນ (' + swapCount + ' ຈຸດ) ແຕ່ບໍ່ສາມາດປັບກະ 3 ໃຫ້ເທົ່າກັນ (+/- 1) ໄດ້ທັງໝົດ'
+            : 'ບໍ່ສາມາດປັບສົມດຸນກະ 3 ໄດ້') +
+            ' ເພາະຈະກະທົບຕໍ່ການຈັດການກະຫຼັກ / ເວລາພັກ (ກະ 3 ຕໍ່ກະ 1) ຫຼື ກະອື່ນ (ປັດຈຸບັນກະ 3: ' + minV + '–' + maxV + ' ກະ)';
+        showToast('ບໍ່ສາມາດປັບສົມດຸນເພີ່ມໄດ້', msg, 'warning');
+    }
 }
 
 // 15. EXPORT A4 PDF
