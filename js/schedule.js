@@ -1,10 +1,11 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & FULL INTERACTIVE CONTROLLER (100% CLEAN & CONTINUOUS) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & FULL INTERACTIVE CONTROLLER (100% REAL SUPABASE ONLY) =================
 
 // 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
     return holList.some(function(h) {
+        if (!h) return false;
         var s = h.start_date || h.start;
         var e = h.end_date || h.end;
         if (!s || !e) return false;
@@ -35,7 +36,7 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// 0.22 HELPER ສຸ່ມສັບປ່ຽນລຳດັບ
+// 0.22 HELPER ສຸ່ມສັບປ່ຽນລຳດັບ (FISHER-YATES SHUFFLE)
 function shuffleArray(array) {
     var arr = array.slice();
     for (var i = arr.length - 1; i > 0; i--) {
@@ -80,7 +81,7 @@ function getContractStaffList() {
     return matched;
 }
 
-// 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ
+// 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ (ສຳລັບ RESET)
 function createBlankMonthData(year, month) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -162,7 +163,7 @@ async function fetchScheduleSwapsFromCloud() {
     }
 }
 
-// 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD
+// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD (ດຶງສະເພາະທີ່ມີຕົວຈິງໃນ Cloud)
 async function fetchScheduleSheetsFromCloud() {
     if (!window.supabaseClient) return false;
     try {
@@ -185,6 +186,7 @@ async function fetchScheduleSheetsFromCloud() {
                 };
             });
 
+            // ຈັດລຽງເດືອນຫຼ້າສຸດຂຶ້ນກ່ອນ
             window.scheduleSheets.sort(function(a, b) {
                 return String(b.monthKey).localeCompare(String(a.monthKey));
             });
@@ -209,7 +211,7 @@ async function fetchScheduleSheetsFromCloud() {
     return false;
 }
 
-// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ
+// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (❌ ຕັດການສ້າງ Sheet ຈຳລອງ ແລະ ຕັດການແອບ Sync ອອກ 100%)
 function getActiveSheet() {
     var sheets = window.scheduleSheets || [];
     if (sheets.length === 0) {
@@ -220,6 +222,7 @@ function getActiveSheet() {
         } catch(e) {}
     }
 
+    // ❌ ຖ້າບໍ່ມີ Sheet ໃນ Supabase: ຈະບໍ່ແອບສ້າງ defaultSheet ຂຶ້ນ Cloud ເອງເດັດຂາດ!
     if (sheets.length === 0) {
         window.activeSheetId = null;
         return null;
@@ -507,59 +510,19 @@ function generate7PersonFlexZigzag(year, month, staffList, isReshuffle) {
     return data;
 }
 
-// ⭐ ສູດສ້າງຕາຕະລາງ: ສືບຕໍ່ຈາກທ້າຍເດືອນກ່ອນໜ້າແບບອັດຕະໂນມັດ 100% (SEAMLESS CONTINUOUS)
 function generateMonthDataZigzag(year, month, targetGroupMembers, isReshuffle) {
-    var staffList = (targetGroupMembers && targetGroupMembers.length > 0) ? [...targetGroupMembers] : getPermanentStaffList();
+    var staffList = [];
+    if (targetGroupMembers && targetGroupMembers.length > 0) {
+        staffList = [...targetGroupMembers];
+    } else {
+        staffList = getPermanentStaffList();
+    }
 
     if (staffList.length === 7) {
         return generate7PersonFlexZigzag(year, month, staffList, Boolean(isReshuffle));
+    } else {
+        return generate17PersonLeadersAndStaffZigzag(year, month, staffList, Boolean(isReshuffle));
     }
-
-    var data = generate17PersonLeadersAndStaffZigzag(year, month, staffList, Boolean(isReshuffle));
-
-    // ⭐ ກວດສອບເດືອນກ່ອນໜ້າ (ເຊັ່ນ: ເດືອນ 12 ກວດເບິ່ງເດືອນ 11)
-    var prevY = month === 1 ? year - 1 : year;
-    var prevM = month === 1 ? 12 : month - 1;
-    var prevMStr = prevM < 10 ? '0' + prevM : '' + prevM;
-    var prevKey = prevY + '-' + prevMStr;
-
-    var prevSheet = (window.scheduleSheets || []).find(function(s) {
-        var sm = (s.monthKey || s.month_key || '').slice(0, 7);
-        return sm === prevKey && s.data;
-    });
-
-    if (prevSheet && prevSheet.data) {
-        var prevDaysCount = new Date(prevY, prevM, 0).getDate();
-        var lastMondayStr = null;
-        for (var d = prevDaysCount; d >= prevDaysCount - 6; d--) {
-            var chkDate = new Date(Date.UTC(prevY, prevM - 1, d));
-            if (chkDate.getUTCDay() === 1) { // ພົບວັນຈັນທ້າຍເດືອນ
-                var dP = d < 10 ? '0' + d : '' + d;
-                lastMondayStr = prevY + '-' + prevMStr + '-' + dP;
-                break;
-            }
-        }
-
-        var prevMonData = lastMondayStr ? prevSheet.data[lastMondayStr] : null;
-
-        // ຖ້າເດືອນໃໝ່ເລີ່ມຕົ້ນດ້ວຍວັນ ອັງຄານ, ພຸດ, ພະຫັດ, ສຸກ (ກາງອາທິດ)
-        // ຕ້ອງເອົາກະຂອງວັນຈັນທ້າຍເດືອນກ່ອນມາໃສ່ ໃຫ້ຕໍ່ເນື່ອງ 100%!
-        if (prevMonData) {
-            var firstDayOfWeek = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
-            if (firstDayOfWeek >= 2 && firstDayOfWeek <= 5) {
-                for (var day = 1; day <= (6 - firstDayOfWeek); day++) {
-                    var curDStr = year + '-' + (month < 10 ? '0' + month : '' + month) + '-' + (day < 10 ? '0' + day : '' + day);
-                    if (data[curDStr] && !data[curDStr].isWeekend) {
-                        data[curDStr].shift1 = [...(prevMonData.shift1 || [])];
-                        data[curDStr].shift2 = [...(prevMonData.shift2 || [])];
-                        data[curDStr].shift3 = [...(prevMonData.shift3 || [])];
-                    }
-                }
-            }
-        }
-    }
-
-    return data;
 }
 
 // 4. MODAL ສຸ່ມກຸ່ມ
@@ -891,12 +854,13 @@ async function handleSaveHolidayRange() {
     } catch (err) {}
 }
 
-// 9. RENDER ຕາຕະລາງໃຫຍ່
+// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່ (ດຶງສະເພາະ Supabase ຕົວຈິງ 100%)
 async function renderScheduleTable(options) {
     var opts = options || {};
     
     var sheet = getActiveSheet();
 
+    // ❌ ຖ້າບໍ່ມີຕາຕະລາງໃນ Supabase: ບໍ່ສ້າງຈຳລອງ, ແຕ່ໃຫ້ຂຶ້ນຂໍ້ຄວາມແຈ້ງເຕືອນສະອາດຕາ
     if (!sheet) {
         renderSheetDropdown();
         var tbody = document.getElementById('scheduleTableBody');
@@ -1380,7 +1344,7 @@ async function confirmApplyPublishedCellUpdate() {
     await applyCellUpdate(sheet, act.date, act.shift, act.index, act.newName);
 }
 
-// 12. DROPDOWN & SHEET ACTIONS
+// 12. DROPDOWN & SHEET ACTIONS (ສະແດງສະເພາະຕາຕະລາງຕົວຈິງ)
 function renderSheetDropdown() {
     var select = document.getElementById('scheduleSheetSelect');
     if (!select) return;
@@ -1686,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(renderScheduleTable, 100);
 });
 
-// ⭐ ຜູກ Functions ເຂົ້າ Window ຄົບທຸກອັນ
+// ຜູກ Functions ເຂົ້າ Window
 window.isDateInHolidayRange = isDateInHolidayRange;
 window.syncScheduleToSupabase = syncScheduleToSupabase;
 window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
@@ -1741,4 +1705,3 @@ window.handleCellDragEnd = handleCellDragEnd;
 window.handleCellDragOver = handleCellDragOver;
 window.handleCellDragLeave = handleCellDragLeave;
 window.handleCellDrop = handleCellDrop;
-```
