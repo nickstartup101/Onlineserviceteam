@@ -1,11 +1,10 @@
-// ================= ⭐ MASTER SCHEDULE ENGINE & CONTINUOUS WEEKLY ZIGZAG (100% SUPABASE ONLY - NO AUTO MOCK) =================
+// ================= ⭐ MASTER SCHEDULE ENGINE & FULL INTERACTIVE CONTROLLER (100% CLEAN & CONTINUOUS) =================
 
 // 0. FUNCTION ກວດສອບຊ່ວງວັນພັກພິເສດ
 function isDateInHolidayRange(dStr) {
     if (!dStr) return false;
     var holList = window.specialHolidayRanges || [];
     return holList.some(function(h) {
-        if (!h) return false;
         var s = h.start_date || h.start;
         var e = h.end_date || h.end;
         if (!s || !e) return false;
@@ -13,7 +12,7 @@ function isDateInHolidayRange(dStr) {
     });
 }
 
-// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH (ຕັດ ທ້າວ/ນາງ ແລະ ຕັດ ຫົວໜ້າກະ ອອກ)
+// 0.1 HELPER ປຽບທຽບຊື່ແບບ STRICT EXACT MATCH
 function isSchedNameMatch(a, b) {
     if (!a || !b) return false;
     var clean = function(s) {
@@ -36,7 +35,19 @@ function normalizeSchedShiftKey(s) {
     return null;
 }
 
-// ⭐ 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE (Supabase Profiles)
+// 0.22 HELPER ສຸ່ມສັບປ່ຽນລຳດັບ
+function shuffleArray(array) {
+    var arr = array.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+    return arr;
+}
+
+// 0.25 ດຶງລາຍຊື່ 2 ກຸ່ມຕົວຈິງຈາກ DATABASE
 function getPermanentStaffList() {
     var all = (window.users || []).filter(function(u) { return u && u.role !== 'SUPER_ADMIN'; });
     var canonicalNames = [
@@ -69,7 +80,7 @@ function getContractStaffList() {
     return matched;
 }
 
-// ⭐ 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ (ສຳລັບປຸ່ມ RESET ລ້າງຊື່ທຸກຄົນອອກ 100%)
+// 0.28 ສ້າງໂຄງສ້າງຕາຕະລາງວ່າງເປົ່າ
 function createBlankMonthData(year, month) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -92,13 +103,13 @@ function createBlankMonthData(year, month) {
     return data;
 }
 
-// ⭐ 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ (FIX SHIFT ENGINE)
+// 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ
 function applyFixedShiftsToDayData(dayData) {
     if (!dayData || !window.fixedShiftsConfig || window.fixedShiftsConfig.length === 0) return;
     
     window.fixedShiftsConfig.forEach(function(cfg) {
         var name = cfg.nameLao;
-        var targetShift = cfg.fixedShift; // 'shift1', 'shift2', 'shift3'
+        var targetShift = cfg.fixedShift;
         if (!name || !targetShift) return;
 
         var currentShift = null;
@@ -151,49 +162,46 @@ async function fetchScheduleSwapsFromCloud() {
     }
 }
 
-// ⭐ 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD 100% (ບໍ່ມີການສ້າງຕາຕະລາງຈຳລອງເອງ)
+// 0.35 ດຶງຂໍ້ມູນ SCHEDULE_SHEETS ຈາກ SUPABASE CLOUD
 async function fetchScheduleSheetsFromCloud() {
     if (!window.supabaseClient) return false;
     try {
         var res = await window.supabaseClient.from('schedule_sheets').select('*');
-        if (!res.error && Array.isArray(res.data)) {
-            if (res.data.length > 0) {
-                window.scheduleSheets = res.data.map(function(s) {
-                    var rawData = s.data || {};
-                    if (typeof rawData === 'string') {
-                        try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
-                    }
-                    var mKey = s.monthKey || s.month_key || '2026-10';
-                    return {
-                        id: String(s.id),
-                        monthKey: String(mKey),
-                        title: s.title || rawData?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
-                        notes: s.notes || rawData?._meta?.notes || window.defaultNotesTemplate || '',
-                        status: s.status || 'PUBLISHED',
-                        isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet || (s.title && s.title.includes('ສັນຍາ'))),
-                        data: rawData
-                    };
-                });
+        if (!res.error && res.data) {
+            window.scheduleSheets = res.data.map(function(s) {
+                var rawData = s.data || {};
+                if (typeof rawData === 'string') {
+                    try { rawData = JSON.parse(rawData); } catch(e) { rawData = {}; }
+                }
+                var mKey = s.monthKey || s.month_key || '2026-10';
+                return {
+                    id: String(s.id),
+                    monthKey: String(mKey),
+                    title: s.title || ('ຕາຕະລາງປະຈຳການ ' + mKey),
+                    notes: s.notes || window.defaultNotesTemplate || '',
+                    status: s.status || 'PUBLISHED',
+                    isG7GroupSheet: Boolean(s.is_g7 || s.isG7GroupSheet),
+                    data: rawData
+                };
+            });
 
+            window.scheduleSheets.sort(function(a, b) {
+                return String(b.monthKey).localeCompare(String(a.monthKey));
+            });
+
+            if (window.scheduleSheets.length > 0) {
                 if (!window.activeSheetId || !window.scheduleSheets.some(function(s) { return String(s.id) === String(window.activeSheetId); })) {
                     window.activeSheetId = window.scheduleSheets[0].id;
                 }
-
-                try {
-                    localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-                    localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-                } catch(e) {}
-                return true;
             } else {
-                // ✅ ຖ້າໃນ Supabase ບໍ່ມີຕາຕະລາງເລີຍ ໃຫ້ລ້າງຄ່າເກົ່າອອກ ບໍ່ສ້າງຕາຕະລາງຈຳລອງເດັດຂາດ!
-                window.scheduleSheets = [];
                 window.activeSheetId = null;
-                try {
-                    localStorage.removeItem('ot_schedule_sheets');
-                    localStorage.removeItem('ot_schedules_sheets');
-                } catch(e) {}
-                return false;
             }
+
+            try {
+                localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+                localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+            } catch(e) {}
+            return true;
         }
     } catch(err) {
         console.warn("Could not fetch schedule sheets from cloud:", err);
@@ -201,9 +209,19 @@ async function fetchScheduleSheetsFromCloud() {
     return false;
 }
 
-// ⭐ 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ (ຕັດການຈຳລອງຕາຕະລາງອອກ 100% - ດຶງສະເພາະຈາກ Supabase)
+// 0.4 FUNCTION ດຶງ SHEET ປັດຈຸບັນ
 function getActiveSheet() {
-    if (!window.scheduleSheets || !Array.isArray(window.scheduleSheets) || window.scheduleSheets.length === 0) {
+    var sheets = window.scheduleSheets || [];
+    if (sheets.length === 0) {
+        try {
+            var cached = localStorage.getItem('ot_schedule_sheets') || localStorage.getItem('ot_schedules_sheets');
+            if (cached) sheets = JSON.parse(cached) || [];
+            window.scheduleSheets = sheets;
+        } catch(e) {}
+    }
+
+    if (sheets.length === 0) {
+        window.activeSheetId = null;
         return null;
     }
 
@@ -212,27 +230,23 @@ function getActiveSheet() {
     var found = null;
 
     if (targetId) {
-        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(targetId); });
+        found = sheets.find(function(s) { return s && String(s.id) === String(targetId); });
     }
     if (!found && window.activeSheetId) {
-        found = window.scheduleSheets.find(function(s) { return String(s.id) === String(window.activeSheetId); });
+        found = sheets.find(function(s) { return s && String(s.id) === String(window.activeSheetId); });
     }
     if (!found) {
-        found = window.scheduleSheets[0];
+        found = sheets[0];
     }
 
-    if (found) {
-        window.activeSheetId = found.id;
-        if (!found.data) found.data = {};
-    }
-
-    return found || null;
+    window.activeSheetId = found ? found.id : null;
+    return found;
 }
 window.getActiveSheet = getActiveSheet;
 
 // 0.5 SYNC ຕາຕະລາງຂຶ້ນ SUPABASE
 async function syncScheduleToSupabase(sheet) {
-    if (!window.supabaseClient || !sheet || !sheet.id) return false;
+    if (!window.supabaseClient || !sheet) return false;
 
     if (!sheet.data) sheet.data = {};
     sheet.data._meta = {
@@ -326,8 +340,8 @@ function getGlobalWeekendDayIndex(dateObj) {
     return weekendCount;
 }
 
-// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG (ໃຊ້ສະເພາະຕອນກົດປຸ່ມສ້າງ/ສຸ່ມຕາຕະລາງເທົ່ານັ້ນ)
-function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
+// 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG
+function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuffle) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
 
@@ -350,6 +364,15 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     var regularStaff = listToUse.filter(function(n) { return !leaderNames.includes(n); });
     var numRegular = 13;
 
+    var randomStaffShiftOffset = 0;
+    var randomLeaderShiftOffset = 0;
+    if (isReshuffle) {
+        leaderNames = shuffleArray(leaderNames);
+        regularStaff = shuffleArray(regularStaff);
+        randomStaffShiftOffset = Math.floor(Math.random() * numRegular);
+        randomLeaderShiftOffset = Math.floor(Math.random() * 4);
+    }
+
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
@@ -362,12 +385,12 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             var gWeekend = getGlobalWeekendDayIndex(dateObj);
             var isSunday = (dayOfWeek === 0);
 
-            var wLeaderSat = leaderNames[(gWeekend) % 4];
-            var wLeaderSun = leaderNames[(gWeekend + 1) % 4];
+            var wLeaderSat = leaderNames[(gWeekend + randomLeaderShiftOffset) % 4];
+            var wLeaderSun = leaderNames[(gWeekend + randomLeaderShiftOffset + 1) % 4];
 
             var wStaff = [];
             for (var k = 0; k < 5; k++) {
-                wStaff.push(regularStaff[(gWeekend * 5 + k) % numRegular]);
+                wStaff.push(regularStaff[(gWeekend * 5 + k + randomStaffShiftOffset) % numRegular]);
             }
 
             var s1 = [];
@@ -377,11 +400,11 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
             if (isSunday) {
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSun, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[(gWeekend) % 4], wStaff[3], wStaff[4]];
+                s3 = [leaderNames[(gWeekend + randomLeaderShiftOffset) % 4], wStaff[3], wStaff[4]];
             } else {
                 s1 = ['', wStaff[0], ''];
                 s2 = [wLeaderSat, wStaff[1], wStaff[2]];
-                s3 = [leaderNames[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
+                s3 = [leaderNames[(gWeekend + randomLeaderShiftOffset + 2) % 4], wStaff[3], wStaff[4]];
             }
 
             var dayObj = {
@@ -396,12 +419,12 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
 
-            var l_1A = leaderNames[(W + 0) % 4];
-            var l_1B = leaderNames[(W + 1) % 4];
-            var l_S2 = leaderNames[(W + 2) % 4];
-            var l_S3 = leaderNames[(W + 3) % 4];
+            var l_1A = leaderNames[(W + randomLeaderShiftOffset + 0) % 4];
+            var l_1B = leaderNames[(W + randomLeaderShiftOffset + 1) % 4];
+            var l_S2 = leaderNames[(W + randomLeaderShiftOffset + 2) % 4];
+            var l_S3 = leaderNames[(W + randomLeaderShiftOffset + 3) % 4];
 
-            var staffOffset = (13000 - W * 3) % numRegular;
+            var staffOffset = (13000 - W * 3 + randomStaffShiftOffset) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
                 rotated.push(regularStaff[(r + staffOffset) % numRegular]);
@@ -426,20 +449,26 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList) {
     return data;
 }
 
-// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ໃຊ້ສະເພາະຕອນກົດປຸ່ມສ້າງ/ສຸ່ມຕາຕະລາງເທົ່ານັ້ນ)
-function generate7PersonFlexZigzag(year, month, staffList) {
+// 3. ສູດກຸ່ມ 7 ຄົນ: Rolling 5/2 (ທີມສັນຍາ 7 ຄົນ)
+function generate7PersonFlexZigzag(year, month, staffList, isReshuffle) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
     var N = 7;
     var epochDate = new Date(Date.UTC(2026, 0, 1));
     var list = (staffList && staffList.length === 7) ? staffList : getContractStaffList();
 
+    var randomOffset = 0;
+    if (isReshuffle) {
+        list = shuffleArray(list);
+        randomOffset = Math.floor(Math.random() * N);
+    }
+
     for (var i = 1; i <= daysCount; i++) {
         var dayNum = i < 10 ? '0' + i : '' + i;
         var mNum = month < 10 ? '0' + month : '' + month;
         var dStr = year + '-' + mNum + '-' + dayNum;
         var currentDate = new Date(Date.UTC(year, month - 1, i));
-        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24));
+        var totalDays = Math.floor((currentDate.getTime() - epochDate.getTime()) / (1000 * 60 * 60 * 24)) + randomOffset;
         var dayOfWeek = currentDate.getUTCDay();
         var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
 
@@ -478,19 +507,59 @@ function generate7PersonFlexZigzag(year, month, staffList) {
     return data;
 }
 
-function generateMonthDataZigzag(year, month, targetGroupMembers) {
-    var staffList = [];
-    if (targetGroupMembers && targetGroupMembers.length > 0) {
-        staffList = [...targetGroupMembers];
-    } else {
-        staffList = getPermanentStaffList();
-    }
+// ⭐ ສູດສ້າງຕາຕະລາງ: ສືບຕໍ່ຈາກທ້າຍເດືອນກ່ອນໜ້າແບບອັດຕະໂນມັດ 100% (SEAMLESS CONTINUOUS)
+function generateMonthDataZigzag(year, month, targetGroupMembers, isReshuffle) {
+    var staffList = (targetGroupMembers && targetGroupMembers.length > 0) ? [...targetGroupMembers] : getPermanentStaffList();
 
     if (staffList.length === 7) {
-        return generate7PersonFlexZigzag(year, month, staffList);
-    } else {
-        return generate17PersonLeadersAndStaffZigzag(year, month, staffList);
+        return generate7PersonFlexZigzag(year, month, staffList, Boolean(isReshuffle));
     }
+
+    var data = generate17PersonLeadersAndStaffZigzag(year, month, staffList, Boolean(isReshuffle));
+
+    // ⭐ ກວດສອບເດືອນກ່ອນໜ້າ (ເຊັ່ນ: ເດືອນ 12 ກວດເບິ່ງເດືອນ 11)
+    var prevY = month === 1 ? year - 1 : year;
+    var prevM = month === 1 ? 12 : month - 1;
+    var prevMStr = prevM < 10 ? '0' + prevM : '' + prevM;
+    var prevKey = prevY + '-' + prevMStr;
+
+    var prevSheet = (window.scheduleSheets || []).find(function(s) {
+        var sm = (s.monthKey || s.month_key || '').slice(0, 7);
+        return sm === prevKey && s.data;
+    });
+
+    if (prevSheet && prevSheet.data) {
+        var prevDaysCount = new Date(prevY, prevM, 0).getDate();
+        var lastMondayStr = null;
+        for (var d = prevDaysCount; d >= prevDaysCount - 6; d--) {
+            var chkDate = new Date(Date.UTC(prevY, prevM - 1, d));
+            if (chkDate.getUTCDay() === 1) { // ພົບວັນຈັນທ້າຍເດືອນ
+                var dP = d < 10 ? '0' + d : '' + d;
+                lastMondayStr = prevY + '-' + prevMStr + '-' + dP;
+                break;
+            }
+        }
+
+        var prevMonData = lastMondayStr ? prevSheet.data[lastMondayStr] : null;
+
+        // ຖ້າເດືອນໃໝ່ເລີ່ມຕົ້ນດ້ວຍວັນ ອັງຄານ, ພຸດ, ພະຫັດ, ສຸກ (ກາງອາທິດ)
+        // ຕ້ອງເອົາກະຂອງວັນຈັນທ້າຍເດືອນກ່ອນມາໃສ່ ໃຫ້ຕໍ່ເນື່ອງ 100%!
+        if (prevMonData) {
+            var firstDayOfWeek = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+            if (firstDayOfWeek >= 2 && firstDayOfWeek <= 5) {
+                for (var day = 1; day <= (6 - firstDayOfWeek); day++) {
+                    var curDStr = year + '-' + (month < 10 ? '0' + month : '' + month) + '-' + (day < 10 ? '0' + day : '' + day);
+                    if (data[curDStr] && !data[curDStr].isWeekend) {
+                        data[curDStr].shift1 = [...(prevMonData.shift1 || [])];
+                        data[curDStr].shift2 = [...(prevMonData.shift2 || [])];
+                        data[curDStr].shift3 = [...(prevMonData.shift3 || [])];
+                    }
+                }
+            }
+        }
+    }
+
+    return data;
 }
 
 // 4. MODAL ສຸ່ມກຸ່ມ
@@ -521,12 +590,14 @@ function openRandomGroupSelectModal() {
     document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
 
+// 4.1 EXECUTE RANDOM
 async function executeGroupRandomSchedule() {
     var sheet = getActiveSheet();
     if (!sheet) {
-        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງທີ່ເລືອກ ກະລຸນາສ້າງ Sheet ກ່ອນ', 'error');
+        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາສ້າງຕາຕະລາງໃໝ່ກ່ອນ', 'warning');
         return;
     }
+
     var [year, month] = (sheet.monthKey || '2026-10').split('-').map(Number);
     var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'GRP_MAIN_17';
     
@@ -545,7 +616,8 @@ async function executeGroupRandomSchedule() {
         }
     }
 
-    sheet.data = generateMonthDataZigzag(year, month, members);
+    window._shuffleRoundCounter = (window._shuffleRoundCounter || 0) + 1;
+    sheet.data = generateMonthDataZigzag(year, month, members, true);
     
     try {
         localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
@@ -555,8 +627,8 @@ async function executeGroupRandomSchedule() {
     await renderScheduleTable({ skipSwapSync: true });
     if (typeof window.renderDashboard === 'function') window.renderDashboard();
     document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
-    showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງ Zigzag ຮຽບຮ້ອຍ!', 'success');
-
+    
+    showToast('ສຸ່ມໃໝ່ສຳເລັດ!', 'ສຸ່ມປ່ຽນຮອບ Zigzag ໃໝ່ຮຽບຮ້ອຍ (ຮອບທີ ' + window._shuffleRoundCounter + ')!', 'success');
     await syncScheduleToSupabase(sheet);
 }
 
@@ -592,9 +664,7 @@ async function executeBatchMonthGenerate() {
     var [startYear, startMonth] = startM.split('-').map(Number);
     var firstGeneratedSheetId = null;
     var activeSheet = getActiveSheet();
-    var currentNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
-
-    if (!window.scheduleSheets) window.scheduleSheets = [];
+    var currentNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate;
 
     for (var c = 0; c < count; c++) {
         var targetDate = new Date(startYear, startMonth - 1 + c, 1);
@@ -605,9 +675,9 @@ async function executeBatchMonthGenerate() {
         var sheetId = 'sheet-' + monthKey + '-' + (isContract ? 'contract' : 'main');
         var title = 'ຕາຕະລາງປະຈຳການສຳລັບວິຊາການ' + (isContract ? 'ສັນຍາ' : 'ສົມບູນ') + 'ປະຈຳເດືອນ ' + mStr + '/' + y;
 
-        var generatedData = generateMonthDataZigzag(y, m, selectedMembers);
+        var generatedData = generateMonthDataZigzag(y, m, selectedMembers, false);
 
-        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && (s.id === sheetId || (s.monthKey === monthKey && s.title && s.title.includes(groupNameTag))); });
+        var existingIdx = window.scheduleSheets.findIndex(function(s) { return s && s.monthKey === monthKey && s.title && s.title.includes(groupNameTag); });
         var currentSheetObj = null;
         if (existingIdx !== -1) {
             window.scheduleSheets[existingIdx].data = generatedData;
@@ -628,7 +698,7 @@ async function executeBatchMonthGenerate() {
             window.scheduleSheets.push(currentSheetObj);
         }
 
-        if (c === 0) firstGeneratedSheetId = currentSheetObj.id;
+        if (c === 0) firstGeneratedSheetId = sheetId;
         syncScheduleToSupabase(currentSheetObj);
     }
 
@@ -646,7 +716,7 @@ async function executeBatchMonthGenerate() {
     showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງຕໍ່ເນື່ອງ ' + count + ' ເດືອນສຳເລັດ!', 'success');
 }
 
-// ⭐ 6. FIXED SHIFT MODAL FUNCTIONS
+// 6. FIXED SHIFT MODAL FUNCTIONS
 function openFixedShiftModal() {
     var userSelect = document.getElementById('fixedShiftUserSelect');
     if (userSelect) {
@@ -669,7 +739,7 @@ function renderActiveFixedShiftsList() {
     }
     window.fixedShiftsConfig.forEach(function(f, idx) {
         var shiftLabel = f.fixedShift === 'shift1' ? 'ກະ 1 (08:00)' : (f.fixedShift === 'shift2' ? 'ກະ 2 (12:00)' : 'ກະ 3 (20:00)');
-        container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">' +
+        container.innerHTML += '<div class="p-2.5 bg-slate-50 border rounded-xl flex justify-between items-center text-xs font-lao">' +
             '<div>' +
                 '<span class="font-bold text-slate-800">' + f.nameLao + '</span>' +
                 '<span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800">ລັອກ ' + shiftLabel + '</span>' +
@@ -706,207 +776,8 @@ async function removeFixedShift(idx) {
     renderActiveFixedShiftsList();
     showToast('ສຳເລັດ', 'ຍົກເລີກການລັອກກະແລ້ວ', 'success');
 }
-// ================= ⭐ ຟັງຊັນສ້າງຕາຕະລາງຕໍ່ເນື່ອງຈາກແມ່ແບບອາທິດທີ 1 (ZIGZAG FROM WEEK 1 TEMPLATE) =================
-async function executeZigzagFromWeek1() {
-    var sheet = getActiveSheet();
-    if (!sheet || !sheet.data) {
-        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ພົບຕາຕະລາງທີ່ເລືອກ ກະລຸນາເລືອກ ຫຼື ສ້າງ Sheet ກ່ອນ', 'error');
-        return;
-    }
 
-    var mKey = sheet.monthKey || sheet.month_key || '2026-10';
-    var parts = mKey.split('-').map(Number);
-    var year = parts[0] || 2026;
-    var month = parts[1] || 10;
-    var daysCount = new Date(year, month, 0).getDate();
-    var mNum = month < 10 ? '0' + month : '' + month;
-
-    // 1. ຊອກຫາມື້ວັນທຳມະດາ (ຈັນ-ສຸກ) ມື້ທຳອິດໃນອາທິດທີ 1 ທີ່ Admin ໄດ້ຈັດຊື່ໄວ້ແລ້ວ
-    var templateDayData = null;
-    var templateDateObj = null;
-
-    for (var d = 1; d <= Math.min(10, daysCount); d++) {
-        var dayNum = d < 10 ? '0' + d : '' + d;
-        var dStr = year + '-' + mNum + '-' + dayNum;
-        var dt = new Date(Date.UTC(year, month - 1, d));
-        var dow = dt.getUTCDay();
-        var isWknd = (dow === 6 || dow === 0 || isDateInHolidayRange(dStr));
-        var curDay = sheet.data[dStr];
-
-        if (!isWknd && curDay) {
-            var countNames = (curDay.shift1 || []).filter(Boolean).length +
-                             (curDay.shift2 || []).filter(Boolean).length +
-                             (curDay.shift3 || []).filter(Boolean).length;
-            if (countNames > 0) {
-                templateDayData = curDay;
-                templateDateObj = dt;
-                break;
-            }
-        }
-    }
-
-    if (!templateDayData) {
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາໃສ່ລາຍຊື່ພະນັກງານໃນອາທິດທີ 1 (ວັນຈັນ-ສຸກ) ເປັນແມ່ແບບກ່ອນ!', 'warning');
-        return;
-    }
-
-    var allUsers = window.users || [];
-    var isUserLeader = function(name) {
-        var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
-        return Boolean(u && u.isLeader);
-    };
-
-    var s1Clean = (templateDayData.shift1 || []).filter(Boolean);
-    var s2Clean = (templateDayData.shift2 || []).filter(Boolean);
-    var s3Clean = (templateDayData.shift3 || []).filter(Boolean);
-
-    // ກວດສອບວ່າເປັນຕາຕະລາງກຸ່ມ 7 ຄົນ (ສັນຍາ) ຫຼື ກຸ່ມ 17 ຄົນ (ສົມບູນ)
-    var totalTemplateStaff = s1Clean.length + s2Clean.length + s3Clean.length;
-    var isContractSheet = Boolean(sheet.isG7GroupSheet || (sheet.title && sheet.title.includes('ສັນຍາ')) || totalTemplateStaff <= 7);
-
-    if (isContractSheet) {
-        // ກໍລະນີກຸ່ມ 7 ຄົນ: ດຶງລຳດັບຈາກອາທິດ 1 ມາລຽງຕໍ່ກັບລາຍຊື່ທີມສັນຍາ
-        var base7 = getContractStaffList();
-        var ordered7 = [];
-        [...s1Clean, ...s2Clean, ...s3Clean].forEach(function(n) {
-            if (!ordered7.some(function(x) { return isSchedNameMatch(x, n); })) ordered7.push(n);
-        });
-        base7.forEach(function(n) {
-            if (!ordered7.some(function(x) { return isSchedNameMatch(x, n); })) ordered7.push(n);
-        });
-        sheet.data = generate7PersonFlexZigzag(year, month, ordered7.slice(0, 7));
-    } else {
-        // ກໍລະນີກຸ່ມ 17 ຄົນ (ສົມບູນ): ດຶງລຳດັບຫົວໜ້າກະ 4 ຄົນ ແລະ ພະນັກງານ 13 ຄົນຈາກອາທິດທີ 1 ທີ່ Admin ຈັດໄວ້ເອງ!
-        var tLeaders = [];
-        var addLeaderUnique = function(n) {
-            if (n && !tLeaders.some(function(x) { return isSchedNameMatch(x, n); })) tLeaders.push(n);
-        };
-
-        // ດຶງຫົວໜ້າຈາກ ກະ 1 (2 ຄົນ), ກະ 2 (1 ຄົນ), ກະ 3 (1 ຄົນ) ຕາມແມ່ແບບອາທິດທີ 1
-        s1Clean.filter(isUserLeader).forEach(addLeaderUnique);
-        s2Clean.filter(isUserLeader).forEach(addLeaderUnique);
-        s3Clean.filter(isUserLeader).forEach(addLeaderUnique);
-
-        // ຖ້າຍັງບໍ່ຄົບ 4 ຄົນ ໃຫ້ດຶງຫົວໜ້າທີ່ເຫຼືອມາຕື່ມໃຫ້ຄົບ
-        ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].forEach(addLeaderUnique);
-        tLeaders = tLeaders.slice(0, 4);
-
-        var isInLeaders = function(n) {
-            return tLeaders.some(function(l) { return isSchedNameMatch(l, n); });
-        };
-
-        var s3Staff = s3Clean.filter(function(n) { return !isInLeaders(n); });
-        var s2Staff = s2Clean.filter(function(n) { return !isInLeaders(n); });
-        var s1Staff = s1Clean.filter(function(n) { return !isInLeaders(n); });
-
-        // ລຽງລຳດັບພະນັກງານ 13 ຄົນຕາມແມ່ແບບອາທິດທີ 1: [S3 (3 ຄົນ), S2 (5 ຄົນ), S1 (5 ຄົນ)]
-        var rotatedWeek1 = [];
-        var addStaffUnique = function(n) {
-            if (n && !isInLeaders(n) && !rotatedWeek1.some(function(x) { return isSchedNameMatch(x, n); })) {
-                rotatedWeek1.push(n);
-            }
-        };
-
-        s3Staff.forEach(addStaffUnique);
-        s2Staff.forEach(addStaffUnique);
-        s1Staff.forEach(addStaffUnique);
-
-        getPermanentStaffList().forEach(addStaffUnique);
-        var regular13 = rotatedWeek1.slice(0, 13);
-
-        var baseWeekIndex = getMondayBasedWeekIndex(templateDateObj);
-        var baseWeekendIndex = getGlobalWeekendDayIndex(templateDateObj);
-
-        // ແລ່ນສູດ Zigzag ຕໍ່ເນື່ອງຈາກອາທິດທີ 1 ໄປຫາທຸກອາທິດໃນເດືອນນັ້ນ
-        for (var i = 1; i <= daysCount; i++) {
-            var dNum = i < 10 ? '0' + i : '' + i;
-            var dStr = year + '-' + mNum + '-' + dNum;
-            var dateObj = new Date(Date.UTC(year, month - 1, i));
-            var dayOfWeek = dateObj.getUTCDay();
-            var isWeekend = (dayOfWeek === 6 || dayOfWeek === 0 || isDateInHolidayRange(dStr));
-
-            var curW = getMondayBasedWeekIndex(dateObj);
-            var weekDiff = curW - baseWeekIndex;
-
-            // ຖ້າເປັນມື້ໃນອາທິດທີ 1 ທີ່ Admin ຈັດໄວ້ແລ້ວ (ແລະ ມີຊື່ຢູ່ແລ້ວ) ໃຫ້ຮັກສາໄວ້ຄືເກົ່າ 100%
-            var existingDay = sheet.data[dStr];
-            var existingCount = existingDay ? ((existingDay.shift1 || []).filter(Boolean).length + (existingDay.shift2 || []).filter(Boolean).length + (existingDay.shift3 || []).filter(Boolean).length) : 0;
-            if (weekDiff === 0 && existingCount > 0 && !isWeekend) {
-                continue;
-            }
-
-            if (isWeekend) {
-                // ຖ້າວັນເສົາ-ອາທິດຂອງອາທິດທີ 1 ມີຊື່ທີ່ Admin ຈັດໄວ້ແລ້ວ ກໍຮັກສາໄວ້ຄືເກົ່າ
-                if (weekDiff === 0 && existingCount > 0) continue;
-
-                var gWeekend = Math.max(0, getGlobalWeekendDayIndex(dateObj) - baseWeekendIndex);
-                var isSunday = (dayOfWeek === 0);
-
-                var wLeaderSat = tLeaders[(gWeekend) % 4];
-                var wLeaderSun = tLeaders[(gWeekend + 1) % 4];
-
-                var wStaff = [];
-                for (var k = 0; k < 5; k++) {
-                    wStaff.push(regular13[(gWeekend * 5 + k) % 13]);
-                }
-
-                var s1 = ['' , wStaff[0], ''];
-                var s2 = isSunday ? [wLeaderSun, wStaff[1], wStaff[2]] : [wLeaderSat, wStaff[1], wStaff[2]];
-                var s3 = isSunday ? [tLeaders[(gWeekend) % 4], wStaff[3], wStaff[4]] : [tLeaders[(gWeekend + 2) % 4], wStaff[3], wStaff[4]];
-
-                var wkndObj = {
-                    isWeekend: true,
-                    isG7Team: false,
-                    shift1: s1,
-                    shift2: s2,
-                    shift3: s3
-                };
-                applyFixedShiftsToDayData(wkndObj);
-                sheet.data[dStr] = wkndObj;
-            } else {
-                var wOffset = ((weekDiff % 4) + 4) % 4;
-                var l_1A = tLeaders[(wOffset + 0) % 4];
-                var l_1B = tLeaders[(wOffset + 1) % 4];
-                var l_S2 = tLeaders[(wOffset + 2) % 4];
-                var l_S3 = tLeaders[(wOffset + 3) % 4];
-
-                // ໝູນວຽນ Zigzag ອາທິດຕໍ່ໄປ (ເລື່ອນລຳດັບອາທິດລະ 3 ຄົນ)
-                var staffShift = (13000 - weekDiff * 3) % 13;
-                var rotated = [];
-                for (var r = 0; r < 13; r++) {
-                    rotated.push(regular13[(r + staffShift) % 13]);
-                }
-
-                var staff_S3 = rotated.slice(0, 3);
-                var staff_S2 = rotated.slice(3, 8);
-                var staff_S1 = rotated.slice(8, 13);
-
-                var regObj = {
-                    isWeekend: false,
-                    isG7Team: false,
-                    shift1: [l_1A, l_1B, ...staff_S1].filter(Boolean),
-                    shift2: [l_S2, ...staff_S2].filter(Boolean),
-                    shift3: [l_S3, ...staff_S3].filter(Boolean)
-                };
-                applyFixedShiftsToDayData(regObj);
-                sheet.data[dStr] = regObj;
-            }
-        }
-    }
-
-    try {
-        localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-        localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-    } catch(e) {}
-
-    await renderScheduleTable({ skipSwapSync: true });
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-    await syncScheduleToSupabase(sheet);
-    showToast('ສຳເລັດ', 'ສ້າງຕາຕະລາງ Zigzag ຕໍ່ຈາກແມ່ແບບອາທິດທີ 1 ຄົບທຸກອາທິດແລ້ວ!', 'success');
-}
-window.executeZigzagFromWeek1 = executeZigzagFromWeek1;
-
-// ⭐ 7. FAIRNESS SUMMARY MODAL FUNCTIONS
+// 7. FAIRNESS SUMMARY MODAL FUNCTIONS
 function openFairnessSummaryModal() {
     var sheet = getActiveSheet();
     var subEl = document.getElementById('fairnessModalSub');
@@ -993,7 +864,7 @@ function renderFairnessSummaryData() {
     });
 }
 
-// ⭐ 8. HOLIDAY MODAL FUNCTIONS
+// 8. HOLIDAY MODAL FUNCTIONS
 function openHolidayModal() { 
     document.getElementById('holidayModal')?.classList.remove('hidden'); 
 }
@@ -1020,32 +891,29 @@ async function handleSaveHolidayRange() {
     } catch (err) {}
 }
 
-// ⭐ 9. RENDER ຕາຕະລາງໃຫຍ່ (ສະແດງສະເພາະຂໍ້ມູນຈາກ Supabase)
+// 9. RENDER ຕາຕະລາງໃຫຍ່
 async function renderScheduleTable(options) {
     var opts = options || {};
     
-    renderSheetDropdown();
-    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
-
     var sheet = getActiveSheet();
-    var tbody = document.getElementById('scheduleTableBody');
-    var titleEl = document.getElementById('scheduleTableTitle');
-    var notesEl = document.getElementById('scheduleNotesDisplay');
-    var banner = document.getElementById('scheduleStatusBanner');
-    var badge = document.getElementById('scheduleStatusBadge');
 
-    // ✅ ຖ້າບໍ່ມີຕາຕະລາງໃນ Supabase ໃຫ້ສະແດງຂໍ້ຄວາມວ່າງເປົ່າ ບໍ່ສ້າງຕາຕະລາງຈຳລອງຂຶ້ນເອງ!
     if (!sheet) {
-        if (titleEl) titleEl.innerHTML = '<span class="text-slate-400">ຍັງບໍ່ມີຂໍ້ມູນຕາຕະລາງໃນລະບົບ Supabase</span>';
-        if (notesEl) notesEl.innerText = '';
-        if (badge) badge.innerHTML = '<span class="text-slate-500">ບໍ່ພົບຕາຕະລາງ</span>';
+        renderSheetDropdown();
+        var tbody = document.getElementById('scheduleTableBody');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-slate-400 font-lao text-sm">' +
-                'ຍັງບໍ່ມີຕາຕະລາງປະຈຳການໃນຖານຂໍ້ມູນ Supabase (ກະລຸນາກົດປຸ່ມ "ສ້າງຕາຕະລາງໃໝ່" ຫຼື "ສ້າງລ່ວງໜ້າ")' +
+            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-slate-400 font-lao text-sm">' +
+                '<span class="material-symbols-outlined text-4xl block mb-2 text-slate-300">calendar_today</span>' +
+                'ບໍ່ພົບຕາຕະລາງໃນຖານຂໍ້ມູນ Supabase<br>' +
+                '<span class="text-xs text-slate-400 mt-1 block">ກະລຸນາກົດປຸ່ມ "+ ສ້າງຕາຕະລາງໃໝ່" ເພື່ອເລີ່ມຕົ້ນ</span>' +
                 '</td></tr>';
         }
+        var titleEl = document.getElementById('scheduleTableTitle');
+        if (titleEl) titleEl.innerText = 'ບໍ່ມີຕາຕະລາງ';
         return;
     }
+
+    renderSheetDropdown();
+    if (typeof window.renderScheduleStaffRoster === 'function') window.renderScheduleStaffRoster();
 
     await fetchScheduleSwapsFromCloud();
 
@@ -1066,6 +934,7 @@ async function renderScheduleTable(options) {
     var currentTitle = sheet.title || sheet.data?._meta?.title || ('ຕາຕະລາງປະຈຳການ ' + month + '/' + year);
     var currentNotes = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
 
+    var titleEl = document.getElementById('scheduleTableTitle');
     if (titleEl) {
         titleEl.innerHTML = '<span>' + currentTitle + '</span>' +
             '<span class="no-print ml-2 text-xs font-semibold ' + (isOfficial ? 'text-emerald-700' : 'text-amber-700') + '">' +
@@ -1073,8 +942,11 @@ async function renderScheduleTable(options) {
             '</span>';
     }
     
+    var notesEl = document.getElementById('scheduleNotesDisplay');
     if (notesEl) notesEl.innerText = currentNotes;
 
+    var banner = document.getElementById('scheduleStatusBanner');
+    var badge = document.getElementById('scheduleStatusBadge');
     var modCountText = document.getElementById('modifiedCellCountText');
 
     if (banner && badge) {
@@ -1095,6 +967,7 @@ async function renderScheduleTable(options) {
         modCountText.innerHTML = sheetLogs.length > 0 ? '<span class="material-symbols-outlined text-xs text-amber-700">history_edu</span> ມີການດັດແກ້: ' + sheetLogs.length + ' ຈຸດ' : '';
     }
 
+    var tbody = document.getElementById('scheduleTableBody');
     if (!tbody) return;
     tbody.innerHTML = '';
     var dayNamesLao = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -1157,7 +1030,139 @@ async function renderScheduleTable(options) {
     }
 }
 
-// ⭐ 10. RENDER PIXEL EXCEL GRID (ພ້ອມລະບົບ Dual Drag & Drop: ລາກຈາກແຖບຊ້າຍມາໃສ່ຊ່ອງ + ລາກສະຫຼັບຊ່ອງຕໍ່ຊ່ອງ 100%)
+// 10. RENDER PIXEL EXCEL GRID
+function handleCellDragStart(event, date, shift, index, name) {
+    if (!name || name === '(ວ່າງ)') {
+        event.preventDefault();
+        return;
+    }
+    var dragData = {
+        type: 'cell',
+        date: date,
+        shift: shift,
+        index: parseInt(index, 10),
+        name: name
+    };
+    window.draggedCellData = dragData;
+    window.draggedStaffName = name;
+
+    if (event.dataTransfer) {
+        event.dataTransfer.setData('text/plain', name);
+        event.dataTransfer.setData('application/json', JSON.stringify(dragData));
+        event.dataTransfer.effectAllowed = 'move';
+    }
+    event.currentTarget.classList.add('opacity-40', 'scale-95');
+}
+
+function handleCellDragEnd(event) {
+    event.currentTarget.classList.remove('opacity-40', 'scale-95');
+    setTimeout(function() {
+        window.draggedCellData = null;
+        window.draggedStaffName = null;
+    }, 100);
+}
+
+function handleCellDragOver(event) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    event.currentTarget.classList.add('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+}
+
+function handleCellDragLeave(event) {
+    event.currentTarget.classList.remove('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+}
+
+async function handleCellDrop(event, targetDate, targetShift, targetIndex) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('bg-amber-100/90', 'border-amber-500', 'ring-2', 'ring-amber-400');
+
+    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
+
+    var sheet = getActiveSheet();
+    if (!sheet) return;
+
+    var sourceCell = window.draggedCellData;
+    var droppedName = window.draggedStaffName || (event.dataTransfer ? event.dataTransfer.getData('text/plain') : null);
+
+    if (!droppedName) return;
+
+    targetIndex = parseInt(targetIndex, 10);
+
+    if (!sheet.data) sheet.data = {};
+    if (!sheet.data[targetDate]) sheet.data[targetDate] = { shift1: [], shift2: [], shift3: [] };
+    if (!sheet.data[targetDate][targetShift]) sheet.data[targetDate][targetShift] = [];
+
+    var targetList = sheet.data[targetDate][targetShift];
+    while (targetList.length <= targetIndex) targetList.push('');
+    var targetName = targetList[targetIndex] || '';
+
+    // SWAP ລະຫວ່າງ 2 ຊ່ອງໃນຕາຕະລາງ
+    if (sourceCell && sourceCell.type === 'cell') {
+        if (sourceCell.date === targetDate && sourceCell.shift === targetShift && sourceCell.index === targetIndex) {
+            return;
+        }
+
+        var srcDate = sourceCell.date;
+        var srcShift = sourceCell.shift;
+        var srcIdx = sourceCell.index;
+
+        if (!sheet.data[srcDate]) sheet.data[srcDate] = { shift1: [], shift2: [], shift3: [] };
+        if (!sheet.data[srcDate][srcShift]) sheet.data[srcDate][srcShift] = [];
+        var srcList = sheet.data[srcDate][srcShift];
+        while (srcList.length <= srcIdx) srcList.push('');
+
+        srcList[srcIdx] = targetName;
+        targetList[targetIndex] = sourceCell.name;
+
+        if (sheet.status === 'PUBLISHED') {
+            if (!window.scheduleAuditLogs) window.scheduleAuditLogs = [];
+            window.scheduleAuditLogs.unshift({
+                id: Date.now(),
+                sheetId: sheet.id,
+                sheetTitle: sheet.title,
+                date: targetDate,
+                shift: targetShift,
+                oldName: targetName || '(ວ່າງ)',
+                newName: sourceCell.name,
+                reason: targetName ? ('ສັບປ່ຽນຕຳແໜ່ງກັບ ' + targetName) : 'ຍ້າຍກະປະຈຳການ',
+                adminName: window.currentUser?.fullName || 'Admin',
+                timestamp: new Date().toLocaleString('lo-LA')
+            });
+        }
+
+        try {
+            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
+            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
+        } catch(e) {}
+
+        await renderScheduleTable({ skipSwapSync: true });
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+
+        var msg = targetName 
+            ? ('ສັບປ່ຽນຕຳແໜ່ງ: "' + sourceCell.name + '" ⇄ "' + targetName + '" ສຳເລັດ!')
+            : ('ຍ້າຍ "' + sourceCell.name + '" ມາກະໃໝ່ສຳເລັດ!');
+        showToast('ສັບປ່ຽນສຳເລັດ', msg, 'success');
+
+        await syncScheduleToSupabase(sheet);
+        return;
+    }
+
+    // ລາກຈາກ SIDEBAR
+    if (droppedName) {
+        if (sheet.status === 'PUBLISHED' && targetName !== droppedName) {
+            openEditPublishedRemarkModal({
+                date: targetDate,
+                shift: targetShift,
+                index: targetIndex,
+                currentName: targetName,
+                newName: droppedName
+            });
+            return;
+        }
+        await applyCellUpdate(sheet, targetDate, targetShift, targetIndex, droppedName);
+    }
+}
+
 function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     cols = Math.max(cols, 1); rows = Math.max(rows, 1);
     var html = '<div class="grid w-full h-full" style="grid-template-columns: repeat(' + cols + ', minmax(0, 1fr)); grid-template-rows: repeat(' + rows + ', minmax(0, 1fr)); height: 48px;">';
@@ -1168,13 +1173,12 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
         var isLeader = (window.users || []).find(function(u) { return u && u.nameLao && isSchedNameMatch(u.nameLao, name) && u.isLeader; });
         var cleanName = (name || '').replace(/'/g, "\\'");
         var clickHandler = isAdmin ? 'onclick="openCellModal(\'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"' : '';
-        var dragHandlers = isAdmin
-            ? 'draggable="true" ' +
-              'ondragstart="handleSchedCellDragStart(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')" ' +
-              'ondragover="handleSchedCellDragOver(event)" ' +
-              'ondragleave="handleSchedCellDragLeave(event)" ' +
-              'ondrop="handleSchedCellDrop(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')"'
-            : '';
+
+        var dragAttrs = (isAdmin && name) ? 
+            ' draggable="true" ondragstart="handleCellDragStart(event, \'' + date + '\', \'' + shift + '\', ' + idx + ', \'' + cleanName + '\')" ondragend="handleCellDragEnd(event)"' : '';
+        
+        var dropAttrs = isAdmin ? 
+            ' ondragover="handleCellDragOver(event)" ondragleave="handleCellDragLeave(event)" ondrop="handleCellDrop(event, \'' + date + '\', \'' + shift + '\', ' + idx + ')"' : '';
 
         var isSwapped = (window.swapHistory || []).some(function(sw) {
             if (!sw) return false;
@@ -1206,18 +1210,18 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
 
         var badgesHtml = '';
         if (isLeader && name) {
-            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block" title="ຫົວໜ້າກະ"></span>';
+            badgesHtml += '<span class="w-1.5 h-1.5 rounded-full bg-brand-red ml-1 shrink-0 inline-block pointer-events-none" title="ຫົວໜ້າກະ"></span>';
         }
         if (isSwapped && name) {
-            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs" title="ປ່ຽນກະມາ">' +
+            badgesHtml += '<span class="no-print inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-amber-100 text-amber-700 ml-1 shrink-0 shadow-2xs pointer-events-none" title="ປ່ຽນກະມາ">' +
                             '<span class="material-symbols-outlined text-[10px] leading-none">sync_alt</span>' +
                           '</span>';
         }
         if (leaveInfo && name) {
-            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline">ພັກ</span>';
+            badgesHtml += '<span class="no-print ml-1 px-1 py-0.2 rounded text-[8px] font-bold bg-rose-100 text-rose-600 shrink-0 no-underline pointer-events-none">ພັກ</span>';
         }
 
-        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-colors ' + (isAdmin ? 'editable cursor-grab active:cursor-grabbing select-none' : '') + '" ' + clickHandler + ' ' + dragHandlers + '>' +
+        html += '<div class="grid-cell-box ' + borderR + ' ' + borderB + ' ' + cellBg + ' flex items-center justify-center px-1 text-center transition-all select-none ' + (isAdmin ? 'editable cursor-grab active:cursor-grabbing' : '') + '" ' + clickHandler + dragAttrs + dropAttrs + ' title="' + (name ? 'ກົດແກ້ໄຂ ຫຼື ລາກຊື່ນີ້ໄປສະຫຼັບກະອື່ນ' : 'ຊ່ອງວ່າງ (ລາກຊື່ອື່ນມາໃສ່ໄດ້)') + '">' +
             '<span class="inline-flex items-center justify-center pointer-events-none ' + textClass + '">' +
                 '<span>' + name + '</span>' +
                 badgesHtml +
@@ -1226,100 +1230,6 @@ function renderPixelExcelGrid(date, shift, list, rows, cols, isAdmin, sheetId) {
     }
     html += '</div>';
     return html;
-}
-
-// ⭐ 10.5 ENGINE ຮອງຮັບ DRAG & DROP ທັງ 2 ຮູບແບບ (ລາກຈາກແຖບຊ້າຍມາວາງ + ລາກສະຫຼັບລະຫວ່າງຊ່ອງໃນຕາຕະລາງ)
-window.draggedSchedCell = null;
-
-function handleSchedCellDragStart(e, date, shift, index, currentName) {
-    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
-    window.draggedStaffName = null; // ລ້າງຄ່າຈາກແຖບຊ້າຍ ເພື່ອບອກວ່າລາກມາຈາກຊ່ອງໃນຕາຕະລາງ
-    window.draggedSchedCell = {
-        date: date,
-        shift: shift,
-        index: parseInt(index, 10) || 0,
-        name: (currentName || '').replace(/\\'/g, "'")
-    };
-    if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'copyMove';
-        e.dataTransfer.setData('text/plain', window.draggedSchedCell.name);
-    }
-}
-
-function handleSchedCellDragOver(e) {
-    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
-    e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    e.currentTarget.classList.add('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
-}
-
-function handleSchedCellDragLeave(e) {
-    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
-}
-
-async function handleSchedCellDrop(e, targetDate, targetShift, targetIndex, targetName) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.currentTarget.classList.remove('ring-2', 'ring-brand-red', 'bg-red-50/60', 'z-10');
-
-    if (!window.currentUser || window.currentUser.role !== 'SUPER_ADMIN') return;
-
-    var sheet = getActiveSheet();
-    if (!sheet) return;
-    if (!sheet.data) sheet.data = {};
-
-    var tIdx = parseInt(targetIndex, 10) || 0;
-    var tName = (targetName || '').replace(/\\'/g, "'");
-    var srcCell = window.draggedSchedCell;
-    var rosterStaffName = window.draggedStaffName || (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
-
-    window.draggedSchedCell = null;
-    window.draggedStaffName = null;
-
-    // ກໍລະນີທີ 1: ລາກສະຫຼັບລະຫວ່າງຊ່ອງຕໍ່ຊ່ອງໃນຕາຕະລາງ (Cell-to-Cell Swap)
-    if (srcCell) {
-        if (srcCell.date === targetDate && srcCell.shift === targetShift && srcCell.index === tIdx) return;
-
-        if (!sheet.data[srcCell.date]) sheet.data[srcCell.date] = { shift1: [], shift2: [], shift3: [] };
-        if (!sheet.data[targetDate]) sheet.data[targetDate] = { shift1: [], shift2: [], shift3: [] };
-        if (!sheet.data[srcCell.date][srcCell.shift]) sheet.data[srcCell.date][srcCell.shift] = [];
-        if (!sheet.data[targetDate][targetShift]) sheet.data[targetDate][targetShift] = [];
-
-        var srcList = sheet.data[srcCell.date][srcCell.shift];
-        var tgtList = sheet.data[targetDate][targetShift];
-
-        while (srcList.length <= srcCell.index) srcList.push('');
-        while (tgtList.length <= tIdx) tgtList.push('');
-
-        srcList[srcCell.index] = tName;
-        tgtList[tIdx] = srcCell.name;
-
-        try {
-            localStorage.setItem('ot_schedule_sheets', JSON.stringify(window.scheduleSheets));
-            localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
-        } catch(err) {}
-
-        await renderScheduleTable({ skipSwapSync: true });
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        await syncScheduleToSupabase(sheet);
-        showToast('ສະຫຼັບຊື່ສຳເລັດ', 'ສະຫຼັບຕຳແໜ່ງ ແລະ ບັນທຶກລົງ Supabase ແລ້ວ!', 'success');
-        return;
-    }
-
-    // ກໍລະນີທີ 2: ລາກຊື່ພະນັກງານຈາກແຖບລາຍຊື່ທາງຊ້າຍ (Roster Sidebar) ມາວາງໃສ່ຊ່ອງໃນຕາຕະລາງ
-    if (rosterStaffName) {
-        if (sheet.status === 'PUBLISHED' && tName !== rosterStaffName) {
-            openEditPublishedRemarkModal({
-                date: targetDate,
-                shift: targetShift,
-                index: tIdx,
-                currentName: tName,
-                newName: rosterStaffName
-            });
-            return;
-        }
-        await applyCellUpdate(sheet, targetDate, targetShift, tIdx, rosterStaffName);
-    }
 }
 
 // 11. CELL MODAL & UPDATES
@@ -1470,21 +1380,23 @@ async function confirmApplyPublishedCellUpdate() {
     await applyCellUpdate(sheet, act.date, act.shift, act.index, act.newName);
 }
 
-// ⭐ 12. DROPDOWN & SHEET ACTIONS (ບໍ່ສ້າງຕາຕະລາງຈຳລອງ)
+// 12. DROPDOWN & SHEET ACTIONS
 function renderSheetDropdown() {
     var select = document.getElementById('scheduleSheetSelect');
     if (!select) return;
     select.innerHTML = '';
+    
+    var sheets = window.scheduleSheets || [];
 
-    if (!window.scheduleSheets || window.scheduleSheets.length === 0) {
-        var emptyOpt = document.createElement('option');
-        emptyOpt.value = '';
-        emptyOpt.innerText = '-- ບໍ່ມີຕາຕະລາງໃນ Supabase --';
-        select.appendChild(emptyOpt);
+    if (sheets.length === 0) {
+        var opt = document.createElement('option');
+        opt.value = '';
+        opt.innerText = 'ບໍ່ພົບຕາຕະລາງໃນ Supabase';
+        select.appendChild(opt);
         return;
     }
 
-    (window.scheduleSheets || []).forEach(function(sheet) {
+    sheets.forEach(function(sheet) {
         if (!sheet) return;
         var opt = document.createElement('option');
         opt.value = sheet.id;
@@ -1506,20 +1418,16 @@ function changeActiveSheet() {
 
 async function handleCreateNewSheet() {
     var month = document.getElementById('newSheetMonthInput')?.value;
-    if (!month) {
-        showToast('ແຈ້ງເຕືອນ', 'ກະລຸນາເລືອກເດືອນ', 'error');
-        return;
-    }
     var title = document.getElementById('newSheetTitleInput')?.value.trim() || ('ຕາຕະລາງປະຈຳການ ' + month);
     var [y, m] = month.split('-').map(Number);
     var newId = 'sheet-' + Date.now();
     
     var isContract = title.includes('ສັນຍາ');
     var targetMembers = isContract ? getContractStaffList() : getPermanentStaffList();
-    var generated = generateMonthDataZigzag(y, m, targetMembers);
+    var generated = generateMonthDataZigzag(y, m, targetMembers, false);
 
     var activeSheet = getActiveSheet();
-    var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate || '';
+    var inheritedNotes = activeSheet?.notes || activeSheet?.data?._meta?.notes || window.defaultNotesTemplate;
 
     var newSheet = {
         id: newId,
@@ -1554,7 +1462,7 @@ function openEditSheetInfoModal() {
     var sheet = getActiveSheet();
     if (!sheet) return;
     document.getElementById('editSheetTitleInput').value = sheet.title || sheet.data?._meta?.title || '';
-    document.getElementById('editSheetNotesInput').value = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate || '';
+    document.getElementById('editSheetNotesInput').value = sheet.notes || sheet.data?._meta?.notes || window.defaultNotesTemplate;
     document.getElementById('editSheetInfoModal')?.classList.remove('hidden');
 }
 
@@ -1583,11 +1491,11 @@ async function handleSaveSheetInfo() {
     await syncScheduleToSupabase(sheet);
 }
 
-// ⭐ 13. ຟັງຊັນ RESET ຕາຕະລາງ (ລ້າງຊື່ພະນັກງານທຸກຄົນອອກ 100% ໃຫ້ເປັນຕາຕະລາງວ່າງ)
+// 13. ຟັງຊັນ RESET ຕາຕະລາງ
 async function promptResetSchedule() {
+    if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
     var sheet = getActiveSheet();
     if (!sheet) return;
-    if (!confirm('ທ່ານຕ້ອງການລ້າງຊື່ທັງໝົດອອກຈາກຕາຕະລາງນີ້ (Reset ເປັນຕາຕະລາງວ່າງ) ແທ້ບໍ່?')) return;
 
     var parts = (sheet.monthKey || '2026-10').split('-').map(Number);
     var year = parts[0] || 2026;
@@ -1607,13 +1515,18 @@ async function promptResetSchedule() {
     await syncScheduleToSupabase(sheet);
 }
 
-async function promptDeleteCurrentSheet() {
+function promptDeleteCurrentSheet() {
+    if ((window.scheduleSheets || []).length === 0) {
+        showToast('ແຈ້ງເຕືອນ', 'ບໍ່ມີຕາຕະລາງໃຫ້ລຶບ', 'error');
+        return;
+    }
     var sheet = getActiveSheet();
     if (!sheet) return;
+
     if (!confirm('ທ່ານຕ້ອງການລຶບ "' + sheet.title + '" ອອກຈາກລະບົບແທ້ບໍ່?')) return;
 
     var delId = sheet.id;
-    window.scheduleSheets = (window.scheduleSheets || []).filter(function(s) { return String(s.id) !== String(delId); });
+    window.scheduleSheets = window.scheduleSheets.filter(function(s) { return String(s.id) !== String(delId); });
     window.activeSheetId = window.scheduleSheets.length > 0 ? window.scheduleSheets[0].id : null;
 
     try {
@@ -1621,14 +1534,13 @@ async function promptDeleteCurrentSheet() {
         localStorage.setItem('ot_schedules_sheets', JSON.stringify(window.scheduleSheets));
     } catch(e) {}
 
-    if (window.supabaseClient) {
-        await window.supabaseClient.from('schedule_sheets').delete().eq('id', delId);
-    }
-
     renderSheetDropdown();
-    await renderScheduleTable();
-    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+    renderScheduleTable();
     showToast('ສຳເລັດ', 'ລຶບຕາຕະລາງອອກແລ້ວ!', 'success');
+
+    if (window.supabaseClient) {
+        window.supabaseClient.from('schedule_sheets').delete().eq('id', delId).then();
+    }
 }
 
 async function saveDraft() { 
@@ -1645,16 +1557,17 @@ async function publishSchedule() {
     var sheet = getActiveSheet();
     if (!sheet) return;
     sheet.status = 'PUBLISHED';
-    renderSheetDropdown();
-    await renderScheduleTable({ skipSwapSync: true });
-    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ!', 'success');
+    renderSheetDropdown(); 
+    await renderScheduleTable({ skipSwapSync: true }); 
+    showToast('ເຜີຍແຜ່ສຳເລັດ', 'ຕາຕະລາງຖືກ Publish ເປັນທາງການແລ້ວ!', 'success'); 
     await syncScheduleToSupabase(sheet);
 }
 
 // 14. REBALANCE SHIFT 3
 async function rebalanceNightShifts() {
     var sheet = getActiveSheet();
-    var schedData = sheet?.data || {};
+    if (!sheet) return;
+    var schedData = sheet.data || {};
     var dates = Object.keys(schedData).filter(function(k) { return !k.startsWith('_'); });
     if (dates.length === 0) {
         showToast('ແຈ້ງເຕືອນ', 'ຕາຕະລາງຍັງວ່າງເປົ່າ', 'info');
@@ -1662,6 +1575,7 @@ async function rebalanceNightShifts() {
     }
 
     var leaderNames = ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'];
+    var leaderFixedCount = 0;
     dates.forEach(function(d) {
         var day = schedData[d];
         if (day && !day.isWeekend && !isDateInHolidayRange(d)) {
@@ -1678,6 +1592,7 @@ async function rebalanceNightShifts() {
                     var idx3 = s3.indexOf(extraLeader);
                     s3[idx3] = s2Staff;
                     s2[s2StaffIdx] = extraLeader;
+                    leaderFixedCount++;
                 }
             }
         }
@@ -1714,7 +1629,7 @@ function exportToA4PDF() {
 
     var opt = {
         margin:       [4, 4, 4, 4],
-        filename:     (sheet?.title || sheet?.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ') + '.pdf',
+        filename:     (sheet.title || sheet.data?._meta?.title || 'ຕາຕະລາງປະຈຳການ') + '.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
@@ -1756,7 +1671,7 @@ function filterCellStaffList() {
     renderCellStaffList(document.getElementById('searchCellStaffInput')?.value.trim() || ''); 
 }
 
-// Auto-load ຈາກ Supabase ເທົ່ານັ້ນ
+// Auto-load
 var _origTabForSchedule = window.switchTab;
 window.switchTab = async function(tab) {
     if (typeof _origTabForSchedule === 'function') _origTabForSchedule(tab);
@@ -1770,226 +1685,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchScheduleSheetsFromCloud();
     setTimeout(renderScheduleTable, 100);
 });
-// ================= ⭐ 17. INTERACTIVE SCHEDULE IMAGE-STYLE ZOOM & PAN VIEWER =================
-window.schedZoomScale = 1;
-window.schedIsFullscreen = false;
 
-function initScheduleZoomViewer() {
-    var exportArea = document.getElementById('pdfExportArea');
-    if (!exportArea) return;
-    var scrollContainer = exportArea.parentElement;
-    if (!scrollContainer) return;
-
-    // 1. ປົດລັອກຂໍ້ຈຳກັດ user-scalable=no ໃນ meta viewport ເພື່ອໃຫ້ມືຖືຖ່າງຊູມໄດ້
-    var metaVp = document.querySelector('meta[name="viewport"]');
-    if (metaVp) {
-        metaVp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
-    }
-
-    // 2. ສ້າງແຖບປຸ່ມລອຍ Floating Zoom Controls (no-print ເພື່ອບໍ່ໃຫ້ຕິດຕອນ Export PDF)
-    if (!document.getElementById('schedFloatingZoomBar')) {
-        var bar = document.createElement('div');
-        bar.id = 'schedFloatingZoomBar';
-        bar.className = 'no-print fixed bottom-6 right-6 z-40 bg-slate-900/90 backdrop-blur-md text-white px-3 py-2 rounded-2xl shadow-2xl border border-white/15 flex items-center gap-1.5 font-lao select-none';
-        bar.innerHTML =
-            '<button type="button" onclick="adjustScheduleZoom(-0.15)" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer" title="ຊູມອອກ (Zoom Out)">' +
-                '<span class="material-symbols-outlined text-lg">zoom_out</span>' +
-            '</button>' +
-            '<button type="button" onclick="resetScheduleZoom()" id="schedZoomPercentLabel" class="px-2.5 h-8 rounded-xl bg-white/5 hover:bg-white/15 text-xs font-bold font-mono min-w-[54px] text-center transition cursor-pointer" title="ກົດເພື່ອຄືນຄ່າ 100%">100%</button>' +
-            '<button type="button" onclick="adjustScheduleZoom(0.15)" class="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition cursor-pointer" title="ຊູມເຂົ້າ (Zoom In)">' +
-                '<span class="material-symbols-outlined text-lg">zoom_in</span>' +
-            '</button>' +
-            '<div class="w-px h-5 bg-white/20 mx-0.5"></div>' +
-            '<button type="button" onclick="fitScheduleToScreen()" class="px-2.5 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer" title="ປັບຂະໜາດພໍດີໜ້າຈໍ">' +
-                '<span class="material-symbols-outlined text-sm">fit_screen</span> <span class="hidden sm:inline">ພໍດີຈໍ</span>' +
-            '</button>' +
-            '<button type="button" onclick="toggleScheduleFullscreen()" class="w-8 h-8 rounded-xl bg-brand-red hover:bg-brand-red-dark flex items-center justify-center transition cursor-pointer shadow-md" title="ເບິ່ງເຕັມຈໍຄືຮູບພາບ">' +
-                '<span class="material-symbols-outlined text-lg" id="schedFullscreenIcon">fullscreen</span>' +
-            '</button>';
-        
-        var viewSched = document.getElementById('view-schedule');
-        if (viewSched) viewSched.appendChild(bar);
-    }
-
-    if (scrollContainer.dataset.zoomBound === '1') return;
-    scrollContainer.dataset.zoomBound = '1';
-
-    // 3. ຮອງຮັບ Ctrl + Mouse Wheel Zoom ໃນຄອມພິວເຕີ
-    scrollContainer.addEventListener('wheel', function(e) {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            var delta = e.deltaY < 0 ? 0.12 : -0.12;
-            adjustScheduleZoom(delta);
-        }
-    }, { passive: false });
-
-    // 4. ຮອງຮັບໃຊ້ 2 ນິ້ວຖ່າງຊູມ (Pinch-to-Zoom) ໃນມືຖື Android / iOS
-    var initialPinchDist = null;
-    var initialScale = 1;
-
-    scrollContainer.addEventListener('touchstart', function(e) {
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            var dx = e.touches[0].clientX - e.touches[1].clientX;
-            var dy = e.touches[0].clientY - e.touches[1].clientY;
-            initialPinchDist = Math.hypot(dx, dy);
-            initialScale = window.schedZoomScale || 1;
-        }
-    }, { passive: false });
-
-    scrollContainer.addEventListener('touchmove', function(e) {
-        if (e.touches.length === 2 && initialPinchDist) {
-            e.preventDefault();
-            var dx = e.touches[0].clientX - e.touches[1].clientX;
-            var dy = e.touches[0].clientY - e.touches[1].clientY;
-            var dist = Math.hypot(dx, dy);
-            var ratio = dist / initialPinchDist;
-            setScheduleZoom(initialScale * ratio);
-        }
-    }, { passive: false });
-
-    scrollContainer.addEventListener('touchend', function(e) {
-        if (e.touches.length < 2) {
-            initialPinchDist = null;
-        }
-    });
-
-    // 5. ຮອງຮັບ Double-Click / Double-Tap ເພື່ອຊູມເຂົ້າ-ອອກທັນທີ (ສະເພາະ User ທົ່ວໄປ)
-    var lastTapTime = 0;
-    scrollContainer.addEventListener('click', function(e) {
-        var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
-        if (isAdmin) return; // Admin ໃຊ້ກົດເພື່ອແກ້ໄຂຊື່
-        var now = Date.now();
-        if (now - lastTapTime < 300) {
-            if (Math.abs(window.schedZoomScale - 1) < 0.05) {
-                setScheduleZoom(1.45);
-            } else {
-                fitScheduleToScreen();
-            }
-            lastTapTime = 0;
-        } else {
-            lastTapTime = now;
-        }
-    });
-
-    // 6. ຮອງຮັບກົດຄ້າງແລ້ວລາກເລື່ອນຊ້າຍ-ຂວາ-ເທິງ-ລຸ່ມ (Click & Drag Pan ສຳລັບ User ທົ່ວໄປ)
-    var isPanning = false;
-    var startX = 0, startY = 0, scrollL = 0, scrollT = 0;
-
-    scrollContainer.addEventListener('mousedown', function(e) {
-        var isAdmin = window.currentUser && window.currentUser.role === 'SUPER_ADMIN';
-        if (isAdmin) return; // ບໍ່ລົບກວນລະບົບ Drag & Drop ຂອງ Admin
-        if (e.button !== 0) return;
-        isPanning = true;
-        scrollContainer.style.cursor = 'grabbing';
-        startX = e.pageX - scrollContainer.offsetLeft;
-        startY = e.pageY - scrollContainer.offsetTop;
-        scrollL = scrollContainer.scrollLeft;
-        scrollT = scrollContainer.scrollTop;
-    });
-
-    window.addEventListener('mouseup', function() {
-        if (isPanning) {
-            isPanning = false;
-            scrollContainer.style.cursor = '';
-        }
-    });
-
-    scrollContainer.addEventListener('mousemove', function(e) {
-        if (!isPanning) return;
-        e.preventDefault();
-        var x = e.pageX - scrollContainer.offsetLeft;
-        var y = e.pageY - scrollContainer.offsetTop;
-        scrollContainer.scrollLeft = scrollL - (x - startX) * 1.2;
-        scrollContainer.scrollTop = scrollT - (y - startY) * 1.2;
-    });
-
-    // ຖ້າເປີດໃນຈໍມືຖືນ້ອຍ ໃຫ້ປັບ Fit ພໍດີຈໍອັດຕະໂນມັດໃນຄັ້ງທຳອິດ
-    if (window.innerWidth < 768) {
-        setTimeout(fitScheduleToScreen, 250);
-    }
-}
-
-function setScheduleZoom(newScale) {
-    var clamped = Math.min(Math.max(newScale, 0.35), 2.5);
-    window.schedZoomScale = Math.round(clamped * 100) / 100;
-
-    var exportArea = document.getElementById('pdfExportArea');
-    if (exportArea) {
-        // ໃຊ້ CSS zoom (ຮອງຮັບການ Scroll ທຸກທິດທາງໃນ Chrome/Android/Safari ໂດຍບໍ່ຕັດຂອບ)
-        exportArea.style.zoom = window.schedZoomScale;
-        exportArea.style.transformOrigin = 'top left';
-    }
-
-    var label = document.getElementById('schedZoomPercentLabel');
-    if (label) {
-        label.innerText = Math.round(window.schedZoomScale * 100) + '%';
-    }
-}
-
-function adjustScheduleZoom(delta) {
-    setScheduleZoom((window.schedZoomScale || 1) + delta);
-}
-
-function resetScheduleZoom() {
-    setScheduleZoom(1);
-}
-
-function fitScheduleToScreen() {
-    var exportArea = document.getElementById('pdfExportArea');
-    if (!exportArea || !exportArea.parentElement) return;
-    var containerWidth = exportArea.parentElement.clientWidth - 24;
-    var tableNaturalWidth = 980; // ຄວາມກວ້າງມາດຕະຖານຂອງຕາຕະລາງ A4
-    if (containerWidth > 200 && containerWidth < tableNaturalWidth) {
-        setScheduleZoom(containerWidth / tableNaturalWidth);
-    } else {
-        setScheduleZoom(1);
-    }
-}
-
-function toggleScheduleFullscreen() {
-    var viewSched = document.getElementById('view-schedule');
-    var icon = document.getElementById('schedFullscreenIcon');
-    if (!viewSched) return;
-
-    window.schedIsFullscreen = !window.schedIsFullscreen;
-    if (window.schedIsFullscreen) {
-        viewSched.classList.add('fixed', 'inset-0', 'z-[95]', 'bg-slate-100');
-        if (icon) icon.innerText = 'fullscreen_exit';
-        showToast('ໂໝດເບິ່ງເຕັມຈໍ', 'ສາມາດຊູມເຂົ້າ-ອອກ ຫຼື ລາກເລື່ອນເບິ່ງຕາຕະລາງໄດ້ເລີຍ', 'info');
-    } else {
-        viewSched.classList.remove('fixed', 'inset-0', 'z-[95]', 'bg-slate-100');
-        if (icon) icon.innerText = 'fullscreen';
-    }
-}
-
-// ກ່ອນກົດ Export A4 PDF ໃຫ້ຄືນຄ່າ Zoom ເປັນ 100% ຊົ່ວຄາວ ເພື່ອບໍ່ໃຫ້ໄຟລ໌ PDF ຜິດຂະໜາດ
-var _origExportToA4PDF = window.exportToA4PDF;
-window.exportToA4PDF = function() {
-    var savedScale = window.schedZoomScale || 1;
-    setScheduleZoom(1);
-    if (typeof _origExportToA4PDF === 'function') {
-        _origExportToA4PDF();
-    }
-    setTimeout(function() {
-        setScheduleZoom(savedScale);
-    }, 1500);
-};
-
-// ເອີ້ນໃຊ້ລະບົບ Zoom ທຸກຄັ້ງທີ່ Render ຕາຕະລາງ
-var _origRenderSchedForZoom = window.renderScheduleTable;
-window.renderScheduleTable = async function(options) {
-    if (typeof _origRenderSchedForZoom === 'function') {
-        await _origRenderSchedForZoom(options);
-    }
-    initScheduleZoomViewer();
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(initScheduleZoomViewer, 400);
-});
-
-// ⭐ ຜູກຄົບທຸກ Functions ຂອງປຸ່ມ Toolbar ເຂົ້າ Window 100%
+// ⭐ ຜູກ Functions ເຂົ້າ Window ຄົບທຸກອັນ
 window.isDateInHolidayRange = isDateInHolidayRange;
 window.syncScheduleToSupabase = syncScheduleToSupabase;
 window.fetchScheduleSwapsFromCloud = fetchScheduleSwapsFromCloud;
@@ -2038,14 +1735,10 @@ window.openHolidayModal = openHolidayModal;
 window.handleSaveHolidayRange = handleSaveHolidayRange;
 window.createBlankMonthData = createBlankMonthData;
 window.applyFixedShiftsToDayData = applyFixedShiftsToDayData;
-window.initScheduleZoomViewer = initScheduleZoomViewer;
-window.setScheduleZoom = setScheduleZoom;
-window.adjustScheduleZoom = adjustScheduleZoom;
-window.resetScheduleZoom = resetScheduleZoom;
-window.fitScheduleToScreen = fitScheduleToScreen;
-window.toggleScheduleFullscreen = toggleScheduleFullscreen;
-window.handleSchedCellDragStart = handleSchedCellDragStart;
-window.handleSchedCellDragOver = handleSchedCellDragOver;
-window.handleSchedCellDragLeave = handleSchedCellDragLeave;
-window.handleSchedCellDrop = handleSchedCellDrop;
-
+window.shuffleArray = shuffleArray;
+window.handleCellDragStart = handleCellDragStart;
+window.handleCellDragEnd = handleCellDragEnd;
+window.handleCellDragOver = handleCellDragOver;
+window.handleCellDragLeave = handleCellDragLeave;
+window.handleCellDrop = handleCellDrop;
+```
