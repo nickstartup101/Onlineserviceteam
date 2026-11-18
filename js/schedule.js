@@ -104,9 +104,23 @@ function createBlankMonthData(year, month) {
     return data;
 }
 
-// 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ
+// 0.29 ENGINE ບັງຄັບລັອກກະປະຈຳ (ແບບ SWAP ຄົນແທນກັນ ເພື່ອຮັກສາຈຳນວນ 5-5-3 ໃຫ້ຖືກຕ້ອງສະເໝີ)
 function applyFixedShiftsToDayData(dayData) {
     if (!dayData || !window.fixedShiftsConfig || window.fixedShiftsConfig.length === 0) return;
+
+    var allUsers = window.users || [];
+    var isLeaderUser = function(name) {
+        if (!name) return false;
+        var u = allUsers.find(function(usr) { return usr && usr.nameLao && isSchedNameMatch(usr.nameLao, name); });
+        return Boolean(u && u.isLeader) || ['ແສງດາວ', 'ພອນສະຫວັນ', 'ບຸນປະເສີດ', 'ພັນນິກອນ'].some(function(ln) {
+            return isSchedNameMatch(ln, name);
+        });
+    };
+    var isLockedToShift = function(name, shiftKey) {
+        return (window.fixedShiftsConfig || []).some(function(cfg) {
+            return cfg && isSchedNameMatch(cfg.nameLao, name) && cfg.fixedShift === shiftKey;
+        });
+    };
 
     window.fixedShiftsConfig.forEach(function(cfg) {
         var name = cfg.nameLao;
@@ -126,9 +140,33 @@ function applyFixedShiftsToDayData(dayData) {
         });
 
         if (currentShift && currentShift !== targetShift) {
-            dayData[currentShift].splice(currentIdx, 1);
             if (!dayData[targetShift]) dayData[targetShift] = [];
-            dayData[targetShift].push(name);
+            var targetArr = dayData[targetShift];
+            var movingIsLeader = isLeaderUser(name);
+
+            // ຫາຄົນທີ່ປະເພດດຽວກັນໃນກະປາຍທາງທີ່ບໍ່ໄດ້ຖືກລັອກ ເພື່ອສັບປ່ຽນແທນກັນ (ຮັກສາ ກະ1=5, ກະ2=5, ກະ3=3)
+            var swapIdx = -1;
+            for (var j = targetArr.length - 1; j >= 0; j--) {
+                var candidate = targetArr[j];
+                if (!candidate) continue;
+                if (isLeaderUser(candidate) === movingIsLeader && !isLockedToShift(candidate, targetShift)) {
+                    swapIdx = j;
+                    break;
+                }
+            }
+
+            if (swapIdx !== -1) {
+                var swappedOut = targetArr[swapIdx];
+                targetArr[swapIdx] = dayData[currentShift][currentIdx];
+                dayData[currentShift][currentIdx] = swappedOut;
+            } else {
+                // ວັນພັກ ກະ 1 ບໍ່ມີຫົວໜ້າກະ
+                if (dayData.isWeekend && movingIsLeader && targetShift === 'shift1') {
+                    return;
+                }
+                dayData[currentShift].splice(currentIdx, 1);
+                targetArr.push(name);
+            }
         }
     });
 }
@@ -349,13 +387,27 @@ function findPreviousMonthSheet(year, month, isContract) {
     var prevMKey = prevY + '-' + (prevM < 10 ? '0' + prevM : '' + prevM);
     var sheets = window.scheduleSheets || [];
 
-    var found = sheets.find(function(s) {
-        return s && String(s.monthKey) === prevMKey && Boolean(s.isG7GroupSheet) === Boolean(isContract);
+    var hasData = function(s) {
+        return s && s.data && Object.keys(s.data).some(function(k) { return !k.startsWith('_'); });
+    };
+
+    var candidates = sheets.filter(function(s) {
+        return s && String(s.monthKey) === prevMKey && hasData(s);
     });
-    if (!found) {
-        found = sheets.find(function(s) { return s && String(s.monthKey) === prevMKey; });
-    }
-    return found || null;
+    if (candidates.length === 0) return null;
+
+    // ບູລິມະສິດ: ກົງປະເພດກຸ່ມ + ສະບັບທາງການ (PUBLISHED) ກ່ອນ
+    var exactPub = candidates.find(function(s) {
+        return Boolean(s.isG7GroupSheet) === Boolean(isContract) && s.status === 'PUBLISHED';
+    });
+    if (exactPub) return exactPub;
+
+    var exactAny = candidates.find(function(s) {
+        return Boolean(s.isG7GroupSheet) === Boolean(isContract);
+    });
+    if (exactAny) return exactAny;
+
+    return candidates[0];
 }
 
 function getUnswappedDayCopy(rawDay, dStr) {
@@ -525,9 +577,6 @@ function extractZigzagConfigFromSheet(prevSheet) {
     (copyDay.shift2 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s2Staff, n); });
     (copyDay.shift1 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s1Staff, n); });
 
-    // ຖ້າຮູ້ວ່າອາທິດກ່ອນ (W - 1) ໃຜຢູ່ກະໃດ:
-    // - ຄົນທີ່ເຂົ້າກະໃໝ່ໃຫ້ຢູ່ຕົ້ນລາຍຊື່ (ຈະໄດ້ຢູ່ຕໍ່ໃນອາທິດໜ້າ)
-    // - ຄົນທີ່ຢູ່ກະເດີມມາແລ້ວໃຫ້ຢູ່ທ້າຍລາຍຊື່ (ຈະໄດ້ເລື່ອນໄປກະຕໍ່ໄປໃນອາທິດໜ້າ 3 -> 2 -> 1 -> 3)
     if (prevCopyDay) {
         var wasInS2 = function(name) {
             return (prevCopyDay.shift2 || []).some(function(p) { return isSchedNameMatch(p, name); });
@@ -555,8 +604,8 @@ function extractZigzagConfigFromSheet(prevSheet) {
 }
 
 // 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG
-// - ຫົວໜ້າ (1A - 1B - 2 - 3): ເລື່ອນຈາກ ກະ 3 -> ກະ 2 -> 1B -> 1A -> ກະ 3
-// - ວິຊາການ (ບໍ່ມີ 1A-1B): ເລື່ອນຈາກ ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3
+// - ຫົວໜ້າ (1A - 1B - 2 - 3): ກະ 3 -> ກະ 2 -> 1B -> 1A -> ກະ 3
+// - ວິຊາການ (5 - 5 - 3): ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3
 function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuffle, carryConfig) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -648,7 +697,7 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuff
             var l_S2 = leaderNames[((W + randomLeaderShiftOffset + 2) % 4 + 4) % 4];
             var l_S3 = leaderNames[((W + randomLeaderShiftOffset + 3) % 4 + 4) % 4];
 
-            // ວິຊາການ: ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3
+            // ວິຊາການ: ກະ 1 = 5 ຄົນ, ກະ 2 = 5 ຄົນ, ກະ 3 = 3 ຄົນ (ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3)
             var staffOffset = ((13000 - W * 3 + randomStaffShiftOffset) % numRegular + numRegular) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
@@ -765,20 +814,25 @@ function generateMonthDataZigzag(year, month, targetGroupMembers, isReshuffle, c
     }
 }
 
-// 4. MODAL ສຸ່ມກຸ່ມ
+// 4. MODAL ສຸ່ມກຸ່ມ (ເພີ່ມຕົວເລືອກ "ຈັດຕໍ່ເນື່ອງຈາກທ້າຍເດືອນກ່ອນໜ້າ" ໄວ້ທຳອິດ)
 function openRandomGroupSelectModal() {
     var select = document.getElementById('randomSelectedGroupId');
     if (!select) return;
     select.innerHTML = '';
 
+    var optContinue = document.createElement('option');
+    optContinue.value = 'CONTINUE_PREV';
+    optContinue.innerText = '🔄 ຈັດຕາຕະລາງຕໍ່ເນື່ອງຈາກທ້າຍເດືອນກ່ອນໜ້າ (ແນະນຳ)';
+    select.appendChild(optContinue);
+
     var optMain = document.createElement('option');
     optMain.value = 'GRP_MAIN_17';
-    optMain.innerText = 'ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)';
+    optMain.innerText = '🎲 ສຸ່ມໃໝ່: ກຸ່ມທີມວິຊາການສົມບູນ (17 ຄົນ - Weekly Zigzag)';
     select.appendChild(optMain);
 
     var optContract = document.createElement('option');
     optContract.value = 'GRP_CONTRACT_7';
-    optContract.innerText = 'ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)';
+    optContract.innerText = '🎲 ສຸ່ມໃໝ່: ກຸ່ມທີມວິຊາການສັນຍາ (7 ຄົນ - Rolling 5/2)';
     select.appendChild(optContract);
 
     (window.employeeGroups || []).forEach(function(grp) {
@@ -793,7 +847,7 @@ function openRandomGroupSelectModal() {
     document.getElementById('randomGroupSelectModal')?.classList.remove('hidden');
 }
 
-// 4.1 EXECUTE RANDOM
+// 4.1 EXECUTE RANDOM (ຫຼື ຕໍ່ເນື່ອງຈາກເດືອນກ່ອນໜ້າ)
 async function executeGroupRandomSchedule() {
     var sheet = getActiveSheet();
     if (!sheet) {
@@ -801,8 +855,15 @@ async function executeGroupRandomSchedule() {
         return;
     }
 
+    var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'CONTINUE_PREV';
+
+    if (selectedGrpId === 'CONTINUE_PREV') {
+        document.getElementById('randomGroupSelectModal')?.classList.add('hidden');
+        await continueCurrentSheetFromPreviousMonth();
+        return;
+    }
+
     var [year, month] = (sheet.monthKey || '2026-10').split('-').map(Number);
-    var selectedGrpId = document.getElementById('randomSelectedGroupId')?.value || 'GRP_MAIN_17';
 
     var members = null;
     if (selectedGrpId === 'GRP_MAIN_17') {
