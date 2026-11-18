@@ -358,6 +358,38 @@ function findPreviousMonthSheet(year, month, isContract) {
     return found || null;
 }
 
+function getUnswappedDayCopy(rawDay, dStr) {
+    var copyDay = {
+        shift1: (rawDay && rawDay.shift1 ? rawDay.shift1 : []).slice(),
+        shift2: (rawDay && rawDay.shift2 ? rawDay.shift2 : []).slice(),
+        shift3: (rawDay && rawDay.shift3 ? rawDay.shift3 : []).slice()
+    };
+
+    (window.swapHistory || []).forEach(function(sw) {
+        if (!sw || sw.swapType === 'COVER') return;
+        if (String(sw.status || '').toUpperCase() !== 'COMPLETED') return;
+        var sStart = sw.startDate || sw.start_date;
+        var sEnd = sw.endDate || sw.end_date || sStart;
+        if (dStr < sStart || dStr > sEnd) return;
+
+        var fKey = normalizeSchedShiftKey(sw.fromShift || sw.from_shift);
+        var tKey = normalizeSchedShiftKey(sw.toShift || sw.to_shift);
+        var fName = sw.fromName || sw.from_name;
+        var tName = sw.toName || sw.to_name;
+        if (fKey && tKey && fKey !== tKey && fName && tName) {
+            var idxInTo = (copyDay[tKey] || []).findIndex(function(n) { return isSchedNameMatch(n, fName); });
+            var idxInFrom = (copyDay[fKey] || []).findIndex(function(n) { return isSchedNameMatch(n, tName); });
+            if (idxInTo !== -1 && idxInFrom !== -1) {
+                var tmp = copyDay[tKey][idxInTo];
+                copyDay[tKey][idxInTo] = copyDay[fKey][idxInFrom];
+                copyDay[fKey][idxInFrom] = tmp;
+            }
+        }
+    });
+
+    return copyDay;
+}
+
 function extractZigzagConfigFromSheet(prevSheet) {
     if (!prevSheet || !prevSheet.data) return null;
 
@@ -434,35 +466,32 @@ function extractZigzagConfigFromSheet(prevSheet) {
     }
     if (!lastWeekday) return null;
 
-    var rawDay = prevSheet.data[lastWeekday];
-    var copyDay = {
-        shift1: (rawDay.shift1 || []).slice(),
-        shift2: (rawDay.shift2 || []).slice(),
-        shift3: (rawDay.shift3 || []).slice()
-    };
+    var copyDay = getUnswappedDayCopy(prevSheet.data[lastWeekday], lastWeekday);
 
-    // ຖອດຄ່າ SWAP ໃນມື້ນັ້ນອອກຊົ່ວຄາວ (ຖ້າມີ) ເພື່ອໃຫ້ໄດ້ລຳດັບພື້ນຖານທີ່ແທ້ຈິງ
-    (window.swapHistory || []).forEach(function(sw) {
-        if (!sw || sw.swapType === 'COVER') return;
-        if (String(sw.status || '').toUpperCase() !== 'COMPLETED') return;
-        var sStart = sw.startDate || sw.start_date;
-        var sEnd = sw.endDate || sw.end_date || sStart;
-        if (lastWeekday < sStart || lastWeekday > sEnd) return;
+    var lp = lastWeekday.split('-').map(Number);
+    var lastDateObj = new Date(Date.UTC(lp[0], lp[1] - 1, lp[2]));
+    var W = getMondayBasedWeekIndex(lastDateObj);
 
-        var fKey = normalizeSchedShiftKey(sw.fromShift || sw.from_shift);
-        var tKey = normalizeSchedShiftKey(sw.toShift || sw.to_shift);
-        var fName = sw.fromName || sw.from_name;
-        var tName = sw.toName || sw.to_name;
-        if (fKey && tKey && fKey !== tKey && fName && tName) {
-            var idxInTo = (copyDay[tKey] || []).findIndex(function(n) { return isSchedNameMatch(n, fName); });
-            var idxInFrom = (copyDay[fKey] || []).findIndex(function(n) { return isSchedNameMatch(n, tName); });
-            if (idxInTo !== -1 && idxInFrom !== -1) {
-                var tmp = copyDay[tKey][idxInTo];
-                copyDay[tKey][idxInTo] = copyDay[fKey][idxInFrom];
-                copyDay[fKey][idxInFrom] = tmp;
+    // ດຶງຂໍ້ມູນອາທິດກ່ອນໜ້າ (W - 1) ເພື່ອກວດວ່າໃຜຢູ່ກະເດີມມາແລ້ວ (ໃຫ້ໄດ້ເລື່ອນອອກກ່ອນໃນອາທິດຖັດໄປ: ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3)
+    var prevCopyDay = null;
+    for (var j = dates.length - 1; j >= 0; j--) {
+        var pdStr = dates[j];
+        var pdp = pdStr.split('-').map(Number);
+        var pdObj = new Date(Date.UTC(pdp[0], pdp[1] - 1, pdp[2]));
+        var pdow = pdObj.getUTCDay();
+        var pData = prevSheet.data[pdStr];
+        if (pdow !== 0 && pdow !== 6 && !isDateInHolidayRange(pdStr) && pData && !pData.isWeekend) {
+            if (getMondayBasedWeekIndex(pdObj) === W - 1) {
+                var pTotal = (pData.shift1 || []).filter(Boolean).length +
+                             (pData.shift2 || []).filter(Boolean).length +
+                             (pData.shift3 || []).filter(Boolean).length;
+                if (pTotal >= 10) {
+                    prevCopyDay = getUnswappedDayCopy(pData, pdStr);
+                    break;
+                }
             }
         }
-    });
+    }
 
     var allUsers = window.users || [];
     var permList = getPermanentStaffList();
@@ -478,24 +507,43 @@ function extractZigzagConfigFromSheet(prevSheet) {
     };
 
     var extractedLeaders = [];
-    var extractedStaff = [];
     var pushUnique = function(arr, val) {
         if (val && !arr.some(function(x) { return isSchedNameMatch(x, val); })) arr.push(val);
     };
 
+    // ດຶງຫົວໜ້າກະຕາມລຳດັບ [1A, 1B, 2, 3] ເພື່ອໃຫ້ອາທິດຕໍ່ໄປເລື່ອນແບບ 3 -> 2 -> 1B -> 1A -> 3
     (copyDay.shift1 || []).forEach(function(n) { if (n && isLeaderFn(n)) pushUnique(extractedLeaders, n); });
     (copyDay.shift2 || []).forEach(function(n) { if (n && isLeaderFn(n)) pushUnique(extractedLeaders, n); });
     (copyDay.shift3 || []).forEach(function(n) { if (n && isLeaderFn(n)) pushUnique(extractedLeaders, n); });
     knownLeaders.forEach(function(ln) { pushUnique(extractedLeaders, ln); });
 
-    (copyDay.shift3 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(extractedStaff, n); });
-    (copyDay.shift2 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(extractedStaff, n); });
-    (copyDay.shift1 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(extractedStaff, n); });
-    permList.forEach(function(pn) { if (!isLeaderFn(pn)) pushUnique(extractedStaff, pn); });
+    // ດຶງວິຊາການຕາມກະ [S3, S2, S1]
+    var s3Staff = [];
+    var s2Staff = [];
+    var s1Staff = [];
+    (copyDay.shift3 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s3Staff, n); });
+    (copyDay.shift2 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s2Staff, n); });
+    (copyDay.shift1 || []).forEach(function(n) { if (n && !isLeaderFn(n)) pushUnique(s1Staff, n); });
 
-    var lp = lastWeekday.split('-').map(Number);
-    var lastDateObj = new Date(Date.UTC(lp[0], lp[1] - 1, lp[2]));
-    var W = getMondayBasedWeekIndex(lastDateObj);
+    // ຖ້າຮູ້ວ່າອາທິດກ່ອນ (W - 1) ໃຜຢູ່ກະໃດ:
+    // - ຄົນທີ່ເຂົ້າກະໃໝ່ໃຫ້ຢູ່ຕົ້ນລາຍຊື່ (ຈະໄດ້ຢູ່ຕໍ່ໃນອາທິດໜ້າ)
+    // - ຄົນທີ່ຢູ່ກະເດີມມາແລ້ວໃຫ້ຢູ່ທ້າຍລາຍຊື່ (ຈະໄດ້ເລື່ອນໄປກະຕໍ່ໄປໃນອາທິດໜ້າ 3 -> 2 -> 1 -> 3)
+    if (prevCopyDay) {
+        var wasInS2 = function(name) {
+            return (prevCopyDay.shift2 || []).some(function(p) { return isSchedNameMatch(p, name); });
+        };
+        var wasInS1 = function(name) {
+            return (prevCopyDay.shift1 || []).some(function(p) { return isSchedNameMatch(p, name); });
+        };
+        s2Staff = s2Staff.filter(function(n) { return !wasInS2(n); })
+            .concat(s2Staff.filter(function(n) { return wasInS2(n); }));
+        s1Staff = s1Staff.filter(function(n) { return !wasInS1(n); })
+            .concat(s1Staff.filter(function(n) { return wasInS1(n); }));
+    }
+
+    var extractedStaff = [];
+    [].concat(s3Staff, s2Staff, s1Staff).forEach(function(n) { pushUnique(extractedStaff, n); });
+    permList.forEach(function(pn) { if (!isLeaderFn(pn)) pushUnique(extractedStaff, pn); });
 
     return {
         type: '17',
@@ -507,6 +555,8 @@ function extractZigzagConfigFromSheet(prevSheet) {
 }
 
 // 2. ສູດທີມຫຼັກ 17 ຄົນ: CONTINUOUS WEEKLY ZIGZAG
+// - ຫົວໜ້າ (1A - 1B - 2 - 3): ເລື່ອນຈາກ ກະ 3 -> ກະ 2 -> 1B -> 1A -> ກະ 3
+// - ວິຊາການ (ບໍ່ມີ 1A-1B): ເລື່ອນຈາກ ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3
 function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuffle, carryConfig) {
     var daysCount = new Date(year, month, 0).getDate();
     var data = {};
@@ -592,11 +642,13 @@ function generate17PersonLeadersAndStaffZigzag(year, month, staffList, isReshuff
         } else {
             var W = getMondayBasedWeekIndex(dateObj);
 
+            // ຫົວໜ້າກະ: ກະ 2 -> 1B -> 1A -> ກະ 3 -> ກະ 2
             var l_1A = leaderNames[((W + randomLeaderShiftOffset + 0) % 4 + 4) % 4];
             var l_1B = leaderNames[((W + randomLeaderShiftOffset + 1) % 4 + 4) % 4];
             var l_S2 = leaderNames[((W + randomLeaderShiftOffset + 2) % 4 + 4) % 4];
             var l_S3 = leaderNames[((W + randomLeaderShiftOffset + 3) % 4 + 4) % 4];
 
+            // ວິຊາການ: ກະ 3 -> ກະ 2 -> ກະ 1 -> ກະ 3
             var staffOffset = ((13000 - W * 3 + randomStaffShiftOffset) % numRegular + numRegular) % numRegular;
             var rotated = [];
             for (var r = 0; r < numRegular; r++) {
@@ -1913,6 +1965,7 @@ window.syncAllApprovedSwapsIntoSheet = syncAllApprovedSwapsIntoSheet;
 window.getMondayBasedWeekIndex = getMondayBasedWeekIndex;
 window.getGlobalWeekendDayIndex = getGlobalWeekendDayIndex;
 window.findPreviousMonthSheet = findPreviousMonthSheet;
+window.getUnswappedDayCopy = getUnswappedDayCopy;
 window.extractZigzagConfigFromSheet = extractZigzagConfigFromSheet;
 window.continueCurrentSheetFromPreviousMonth = continueCurrentSheetFromPreviousMonth;
 window.rebalanceNightShifts = rebalanceNightShifts;
